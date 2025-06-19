@@ -1,4 +1,4 @@
-/* generated for 2022.3.20f1 */
+/* generated for 2020.3.24f1 */
 #![allow(non_upper_case_globals)]
 use super::{symbols, types::*};
 use once_cell::sync::Lazy;
