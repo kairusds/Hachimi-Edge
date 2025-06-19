@@ -1,5 +1,5 @@
 use crate::{
-    core::Hachimi,
+    core::{game::Region, Hachimi},
     il2cpp::{hook::UnityEngine_UI::Text, symbols::{get_field_from_name, get_field_object_value, get_method_addr}, types::*}
 };
 
@@ -20,6 +20,10 @@ extern "C" fn UpdateItem(this: *mut Il2CppObject, skill_info: *mut Il2CppObject,
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
+    if Hachimi::instance().game.region == Region::China {
+        return;
+    }
+
     get_class_or_return!(umamusume, Gallop, PartsSingleModeSkillListItem);
 
     let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 2);

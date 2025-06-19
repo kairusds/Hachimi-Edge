@@ -1,4 +1,4 @@
-use crate::{core::utils, il2cpp::{symbols::get_method_addr, types::*}};
+use crate::{core::{game::Region, utils, Hachimi}, il2cpp::{symbols::get_method_addr, types::*}};
 
 type LineHeadWrapCommonFn = extern "C" fn(
     s: *mut Il2CppString, line_char_count: i32, handling_type: i32, is_match_delegate: *mut Il2CppDelegate
@@ -33,10 +33,14 @@ extern "C" fn LineHeadWrapCommonWithColorTag(
 
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, GallopUtil);
-
-    let LineHeadWrapCommon_addr = get_method_addr(GallopUtil, c"LineHeadWrapCommon", 4);
+    
     let LineHeadWrapCommonWithColorTag_addr = get_method_addr(GallopUtil, c"LineHeadWrapCommonWithColorTag", 4);
 
-    new_hook!(LineHeadWrapCommon_addr, LineHeadWrapCommon);
     new_hook!(LineHeadWrapCommonWithColorTag_addr, LineHeadWrapCommonWithColorTag);
+
+    if Hachimi::instance().game.region != Region::China {
+        let LineHeadWrapCommon_addr = get_method_addr(GallopUtil, c"LineHeadWrapCommon", 4);
+
+        new_hook!(LineHeadWrapCommon_addr, LineHeadWrapCommon);
+    }
 }

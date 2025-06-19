@@ -1,4 +1,4 @@
-use crate::{core::{template, Hachimi}, il2cpp::{ext::{Il2CppStringExt, StringExt}, symbols::get_method_addr, types::*}};
+use crate::{core::{game::Region, template, Hachimi}, il2cpp::{ext::{Il2CppStringExt, StringExt}, symbols::get_method_addr, types::*}};
 
 use super::{Localize, MasterSingleModeTurn::SingleModeTurn, TextId};
 
@@ -46,6 +46,10 @@ static mut GETMONTHTEXT_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetMonthText, GETMONTHTEXT_ADDR, *mut Il2CppString, month: i32);
 
 pub fn init(umamusume: *const Il2CppImage) {
+    if Hachimi::instance().game.region == Region::China {
+        return;
+    }
+
     get_class_or_return!(umamusume, Gallop, SingleModeUtils);
 
     let GetMonthTextByTurn_addr = get_method_addr(SingleModeUtils, c"GetMonthTextByTurn", 2);

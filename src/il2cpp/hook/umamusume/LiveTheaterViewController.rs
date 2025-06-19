@@ -1,4 +1,4 @@
-use crate::{core::{utils::notify_error, Hachimi}, il2cpp::{symbols::get_method_addr, types::*}};
+use crate::{core::{game::Region, utils::notify_error, Hachimi}, il2cpp::{symbols::get_method_addr, types::*}};
 
 static mut CHANGELIVE_ONSUCCESS_ADDR: usize = 0;
 impl_addr_wrapper_fn!(ChangeLive_onSuccess, CHANGELIVE_ONSUCCESS_ADDR, (), this: *mut Il2CppObject, res: *mut Il2CppObject);
@@ -18,6 +18,10 @@ extern "C" fn ChangeLive(this: *mut Il2CppObject) {
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
+    if Hachimi::instance().game.region == Region::China {
+        return;
+    }
+
     get_class_or_return!(umamusume, Gallop, LiveTheaterViewController);
 
     let ChangeLive_addr = get_method_addr(LiveTheaterViewController, c"ChangeLive", 0);
