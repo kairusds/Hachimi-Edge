@@ -141,11 +141,11 @@ pub trait Il2CppStringExt {
 
 impl Il2CppStringExt for Il2CppString {
     fn chars_ptr(&self) -> *const Il2CppChar {
-        self.chars.as_ptr()
+        &self.chars
     }
 
     fn as_utf16str(&self) -> &Utf16Str {
-        unsafe { Utf16Str::from_slice_unchecked(std::slice::from_raw_parts(self.chars.as_ptr(), self.length as usize)) }
+        unsafe { Utf16Str::from_slice_unchecked(std::slice::from_raw_parts(&self.chars, self.length as usize)) }
     }
 
     fn hash(&self) -> u64 {
@@ -174,6 +174,6 @@ pub trait Il2CppObjectExt {
 
 impl Il2CppObjectExt for Il2CppObject {
     fn klass(&self) -> *mut Il2CppClass {
-        unsafe { *self.__bindgen_anon_1.klass.as_ref() }
+        unsafe { self.__bindgen_anon_1.klass }
     }
 }
