@@ -2,8 +2,8 @@
 set -e
 
 SONAME=hachimi
-MODID=hachimi
-MODNAME=Hachimi
+MODID=hachimi2020
+MODNAME="Hachimi (Unity 2020)"
 AUTHOR=LeadRDRK
 DESC="はちみーをなめると〜"
 UPDATEJSON=
