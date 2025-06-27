@@ -39,8 +39,8 @@ fn init_internal() -> Result<(), Error> {
         hachimi.on_hooking_finished();   
     }
     else {
-        info!("Init UnityPlayer.dll proxy");
-        proxy::unityplayer::init();
+        //info!("Init UnityPlayer.dll proxy");
+        //proxy::unityplayer::init();
 
         let system_dir = utils::get_system_directory();
         info!("Init winhttp.dll proxy");
