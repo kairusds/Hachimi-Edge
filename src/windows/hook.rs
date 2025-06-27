@@ -43,8 +43,15 @@ fn init_internal() -> Result<(), Error> {
         //proxy::unityplayer::init();
 
         let system_dir = utils::get_system_directory();
+
         info!("Init winhttp.dll proxy");
         proxy::winhttp::init(&system_dir);
+
+        info!("Init dxgi.dll proxy");
+        proxy::dxgi::init(&system_dir);
+
+        info!("Init version.dll proxy");
+        proxy::version::init(&system_dir);
 
         info!("Hooking LoadLibraryW");
         hachimi.interceptor.hook(ffi::LoadLibraryW as usize, LoadLibraryW as usize)?;   
