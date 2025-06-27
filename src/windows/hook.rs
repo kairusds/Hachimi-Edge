@@ -29,11 +29,15 @@ extern "C" fn LoadLibraryW(filename: PCWSTR) -> HMODULE {
 
 fn init_internal() -> Result<(), Error> {
     let hachimi = Hachimi::instance();
+
     if let Ok(handle) = unsafe { GetModuleHandleW(w!("GameAssembly.dll")) } {
         info!("Late loading detected, skipping LoadLibraryW hook");
 
         info!("Init cri_mana_vpx.dll proxy");
         proxy::cri_mana_vpx::init();
+
+        info!("Init dxgi.dll proxy");
+        proxy::dxgi::init(&system_dir);
 
         hachimi.on_dlopen("GameAssembly.dll", handle.0 as _);
         hachimi.on_hooking_finished();   
@@ -46,9 +50,6 @@ fn init_internal() -> Result<(), Error> {
 
         info!("Init winhttp.dll proxy");
         proxy::winhttp::init(&system_dir);
-
-        info!("Init dxgi.dll proxy");
-        proxy::dxgi::init(&system_dir);
 
         info!("Init version.dll proxy");
         proxy::version::init(&system_dir);
