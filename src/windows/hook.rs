@@ -2,7 +2,7 @@
 
 use windows::{core::{w, PCWSTR}, Win32::{Foundation::HMODULE, System::LibraryLoader::GetModuleHandleW}};
 
-use crate::core::{Error, Hachimi};
+use crate::{core::{Error, Hachimi}, windows::utils};
 
 use super::{hachimi_impl, proxy, ffi};
 
@@ -41,6 +41,10 @@ fn init_internal() -> Result<(), Error> {
     else {
         info!("Init UnityPlayer.dll proxy");
         proxy::unityplayer::init();
+
+        let system_dir = utils::get_system_directory();
+        info!("Init winhttp.dll proxy");
+        proxy::winhttp::init(&system_dir);
 
         info!("Hooking LoadLibraryW");
         hachimi.interceptor.hook(ffi::LoadLibraryW as usize, LoadLibraryW as usize)?;   

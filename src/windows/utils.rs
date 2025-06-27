@@ -19,7 +19,7 @@ use crate::core::{utils::scale_to_aspect_ratio, Hachimi};
 
 use super::hachimi_impl::ResolutionScaling;
 
-pub fn _get_system_directory() -> Utf16String {
+pub fn get_system_directory() -> Utf16String {
     let mut buffer = [0u16; MAX_PATH as usize];
     let length = unsafe { GetSystemDirectoryW(Some(&mut buffer)) };
     unsafe { Utf16String::from_vec_unchecked(buffer[..length as usize].to_vec()) }
