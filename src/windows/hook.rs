@@ -36,9 +36,6 @@ fn init_internal() -> Result<(), Error> {
         info!("Init cri_mana_vpx.dll proxy");
         proxy::cri_mana_vpx::init();
 
-        info!("Init dxgi.dll proxy");
-        proxy::dxgi::init(&system_dir);
-
         hachimi.on_dlopen("GameAssembly.dll", handle.0 as _);
         hachimi.on_hooking_finished();   
     }

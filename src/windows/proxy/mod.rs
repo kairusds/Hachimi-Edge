@@ -15,4 +15,3 @@ pub mod cri_mana_vpx;
 pub mod winhttp;
 pub mod opengl32;
 pub mod version;
-pub mod dxgi;

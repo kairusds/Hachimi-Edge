@@ -111,7 +111,7 @@ pub unsafe fn set_window_topmost(hwnd: HWND, topmost: bool) -> Result<(), window
     SetWindowPos(hwnd, insert_after, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
 }
 
-pub fn show_error(e: impl AsRef<str>) {
+pub fn _show_error(e: impl AsRef<str>) {
     let s = e.as_ref();
     error!("{}", s);
 
