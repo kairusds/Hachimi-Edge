@@ -56,7 +56,7 @@ pub fn LoadAsset_Internal_orig(this: *mut Il2CppObject, name: *mut Il2CppString,
 }
 
 type LoadAssetAsyncFn = extern "C" fn(this: *mut Il2CppObject, name: *mut Il2CppString, type_: *mut Il2CppObject) -> *mut Il2CppObject;
-extern "C" fn LoadAssetAsync_Internal(this: *mut Il2CppObject, name: *mut Il2CppString, type_: *mut Il2CppObject) -> *mut Il2CppObject {
+pub extern "C" fn LoadAssetAsync_Internal(this: *mut Il2CppObject, name: *mut Il2CppString, type_: *mut Il2CppObject) -> *mut Il2CppObject {
     let request = get_orig_fn!(LoadAssetAsync_Internal, LoadAssetAsyncFn)(this, name, type_);
     let info = RequestInfo {
         name_handle: GCHandle::new(name as _, false), // is name even guaranteed to survive in memory..?

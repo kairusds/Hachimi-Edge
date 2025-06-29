@@ -46,8 +46,9 @@ static mut GETMONTHTEXT_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetMonthText, GETMONTHTEXT_ADDR, *mut Il2CppString, month: i32);
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if Hachimi::instance().game.region == Region::China {
-        return;
+    match Hachimi::instance().game.region {
+        Region::China | Region::Global => return,
+        _ => {}
     }
 
     get_class_or_return!(umamusume, Gallop, SingleModeUtils);

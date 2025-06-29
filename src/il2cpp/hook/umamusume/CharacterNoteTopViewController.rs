@@ -18,7 +18,9 @@ extern "C" fn InitializeView(this: *mut Il2CppObject) -> *mut Il2CppObject {
 
     if let Some(config) = config.character_note_top_talk_gallery_button.as_ref() {
         let talk_gallery_button = CharacterNoteTopView::get_ButtonTalkGallery(view);
-        apply_gallery_button_config(talk_gallery_button, config);
+        if !talk_gallery_button.is_null() {
+            apply_gallery_button_config(talk_gallery_button, config);
+        }
     }
 
     get_orig_fn!(InitializeView, InitializeViewFn)(this)

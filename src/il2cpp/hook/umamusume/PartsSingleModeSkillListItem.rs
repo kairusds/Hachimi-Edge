@@ -20,8 +20,9 @@ extern "C" fn UpdateItem(this: *mut Il2CppObject, skill_info: *mut Il2CppObject,
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if Hachimi::instance().game.region == Region::China {
-        return;
+    match Hachimi::instance().game.region {
+        Region::China | Region::Global => return,
+        _ => {}
     }
 
     get_class_or_return!(umamusume, Gallop, PartsSingleModeSkillListItem);

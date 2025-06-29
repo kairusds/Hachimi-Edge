@@ -38,9 +38,12 @@ pub fn init(umamusume: *const Il2CppImage) {
 
     new_hook!(LineHeadWrapCommonWithColorTag_addr, LineHeadWrapCommonWithColorTag);
 
-    if Hachimi::instance().game.region != Region::China {
-        let LineHeadWrapCommon_addr = get_method_addr(GallopUtil, c"LineHeadWrapCommon", 4);
+    match Hachimi::instance().game.region {
+        Region::China | Region::Global => {},
+        _ => {
+            let LineHeadWrapCommon_addr = get_method_addr(GallopUtil, c"LineHeadWrapCommon", 4);
 
-        new_hook!(LineHeadWrapCommon_addr, LineHeadWrapCommon);
+            new_hook!(LineHeadWrapCommon_addr, LineHeadWrapCommon);
+        }
     }
 }

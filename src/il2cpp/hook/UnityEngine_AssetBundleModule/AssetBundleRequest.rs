@@ -1,6 +1,6 @@
 use std::collections::hash_map;
 
-use crate::il2cpp::{symbols::get_method_addr, types::*};
+use crate::{core::Hachimi, il2cpp::{symbols::get_method_addr, types::*}};
 
 use super::AssetBundle::{self, REQUEST_INFOS};
 
@@ -22,6 +22,11 @@ pub fn init(UnityEngine_AssetBundleModule: *const Il2CppImage) {
     get_class_or_return!(UnityEngine_AssetBundleModule, UnityEngine, AssetBundleRequest);
 
     let GetResult_addr = get_method_addr(AssetBundleRequest, c"GetResult", 0);
+    if GetResult_addr == 0 {
+        warn!("GetResult is null, unhooking LoadAssetAsync");
+        Hachimi::instance().interceptor.unhook(AssetBundle::LoadAssetAsync_Internal as _);
+        return;
+    }
 
     new_hook!(GetResult_addr, GetResult);
 }
