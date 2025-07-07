@@ -1,6 +1,6 @@
 use std::{fs, path::{Path, PathBuf}, process, sync::{atomic::{self, AtomicBool, AtomicI32}, Arc}};
 use arc_swap::ArcSwap;
-use fnv::FnvHashMap;
+use fnv::{FnvHashMap, FnvHashSet};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -52,6 +52,16 @@ impl Hachimi {
                 return false;
             }
         };
+
+        let config = instance.config.load();
+        if config.disable_gui_once {
+            let mut config = config.as_ref().clone();
+            config.disable_gui_once = false;
+            _ = instance.save_config(&config);
+
+            config.disable_gui = true;
+            instance.config.store(Arc::new(config));
+        }
 
         super::log::init(instance.config.load().debug_mode);
 
@@ -129,10 +139,16 @@ impl Hachimi {
         self.config.store(Arc::new(new_config));
     }
 
-    pub fn save_and_reload_config(&self, config: Config) -> Result<(), Error> {
+    pub fn save_config(&self, config: &Config) -> Result<(), Error> {
         fs::create_dir_all(&self.game.data_dir)?;
         let config_path = self.get_data_path("config.json");
-        utils::write_json_file(&config, &config_path)?;
+        utils::write_json_file(config, &config_path)?;
+
+        Ok(())
+    }
+
+    pub fn save_and_reload_config(&self, config: Config) -> Result<(), Error> {
+        self.save_config(&config)?;
 
         config.language.set_locale();
         self.config.store(Arc::new(config));
@@ -229,6 +245,8 @@ pub struct Config {
     pub translator_mode: bool,
     #[serde(default)]
     pub disable_gui: bool,
+    #[serde(default)]
+    pub disable_gui_once: bool,
     pub localized_data_dir: Option<String>,
     pub target_fps: Option<i32>,
     #[serde(default = "Config::default_open_browser_url")]
@@ -270,6 +288,8 @@ pub struct Config {
     pub physics_update_mode: Option<SpringUpdateMode>,
     #[serde(default = "Config::default_ui_animation_scale")]
     pub ui_animation_scale: f32,
+    #[serde(default)]
+    pub disabled_hooks: FnvHashSet<String>,
 
     #[cfg(target_os = "windows")]
     #[serde(flatten)]
