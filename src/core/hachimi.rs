@@ -316,8 +316,8 @@ impl Config {
     fn default_open_browser_url() -> String { "https://www.google.com/".to_owned() }
     fn default_virtual_res_mult() -> f32 { 1.0 }
     fn default_ui_scale() -> f32 { 1.0 }
-    fn default_story_choice_auto_select_delay() -> f32 { 0.75 }
-    fn default_story_tcps_multiplier() -> f32 { 1.0 }
+    fn default_story_choice_auto_select_delay() -> f32 { 1.2 }
+    fn default_story_tcps_multiplier() -> f32 { 3.0 }
     fn default_meta_index_url() -> String { "https://raw.githubusercontent.com/UmaTL/hachimi-meta/main/meta.json".to_owned() }
     fn default_ui_animation_scale() -> f32 { 1.0 }
 }
