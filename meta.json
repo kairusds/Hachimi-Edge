@@ -1,0 +1,52 @@
+[
+    {
+        "name": "English (UmaTL)",
+        "index": "https://raw.githubusercontent.com/UmaTL/hachimi-tl-en/release/index.json",
+        "short_desc": "Translates all parts, lore & accuracy focus. Terms might change sometimes and not match community. Source: Original, GameTora, Community. Contributors: noccu (+ maintainer), LotoDS, CatNipHoarder + Holo, Chiwawa, Kasey, … (tinyurl.com/UmaTLCredits)"
+    },
+    {
+        "name": "English (UmaTL, Skill Data)",
+        "index": "https://raw.githubusercontent.com/UmaTL/hachimi-tl-en-sd/release/index.json",
+        "short_desc": "UmaTL, but replaces skill descriptions with a readable version of internal game data. Source: UmaTL (tinyurl.com/UmaTLCredits). Contributors: noccu"
+    },
+    {
+        "name": "English (Edge tl-en by Rekoiru)",
+        "index": "https://raw.githubusercontent.com/Rekoiru/meta/refs/heads/main/index.json",
+        "short_desc": "Testing repository for Hachimi's official EN translations, frequent updates. Same contributors as Hachimi Official."
+   },
+    {
+        "name": "English (Hachimi, OUTDATED)",
+        "index": "https://files.leadrdrk.com/hachimi/tl-en.json",
+        "short_desc": "Translates mostly main parts, imported from other projects. Terms might remain more stable. Currently not updated. Source: Old UmaTL (tinyurl.com/UmaTLCredits), GameTora. Contributors: KevinVG207, Rekoiru, fling"
+    },
+    {
+        "name": "Skill Data Only (UmaTL)",
+        "index": "https://raw.githubusercontent.com/UmaTL/hachimi-sd/release/index.json",
+        "short_desc": "Only replaces skill descriptions with a readable version of internal game data. No translations. Contributors: noccu"
+    },
+    {
+        "name": "繁體中文",
+        "index": "https://files.leadrdrk.com/hachimi/tl-zh-tw.json",
+        "short_desc": "來源：Trainers' Legend G (tinyurl.com/TLGCredits), 官方. 貢獻者：yotv2000tw (+維護者), seanpai96, asps76482, _akito@ytb, project90418512@twt, …"
+    },
+    {
+        "name": "繁體中文（大陸加速鏡像）",
+        "index": "https://fuwadl.yingqwq.cn/zh-tw/index/index.json",
+        "short_desc": "來源：Trainers' Legend G (tinyurl.com/TLGCredits), 官方. 貢獻者：yotv2000tw (+維護者), seanpai96, asps76482, _akito@ytb, project90418512@twt, …"
+    },
+    {
+        "name": "简体中文",
+        "index": "https://files.leadrdrk.com/hachimi/tl-zh-cn.json",
+        "short_desc": "来源：Trainers' Legend G (tinyurl.com/TLGCredits), 官方. 贡献者：yingyingyingqwq (+维护者), 1oschi, ChiKo-qwq, … "
+    },
+    {
+        "name": "简体中文（大陆加速镜像）",
+        "index": "https://fuwadl.yingqwq.cn/zh-cn/index/index.json",
+        "short_desc": "来源：Trainers' Legend G (tinyurl.com/TLGCredits), 官方. 贡献者：yingyingyingqwq (+维护者), 1oschi, ChiKo-qwq, … "
+    },
+    {
+        "name": "Bahasa Indonesia",
+        "index": "https://raw.githubusercontent.com/FahriAdison/hachimi-id/release/index.json",
+        "short_desc": "Terjemahan Inggris -> Indonesia. Asal: UmaTL. Kontributor: FahriAdison (+ Pemelihara), R4nc3, … "
+    }
+]
