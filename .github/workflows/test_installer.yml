@@ -17,7 +17,7 @@ jobs:
           cargo build --target x86_64-pc-windows-msvc --target-dir build --release
           move build\x86_64-pc-windows-msvc\release\hachimi.dll build
 
-      - name: Build Hachimi Cellar
+      - name: Build Cellar
         run: |
           git clone --depth 1 https://github.com/Hachimi-Hachimi/Cellar
           cd Cellar
@@ -25,14 +25,11 @@ jobs:
           move build\x86_64-pc-windows-msvc\release\cellar.dll build
           cd ..
 
-      - name: test
-        run: Get-ChildItem -Path "Cellar\build" -Recurse -Name
-
-      - name: Build installer
+      - name: Build Installer
         run: |
           git clone --depth 1 https://github.com/Hachimi-Hachimi/Installer
           copy build\hachimi.dll Installer
-          copy Cellar\build\x86_64-pc-windows-msvc\build\cellar.dll Installer
+          copy Cellar\build\cellar.dll Installer
           move 
           cd Installer
           cargo build --target x86_64-pc-windows-msvc --target-dir build --release --features compress_dll
