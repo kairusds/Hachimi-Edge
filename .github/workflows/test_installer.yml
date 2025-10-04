@@ -1,0 +1,48 @@
+name: Create Release
+
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    needs: build-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build Hachimi for Windows
+        run: |
+          cargo build --target x86_64-pc-windows-msvc --target-dir build --release
+          move build\x86_64-pc-windows-msvc\release\hachimi.dll build
+
+      - name: Build Hachimi Cellar
+        run: |
+          echo %CD%
+          cd ..
+          git clone --depth 1 https://github.com/Hachimi-Hachimi/Cellar
+          cd Cellar
+          cargo build --target x86_64-pc-windows-msvc --target-dir build --release
+          move build\x86_64-pc-windows-msvc\release\cellar.dll build
+          dir /A-D /B build\x86_64-pc-windows-msvc\release
+
+      - name: Build installer
+        run: |
+          echo %CD%
+          cd ..
+          git clone --depth 1 https://github.com/Hachimi-Hachimi/Installer
+          copy build\hachimi.dll Installer
+          move 
+          cd Installer
+          cargo build --target x86_64-pc-windows-msvc --target-dir build --release --features compress_dll
+          dir /A-D /B build\x86_64-pc-windows-msvc\release
+          dir /AD /B ..
+
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            build/hachimi.dll
