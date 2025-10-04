@@ -48,11 +48,27 @@ jobs:
           cargo build --target x86_64-pc-windows-msvc --target-dir build --release
           move build\x86_64-pc-windows-msvc\release\hachimi.dll build
 
-      - name: Upload Windows binary
+      - name: Check out Hachimi installer
+        uses: actions/checkout@v5
+        with:
+          repository: Hachimi-Hachimi/Installer
+          path: installer
+
+      - name: Fetch Cellar & build installer
+        # needs latest cellar.dll release artifact, no need to build, just checkout from lead's repo
+        run: |
+          copy build\hachimi.dll installer
+          iwr -usebasicparsing -outfile installer\cellar.dll -uri "https://github.com/Hachimi-Hachimi/Cellar/releases/download/v2.0.0/cellar.dll"
+          cd installer && cargo build --release --target x86_64-pc-windows-msvc && cd ..
+          copy installer\target\x86_64-pc-windows-msvc\release\hachimi_installer.exe build\DMM-hachimi_installer.exe
+
+      - name: Upload Windows binaries
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: build/hachimi.dll
+          path: |
+            build/hachimi.dll
+            build/DMM-hachimi_installer.exe
 
   create-release:
     needs: [build-android, build-windows]
