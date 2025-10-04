@@ -1,4 +1,4 @@
-name: Create Release
+name: Test Installer
 
 on: workflow_dispatch
 
