@@ -19,25 +19,20 @@ jobs:
 
       - name: Build Hachimi Cellar
         run: |
-          echo --% $PWD
           git clone --depth 1 https://github.com/Hachimi-Hachimi/Cellar
           cd Cellar
           cargo build --target x86_64-pc-windows-msvc --target-dir build --release
           move build\x86_64-pc-windows-msvc\release\cellar.dll build
-          dir --% /A-D /B build\x86_64-pc-windows-msvc\build
           cd ..
 
       - name: Build installer
         run: |
-          echo --% $PWD
           git clone --depth 1 https://github.com/Hachimi-Hachimi/Installer
           copy build\hachimi.dll Installer
           copy Cellar\build\x86_64-pc-windows-msvc\build\cellar.dll Installer
           move 
           cd Installer
           cargo build --target x86_64-pc-windows-msvc --target-dir build --release --features compress_dll
-          dir --% /A-D /B build\x86_64-pc-windows-msvc\build
-          dir --% /AD /B ..
           cd ..
 
       - name: Upload Windows binary
