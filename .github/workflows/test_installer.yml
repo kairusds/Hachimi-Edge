@@ -25,6 +25,9 @@ jobs:
           move build\x86_64-pc-windows-msvc\release\cellar.dll build
           cd ..
 
+      - name: test
+        run: Get-ChildItem -Path "Cellar\build" -Recurse -Name
+
       - name: Build Installer
         run: |
           git clone --depth 1 https://github.com/Hachimi-Hachimi/Installer
