@@ -56,13 +56,17 @@ jobs:
           move build\x86_64-pc-windows-msvc\release\cellar.dll build
           cd ..
 
+      - name: Check out FunnyHoney
+        run: git clone --depth 1 https://codeberg.org/LeadRDRK/FunnyHoney.git
+
       - name: Build Installer
         run: |
-          git clone --depth 1 https://github.com/Hachimi-Hachimi/Installer
+          git clone --depth 1 https://github.com/teiosteppa/Installer
           copy build\hachimi.dll Installer
           move Cellar\build\cellar.dll Installer
+          move FunnyHoney\FunnyHoney.exe Installer
           cd Installer
-          cargo build --target x86_64-pc-windows-msvc --target-dir build --release --features compress_dll
+          cargo build --target x86_64-pc-windows-msvc --target-dir build --release --features compress_bin
           cd ..
           move Installer\build\x86_64-pc-windows-msvc\release\hachimi_installer.exe build
 
