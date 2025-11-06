@@ -11,6 +11,8 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     steps:
       - uses: actions/checkout@v5
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
 
       - name: Grant execute permission to build script
         run: chmod +x tools/android/build.sh
@@ -33,9 +35,10 @@ jobs:
   build-windows:
     runs-on: windows-latest
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
-    needs: build-android
     steps:
       - uses: actions/checkout@v5
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
 
       - name: Build Hachimi for Windows
         run: |
