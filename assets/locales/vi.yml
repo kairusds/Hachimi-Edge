@@ -21,6 +21,7 @@ default: "Mặc định"
 off: "Tắt"
 on: "Bật"
 enable: "Bật"
+info: "Thông tin"
 warning: "Cảnh báo"
 confirm_dialog_title: "Xác nhận"
 soft_restart_confirm_content: "Bạn có muốn soft restart game không?"
@@ -131,6 +132,11 @@ config_editor:
   force_allow_dynamic_camera: "Buộc cho phép\ndynamic camera"
   live_theater_allow_same_chara: "Cho phép cùng\nnhân vật trong live"
   physics_update_mode: "Chế độ vật lý"
+  hide_ingame_ui_hotkey: "Phím tắt ẩn giao\ndiện trong game"
+  hide_ingame_ui_hotkey_info: >-
+    Tùy chọn này cho phép phím tắt để bật/tắt giao diện người dùng (UI) trong trò chơi.
+    Đối với Android, đó là nhấn hai lần phím Tăng âm lượng (Volume Up) trong vòng 0,3 giây.
+    Đối với PC/Android có bàn phím, đó là phím Insert (Phím Chèn). Phím này cũng có thể được thay đổi trong tệp cấu hình (config file).
 
 tl_update_dialog:
   title: "Bản cập nhật mới"

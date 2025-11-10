@@ -1,0 +1,138 @@
+name: Create Release
+
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+
+      - name: Grant execute permission to build script
+        run: chmod +x tools/android/build.sh
+
+      - name: Build Hachimi for Android
+        run: |
+          rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
+          RELEASE=1 ./tools/android/build.sh
+          RELEASE=1 ./tools/android/build_zygisk.sh
+
+      - name: Upload Android binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: |
+            build/zygisk-hachimi-*-release.zip
+            build/*.so
+            build/sha1.json
+          
+  build-windows:
+    runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+
+      - name: Build Hachimi for Windows
+        run: |
+          cargo build --target x86_64-pc-windows-msvc --target-dir build --release
+          move build\x86_64-pc-windows-msvc\release\hachimi.dll build
+
+      - name: Build Cellar
+        run: |
+          git clone --depth 1 --revision d4c3f79801c8131e26df585766c35e5ce11ec57f https://github.com/Hachimi-Hachimi/Cellar
+          cd Cellar
+          cargo build --target x86_64-pc-windows-msvc --target-dir build --release
+          move build\x86_64-pc-windows-msvc\release\cellar.dll build
+          cd ..
+
+      - name: Check out FunnyHoney
+        run: git clone --depth 1 --revision 418b5348bd9b7376cc7485c591ca69d49aa4d805 https://codeberg.org/LeadRDRK/FunnyHoney.git
+
+      - name: Build Installer
+        run: |
+          git clone --depth 1 --revision 5bf02f49f31ddd71ec102d079663facf4b182539 https://github.com/teiosteppa/Installer
+          copy build\hachimi.dll Installer
+          move Cellar\build\cellar.dll Installer
+          move FunnyHoney\FunnyHoney.exe Installer
+          cd Installer
+          cargo build --target x86_64-pc-windows-msvc --target-dir build --release --features compress_bin
+          cd ..
+          move Installer\build\x86_64-pc-windows-msvc\release\hachimi_installer.exe build
+
+      - name: Upload Windows binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            build/hachimi.dll
+            build/hachimi_installer.exe
+
+  create-release:
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Get release version
+        id: get_info
+        run: |
+          VERSION=$(curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/main/Cargo.toml" | \
+            awk '/^\[package\]/{flag=1} flag && /^version/{print $3; exit}' | \
+            tr -d '"')
+          echo "RELEASE_VERSION=v$VERSION" >> $GITHUB_ENV
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+
+      - name: Create release notes
+        run: |
+          if ! git rev-parse "$LATEST_TAG" >/dev/null 2>&1; then
+            git tag $LATEST_TAG
+          fi
+  
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${LATEST_TAG}^")
+          if [ -z "$PREVIOUS_TAG" ]; then
+              PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+  
+          echo "## What's Changed" > CHANGELOG.md
+          COMMIT_HASHES=$(git rev-list --no-merges ${PREVIOUS_TAG}..${LATEST_TAG})
+          
+          for hash in $COMMIT_HASHES; do
+            raw_message=$(git show -s --format=%B $hash)
+            subject=$(echo "$raw_message" | head -n 1)
+            body=$(echo "$raw_message" | tail -n +2)
+            author=$(git show -s --format=%an $hash)
+            short_hash=$(git show -s --format=%h $hash)
+            final_message="$subject"
+  
+            if [ -n "$body" ]; then
+              formatted_body=$(echo "$body" | paste -sd ", " -)
+              final_message="$final_message ($formatted_body)"
+            fi
+  
+            echo "* $final_message by @$author in $short_hash" >> CHANGELOG.md
+          done
+        env:
+          LATEST_TAG: ${{ env.RELEASE_VERSION }}
+
+      - name: Upload binaries to a release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            artifacts/android/*
+            artifacts/windows/*
+          tag_name: ${{ env.RELEASE_VERSION }}

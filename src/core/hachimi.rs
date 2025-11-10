@@ -292,6 +292,10 @@ pub struct Config {
     #[serde(default)]
     pub auto_translate_localize: bool,
     #[serde(default)]
+    pub disable_skill_name_translation: bool,
+    #[serde(default)]
+    pub hide_ingame_ui_hotkey: bool,
+    #[serde(default)]
     pub language: Language,
     #[serde(default = "Config::default_meta_index_url")]
     pub meta_index_url: String,
@@ -314,9 +318,9 @@ impl Config {
     fn default_open_browser_url() -> String { "https://www.google.com/".to_owned() }
     fn default_virtual_res_mult() -> f32 { 1.0 }
     fn default_ui_scale() -> f32 { 1.0 }
-    fn default_story_choice_auto_select_delay() -> f32 { 0.75 }
-    fn default_story_tcps_multiplier() -> f32 { 1.0 }
-    fn default_meta_index_url() -> String { "https://files.leadrdrk.com/hachimi/meta/index.json".to_owned() }
+    fn default_story_choice_auto_select_delay() -> f32 { 1.2 }
+    fn default_story_tcps_multiplier() -> f32 { 3.0 }
+    fn default_meta_index_url() -> String { "https://gitlab.com/umatl/hachimi-meta/-/raw/main/meta.json".to_owned() }
     fn default_ui_animation_scale() -> f32 { 1.0 }
 }
 

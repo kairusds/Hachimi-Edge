@@ -413,7 +413,7 @@ impl Gui {
         }
     }
 
-    fn toggle_game_ui() {
+    pub fn toggle_game_ui() {
         use crate::il2cpp::hook::{
             UnityEngine_CoreModule::{Object, Behaviour, GameObject},
             UnityEngine_UIModule::Canvas,
@@ -1063,6 +1063,26 @@ impl ConfigEditor {
 
                 ui.label(t!("config_editor.live_theater_allow_same_chara"));
                 ui.checkbox(&mut config.live_theater_allow_same_chara, "");
+                ui.end_row();
+
+                ui.label(t!("config_editor.hide_ingame_ui_hotkey"));
+                if ui.checkbox(&mut config.hide_ingame_ui_hotkey, "").clicked() {
+                    if config.hide_ingame_ui_hotkey {
+                        thread::spawn(|| {
+                            Gui::instance().unwrap()
+                            .lock().unwrap()
+                            .show_window(Box::new(SimpleOkDialog::new(
+                                &t!("info"),
+                                &t!("config_editor.hide_ingame_ui_hotkey_info"),
+                                || {}
+                            )));
+                        });
+                    }
+                }
+                ui.end_row();
+
+                ui.label(t!("config_editor.disable_skill_name_translation"));
+                ui.checkbox(&mut config.disable_skill_name_translation, "");
                 ui.end_row();
             }
         }

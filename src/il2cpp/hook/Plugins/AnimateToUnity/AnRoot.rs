@@ -47,7 +47,9 @@ pub struct AnRootData {
 #[derive(Deserialize)]
 struct AnMotionParameterData {
     #[serde(default)]
-    text_param_list: FnvHashMap<i32, AnTextParameterData>
+    text_param_list: FnvHashMap<i32, AnTextParameterData>,
+    #[serde(default)]
+    plane_param_list: FnvHashMap<i32, AnPlaneParameterData>
 }
 
 #[derive(Deserialize)]
@@ -60,6 +62,12 @@ struct AnObjectParameterBaseData {
 struct AnTextParameterData {
     text: Option<String>,
 
+    #[serde(flatten)]
+    base: AnObjectParameterBaseData
+}
+
+#[derive(Deserialize)]
+struct AnPlaneParameterData {
     #[serde(flatten)]
     base: AnObjectParameterBaseData
 }
@@ -123,35 +131,60 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
 
         for (i, motion_param_data) in data.motion_parameter_list.iter() {
             // quick escape!!!11
-            if motion_param_data.text_param_list.is_empty() {
+            if motion_param_data.text_param_list.is_empty() && motion_param_data.plane_param_list.is_empty() {
                 continue;
             }
 
             let Some(motion_param) = motion_param_list.get(*i) else {
-                warn!("motion param {} out of range", *i);
+                warn!("motion param {} out of range (max {})", *i, motion_param_list.count());
                 continue;
             };
 
-            let Some(text_param_list) = IList::new(AnMotionParameter::get__textParamList(motion_param)) else {
-                continue;
-            };
-            
-            for (j, text_param_data) in motion_param_data.text_param_list.iter() {
-                let Some(text_param) = text_param_list.get(*j) else {
-                    warn!("text param {} of motion param {} out of range", *j, *i);
+            if !motion_param_data.text_param_list.is_empty() {
+                let Some(text_param_list) = IList::new(AnMotionParameter::get__textParamList(motion_param)) else {
+                    warn!("Failed to get text_param_list for motion param {}", *i);
+                     continue;
+                 };
+                
+                for (j, text_param_data) in motion_param_data.text_param_list.iter() {
+                    let Some(text_param) = text_param_list.get(*j) else {
+                        warn!("text param {} of motion param {} out of range (max {})", *j, *i, text_param_list.count());
+                        continue;
+                    };
+
+                    if let Some(text) = &text_param_data.text {
+                        AnTextParameter::set__text(text_param, text.to_il2cpp_string());
+                    }
+
+                    if let Some(position_offset) = &text_param_data.base.position_offset {
+                        AnObjectParameterBase::set__positionOffset(text_param, position_offset);
+                    }
+                                                                        
+                    if let Some(scale) = &text_param_data.base.scale {
+                        AnObjectParameterBase::set__scale(text_param, scale);
+                    }
+                }
+            }
+
+            if !motion_param_data.plane_param_list.is_empty() {
+                let Some(plane_param_list) = IList::new(AnMotionParameter::get__planeParamList(motion_param)) else {
+                    warn!("Failed to get plane_param_list for motion param {}", *i);
                     continue;
                 };
 
-                if let Some(text) = &text_param_data.text {
-                    AnTextParameter::set__text(text_param, text.to_il2cpp_string());
-                }
+                for (j, plane_param_data) in motion_param_data.plane_param_list.iter() {
+                    let Some(plane_param) = plane_param_list.get(*j) else {
+                        warn!("plane param {} of motion param {} out of range (max {})", *j, *i, plane_param_list.count());
+                        continue;
+                    };
 
-                if let Some(position_offset) = &text_param_data.base.position_offset {
-                    AnObjectParameterBase::set__positionOffset(text_param, position_offset);
-                }
-                                                                    
-                if let Some(scale) = &text_param_data.base.scale {
-                    AnObjectParameterBase::set__scale(text_param, scale);
+                    if let Some(position_offset) = &plane_param_data.base.position_offset {
+                        AnObjectParameterBase::set__positionOffset(plane_param, position_offset);
+                    }
+                                                                        
+                    if let Some(scale) = &plane_param_data.base.scale {
+                        AnObjectParameterBase::set__scale(plane_param, scale);
+                    }
                 }
             }
         }

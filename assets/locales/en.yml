@@ -21,6 +21,7 @@ default: "Default"
 off: "Off"
 on: "On"
 enable: "Enable"
+info: "Info"
 warning: "Warning"
 confirm_dialog_title: "Confirm"
 soft_restart_confirm_content: "Are you sure you want to soft restart the game?"
@@ -138,6 +139,12 @@ config_editor:
   force_allow_dynamic_camera: "Force allow\ndynamic camera"
   live_theater_allow_same_chara: "Live theater\nallow same chara"
   physics_update_mode: "Physics update\nmode"
+  disable_skill_name_translation: "Disable skill name\ntranslation"
+  hide_ingame_ui_hotkey: "Hide ingame UI\nhotkey"
+  hide_ingame_ui_hotkey_info: >-
+    This option allows a shortcut key to toggle the ingame UI.
+    For Android, it's double tap the Volume Up key within 0.3 seconds.
+    For PC/Android with keyboard, it's the Insert key. This key can also be changed in the config file.
 
 tl_update_dialog:
   title: "New update available"

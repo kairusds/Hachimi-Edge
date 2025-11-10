@@ -21,6 +21,7 @@ default: "預設"
 off: "關閉"
 on: "開啟"
 enable: "啟用"
+info: "資訊"
 warning: "警告"
 confirm_dialog_title: "確認"
 soft_restart_confirm_content: "您是否想要軟重啟本遊戲？"
@@ -136,6 +137,12 @@ config_editor:
   force_allow_dynamic_camera: "強制允許動態相機"
   live_theater_allow_same_chara: "演唱會劇場中\n允許設置相同角色"
   physics_update_mode: "物理運算模式"
+  disable_skill_name_translation: "停用技能名稱翻譯"
+  hide_ingame_ui_hotkey: "隱藏遊戲內 UI 快捷鍵"
+  hide_ingame_ui_hotkey_info: >-
+    此選項允許使用一個快捷鍵來切換遊戲內的用戶介面（UI）。
+    對於 Android 裝置，操作是在 0.3 秒內連按兩次「音量調高」鍵。
+    對於 PC/安卓（帶鍵盤） 而言，它是 Insert 鍵（插入鍵）。此按鍵也可以在 設定檔（config file） 中更改。
 
 tl_update_dialog:
   title: "有可用的更新"

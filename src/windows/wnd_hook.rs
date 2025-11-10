@@ -15,23 +15,6 @@ use crate::{core::{game::Region, Gui, Hachimi}, il2cpp::{hook::{umamusume::Scene
 
 use super::gui_impl::input;
 
-struct WndProcCall {
-    hwnd: HWND,
-    umsg: c_uint,
-    wparam: WPARAM,
-    lparam: LPARAM
-}
-
-static WM_SIZE_BUFFER: Lazy<Mutex<Vec<WndProcCall>>> = Lazy::new(|| Mutex::default());
-pub fn drain_wm_size_buffer() {
-    let Some(orig_fn) = (unsafe { std::mem::transmute::<isize, WNDPROC>(WNDPROC_ORIG) }) else {
-        return;
-    };
-    for call in WM_SIZE_BUFFER.lock().drain(..) {
-        unsafe { orig_fn(call.hwnd, call.umsg, call.wparam, call.lparam); }
-    }
-}
-
 static TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
 pub fn get_target_hwnd() -> HWND {
     HWND(TARGET_HWND.load(atomic::Ordering::Relaxed))
@@ -55,6 +38,8 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
 
                 gui.toggle_menu();
                 return LRESULT(0);
+            }else if wparam.0 as u16 == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind {
+                Thread::main_thread().schedule(Gui::toggle_game_ui);
             }
         },
         WM_CLOSE => {
@@ -69,17 +54,6 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
             }
             return LRESULT(0);
         },
-        WM_SIZE => {
-            if !SceneManager::is_splash_shown() {
-                WM_SIZE_BUFFER.lock().push(WndProcCall {
-                    hwnd, umsg, wparam, lparam
-                });
-                return LRESULT(0);
-            }
-            else {
-                return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
-            }
-        }
         _ => ()
     }
 

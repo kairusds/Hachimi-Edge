@@ -21,6 +21,7 @@ default: "默认"
 off: "关闭"
 on: "开启"
 enable: "启用"
+info: "信息"
 warning: "警告"
 confirm_dialog_title: "确认"
 soft_restart_confirm_content: "确定要软重启游戏吗？"
@@ -130,8 +131,14 @@ config_editor:
   story_choice_auto_select_delay: "剧情选项自动选择延迟"
   story_text_speed_multiplier: "剧情文本速度倍率"
   force_allow_dynamic_camera: "强制启用动态镜头"
-  live_theater_allow_same_chara: "在 LIVE 剧场中允许设置多个相同角色"
+  live_theater_allow_same_chara: "在 LIVE 剧场中\n允许设置多个相同角色"
   physics_update_mode: "物理引擎更新模式"
+  disable_skill_name_translation: "禁用技能名称翻译"
+  hide_ingame_ui_hotkey: "隐藏游戏内 UI 的快捷键"
+  hide_ingame_ui_hotkey_info: >-
+    此选项允许使用一个快捷键来切换游戏内的用户界面（UI）。
+    对于 Android 设备，操作是在 0.3 秒内双击“音量增大”键。
+    对于 PC（电脑）/安卓（带键盘） 而言，它是 Insert 键。这个键也可以在 配置文件（config file） 中更改。
 
 tl_update_dialog:
   title: "新翻译更新可用"
