@@ -58,7 +58,7 @@ jobs:
 
       - name: Build Installer
         run: |
-          git clone --depth 1 --revision 5bf02f49f31ddd71ec102d079663facf4b182539 https://github.com/teiosteppa/Installer
+          git clone --depth 1 --revision 552d4afe6b77925519f7b0ee81cc3ee93ce68b13 https://github.com/teiosteppa/Installer
           copy build\hachimi.dll Installer
           move Cellar\build\cellar.dll Installer
           move FunnyHoney\FunnyHoney.exe Installer
