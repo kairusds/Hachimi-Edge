@@ -7,13 +7,17 @@ use serde::{Deserialize, Serialize};
 use size::Size;
 use threadpool::ThreadPool;
 
+use crate::core::game::Region;
+
 use super::{gui::SimpleYesNoDialog, hachimi::LocalizedData, http::{self, AsyncRequest}, utils, Error, Gui, Hachimi};
 
 #[derive(Deserialize)]
 pub struct RepoInfo {
     pub name: String,
     pub index: String,
-    pub short_desc: Option<String>
+    pub short_desc: Option<String>,
+    #[serde(default)]
+    pub region: Region
 }
 
 pub fn new_meta_index_request() -> AsyncRequest<Vec<RepoInfo>> {

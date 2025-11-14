@@ -1,4 +1,5 @@
 use std::{fmt::Display, path::PathBuf};
+use serde::{Deserialize};
 
 use crate::game_impl;
 
@@ -11,7 +12,7 @@ pub struct Game {
     pub is_steam_release: bool
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Deserialize)]
 pub enum Region {
     Unknown,
     Japan,
@@ -31,6 +32,12 @@ impl Display for Region {
             Region::China => "China",
             Region::Global => "Global"
         })
+    }
+}
+
+impl Default for Region {
+    fn default() -> Self {
+        Region::Japan
     }
 }
 

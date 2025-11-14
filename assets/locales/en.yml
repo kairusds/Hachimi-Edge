@@ -79,11 +79,13 @@ first_time_setup:
     you accept that you will be using it at your own risk.
   translation_repo_heading: "Translation repo"
   select_translation_repo: "Select a translation repo:"
+  no_compatible_repo: "No translation repos are compatible with this game version."
+  skip_translation: "Skip translations."
   complete_heading: "All done!"
   complete_content: >-
-    The translation repo has been set. Once you click on Done, the configuration will
-    be saved and an update check will be performed, which will prompt you to download the
-    new translation data.
+    Click on Done to save the configuration.
+    If you chose a translation repo, an update check will be performed,
+    which will prompt you to download the new translation data.
 
 about:
   title: "About"

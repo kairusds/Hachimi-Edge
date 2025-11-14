@@ -1190,7 +1190,7 @@ struct FirstTimeSetupWindow {
     id: egui::Id,
     index_request: Arc<AsyncRequest<Vec<RepoInfo>>>,
     current_page: usize,
-    current_tl_repo: usize
+    current_tl_repo: Option<String>
 }
 
 impl FirstTimeSetupWindow {
@@ -1199,7 +1199,7 @@ impl FirstTimeSetupWindow {
             id: random_id(),
             index_request: Arc::new(tl_repo::new_meta_index_request()),
             current_page: 0,
-            current_tl_repo: 0
+            current_tl_repo: None
         }
     }
 }
@@ -1240,23 +1240,31 @@ impl Window for FirstTimeSetupWindow {
                         ui.label(t!("first_time_setup.select_translation_repo"));
                         ui.add_space(4.0);
 
-                        let mut selected = false;
+                        let mut is_index_loaded = false;
                         async_request_ui_content(ui, self.index_request.clone(), |ui, repo_list| {
-                            selected = repo_list.get(self.current_tl_repo).is_some();
+                            is_index_loaded = true;
+                            let filtered_repos: Vec<_> = repo_list.iter()
+                                .filter(|repo| repo.region == Hachimi::instance().game.region)
+                                .collect();
                             egui::ScrollArea::vertical().show(ui, |ui| {
                                 egui::Frame::none()
                                 .inner_margin(egui::Margin::symmetric(8.0, 0.0))
                                 .show(ui, |ui| {
-                                    for (i, repo) in repo_list.iter().enumerate() {
-                                        ui.radio_value(&mut self.current_tl_repo, i, &repo.name);
+                                    if filtered_repos.is_empty() {
+                                        ui.label(t!("first_time_setup.no_compatible_repo"));
+                                        return;
+                                    }
+                                    for repo in filtered_repos {
+                                        ui.radio_value(&mut self.current_tl_repo, Some(repo.index.clone()), &repo.name);
                                         if let Some(short_desc) = &repo.short_desc {
                                             ui.label(egui::RichText::new(short_desc).small());
                                         }
                                     }
+                                    ui.radio_value(&mut self.current_tl_repo, None, t!("first_time_setup.skip_translation"));
                                 });
                             });
                         });
-                        selected
+                        is_index_loaded
                     }
                     2 => {
                         ui.heading(t!("first_time_setup.complete_heading"));
@@ -1276,19 +1284,7 @@ impl Window for FirstTimeSetupWindow {
             config.skip_first_time_setup = true;
 
             if !page_open {
-                let Some(res) = &**self.index_request.result.load() else {
-                    return open_res;
-                };
-
-                let Ok(repo_list) = res else {
-                    return open_res;
-                };
-
-                let Some(repo) = repo_list.get(self.current_tl_repo) else {
-                    return open_res;
-                };
-
-                config.translation_repo_index = Some(repo.index.clone());
+                config.translation_repo_index = self.current_tl_repo.clone();
             }
 
             save_and_reload_config(config);
