@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{core::Hachimi, il2cpp::{symbols::get_method_addr, types::*}};
 
-use super::SingleModeStartResultCharaViewer;
+use super::{LowResolutionCamera, SingleModeStartResultCharaViewer};
 
 #[cfg(target_os = "windows")]
 static mut CLASS: *mut Il2CppClass = 0 as _;
@@ -33,7 +33,10 @@ type GetVirtualResolution3DFn = extern "C" fn(this: *mut Il2CppObject, is_forced
 extern "C" fn GetVirtualResolution3D(this: *mut Il2CppObject, is_forced_wide_aspect: bool) -> Vector2Int_t {
     let mut res = get_orig_fn!(GetVirtualResolution3D, GetVirtualResolution3DFn)(this, is_forced_wide_aspect);
     let mult = Hachimi::instance().config.load().virtual_res_mult;
-    if mult != 1.0 && !SingleModeStartResultCharaViewer::setting_up_image_effect() {
+    if mult != 1.0 &&
+        !SingleModeStartResultCharaViewer::setting_up_image_effect() &&
+        !LowResolutionCamera::creating_render_texture()
+    {
         res *= mult;
     }
     res
