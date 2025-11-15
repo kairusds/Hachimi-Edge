@@ -4,7 +4,7 @@ use fnv::FnvHashMap;
 use once_cell::unsync::Lazy;
 
 use crate::{
-    core::{game::Region, utils, Hachimi, SugoiClient},
+    core::{utils, Hachimi, SugoiClient},
     il2cpp::{ext::{Il2CppStringExt, StringExt}, symbols::{get_method_overload_addr, unbox}, types::*}
 };
 
@@ -77,14 +77,9 @@ pub fn dump_strings() -> BTreeMap<String, String> {
 
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, Localize);
+    find_nested_class_or_return!(Localize, JP);
 
-    let Get_addr = if Hachimi::instance().game.region == Region::Japan {
-        find_nested_class_or_return!(Localize, JP);
-        get_method_overload_addr(JP, "Get", &[Il2CppTypeEnum_IL2CPP_TYPE_VALUETYPE])
-    }
-    else {
-        get_method_overload_addr(Localize, "Get", &[Il2CppTypeEnum_IL2CPP_TYPE_VALUETYPE])
-    };
+    let Get_addr = get_method_overload_addr(JP, "Get", &[Il2CppTypeEnum_IL2CPP_TYPE_VALUETYPE]);
 
     new_hook!(Get_addr, Get);
 }
