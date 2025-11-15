@@ -1,7 +1,7 @@
 use widestring::Utf16Str;
 
 use crate::{
-    core::Hachimi,
+    core::{game::Region, Hachimi},
     il2cpp::{
         api::il2cpp_array_new,
         symbols::{get_field_from_name, set_field_object_value},
@@ -32,6 +32,10 @@ pub fn on_LoadAsset(_bundle: *mut Il2CppObject, this: *mut Il2CppObject, _name: 
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
+    if Hachimi::instance().game.region != Region::Japan {
+        return;
+    }
+
     get_class_or_return!(umamusume, "", TextDotData);
 
     unsafe {

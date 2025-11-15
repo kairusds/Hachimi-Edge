@@ -1,4 +1,4 @@
-use crate::{core::Hachimi, il2cpp::{symbols::get_method_addr, types::*}};
+use crate::{core::{game::Region, Hachimi}, il2cpp::{symbols::get_method_addr, types::*}};
 
 use super::RaceInfo;
 
@@ -27,6 +27,10 @@ extern "C" fn SetupAndOpen(
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
+    if Hachimi::instance().game.region != Region::Japan {
+        return;
+    }
+
     get_class_or_return!(umamusume, Gallop, DialogRaceOrientation);
 
     let SetupAndOpen_addr = get_method_addr(DialogRaceOrientation, c"SetupAndOpen", 5);

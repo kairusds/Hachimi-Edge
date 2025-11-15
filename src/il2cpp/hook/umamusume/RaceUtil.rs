@@ -1,4 +1,4 @@
-use crate::{core::Hachimi, il2cpp::{symbols::get_method_addr, types::*}};
+use crate::{core::{game::Region, Hachimi}, il2cpp::{symbols::get_method_addr, types::*}};
 
 use super::{ApplicationSettingSaveLoader, SaveDataManager};
 
@@ -19,6 +19,10 @@ extern "C" fn GetRaceDynamicCameraSettingData(boot_mode: *mut Il2CppObject) -> b
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
+    if Hachimi::instance().game.region != Region::Japan {
+        return;
+    }
+
     get_class_or_return!(umamusume, Gallop, RaceUtil);
 
     let GetRaceDynamicCameraSettingData_addr = get_method_addr(RaceUtil, c"GetRaceDynamicCameraSettingData", 1);
