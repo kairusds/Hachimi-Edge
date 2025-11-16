@@ -124,8 +124,7 @@ impl Hachimi {
             Ok(serde_json::from_str(&json)?)
         }
         else {
-            let mut config = Config::default();
-            Ok(config)
+            Ok(Config::default())
         }
     }
 
