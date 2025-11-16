@@ -6,7 +6,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{core::plugin_api::Plugin, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}}};
 
-use super::{game::Game, ipc, plurals, template, template_filters, tl_repo, utils, Error, Interceptor};
+use super::{game::{Game, Region}, ipc, plurals, template, template_filters, tl_repo, utils, Error, Interceptor};
 
 pub struct Hachimi {
     // Hooking stuff
@@ -86,7 +86,7 @@ impl Hachimi {
 
     fn new() -> Result<Hachimi, Error> {
         let game = Game::init();
-        let config = Self::load_config(&game.data_dir)?;
+        let config = Self::load_config(&game.data_dir, &game.region)?;
 
         config.language.set_locale();
 
@@ -117,19 +117,25 @@ impl Hachimi {
         })
     }
 
-    fn load_config(data_dir: &Path) -> Result<Config, Error> {
+    fn load_config(data_dir: &Path, region: &Region) -> Result<Config, Error> {
         let config_path = data_dir.join("config.json");
         if fs::metadata(&config_path).is_ok() {
             let json = fs::read_to_string(&config_path)?;
             Ok(serde_json::from_str(&json)?)
         }
         else {
-            Ok(Config::default())
+            let mut config = Config::default();
+
+            if *region == Region::Global {
+                config.skip_first_time_setup = true;
+            }
+
+            Ok(config)
         }
     }
 
     pub fn reload_config(&self) {
-        let new_config = match Self::load_config(&self.game.data_dir) {
+        let new_config = match Self::load_config(&self.game.data_dir, &self.game.region) {
             Ok(v) => v,
             Err(e) => {
                 error!("Failed to reload config: {}", e);
