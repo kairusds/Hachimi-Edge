@@ -104,6 +104,7 @@ config_editor:
   graphics_tab: "\uf03e Graphics"
   gameplay_tab: "\uf11b Gameplay"
   language: "Language"
+  restore_defaults: "Restore Defaults"
   disable_overlay: "Disable overlay (GUI)"
   disable_overlay_warning: >-
     This option will disable the Hachimi overlay after you restart the game,
@@ -117,6 +118,12 @@ config_editor:
   enable_ipc: "Enable IPC"
   ipc_listen_all: "IPC listen all"
   auto_translate_stories: "Auto translate\nstories"
+  auto_tl_warning: >-
+    Enabling this option requires a compatible translation provider to be
+    installed on your computer or a cloud service using the same framework as
+    py3translationServer. Without a provider installed, no additional translation
+    will happen and gameplay may be affected. Please leave this option disabled
+    if you do not have a translation framework installed.
   auto_translate_ui: "Auto translate UI\n(MIGHT BREAK UIs)"
   target_fps: "Target FPS"
   virtual_resolution_multiplier: "Virtual resolution\nmultiplier"

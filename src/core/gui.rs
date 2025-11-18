@@ -893,6 +893,12 @@ impl ConfigEditor {
         }
     }
 
+    fn restore_defaults(&mut self) {
+        let current_language = self.config.language;
+        self.config = hachimi::Config::default();
+        self.config.language = current_language;
+    }
+
     fn option_slider<Num: egui::emath::Numeric>(ui: &mut egui::Ui, label: &str, value: &mut Option<Num>, range: RangeInclusive<Num>) {
         let mut checked = value.is_some();
         ui.label(label);
@@ -968,11 +974,35 @@ impl ConfigEditor {
                 ui.end_row();
 
                 ui.label(t!("config_editor.auto_translate_stories"));
-                ui.checkbox(&mut config.auto_translate_stories, "");
+                if ui.checkbox(&mut config.auto_translate_stories, "").clicked() {
+                    if config.auto_translate_stories {
+                        thread::spawn(|| {
+                            Gui::instance().unwrap()
+                            .lock().unwrap()
+                            .show_window(Box::new(SimpleOkDialog::new(
+                                &t!("warning"),
+                                &t!("config_editor.auto_tl_warning"),
+                                || {}
+                            )));
+                        });
+                    }
+                }
                 ui.end_row();
 
                 ui.label(t!("config_editor.auto_translate_ui"));
-                ui.checkbox(&mut config.auto_translate_localize, "");
+                if ui.checkbox(&mut config.auto_translate_localize, "").clicked() {
+                    if config.auto_translate_localize {
+                        thread::spawn(|| {
+                            Gui::instance().unwrap()
+                            .lock().unwrap()
+                            .show_window(Box::new(SimpleOkDialog::new(
+                                &t!("warning"),
+                                &t!("config_editor.auto_tl_warning"),
+                                || {}
+                            )));
+                        });
+                    }
+                }
                 ui.end_row();
             },
 
@@ -1100,6 +1130,7 @@ impl Window for ConfigEditor {
         let mut open = true;
         let mut open2 = true;
         let mut config = self.config.clone();
+        let mut reset_clicked = false;
 
         new_window(ctx, t!("config_editor.title"))
         .id(self.id)
@@ -1146,18 +1177,30 @@ impl Window for ConfigEditor {
                     });
                 },
                 |ui| {
-                    if ui.button(t!("cancel")).clicked() {
-                        open2 = false;
-                    }
-                    if ui.button(t!("save")).clicked() {
-                        save_and_reload_config(self.config.clone());
-                        open2 = false;
-                    }
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        if ui.button(t!("config_editor.restore_defaults")).clicked() {
+                            reset_clicked = true;
+                        }
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                            if ui.button(t!("cancel")).clicked() {
+                                open2 = false;
+                            }
+                            if ui.button(t!("save")).clicked() {
+                                save_and_reload_config(self.config.clone());
+                                open2 = false;
+                            }
+                        });
+                    });
                 }
             );
         });
 
         self.config = config;
+
+        if reset_clicked {
+            self.restore_defaults();
+        }
 
         open &= open2;
         if !open {
