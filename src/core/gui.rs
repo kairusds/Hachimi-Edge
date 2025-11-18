@@ -705,6 +705,39 @@ fn simple_window_layout(ui: &mut egui::Ui, id: egui::Id, add_contents: impl FnOn
     });
 }
 
+fn centered_and_wrapped_text(ui: &mut egui::Ui, text: &str) {
+    let rect = ui.available_rect_before_wrap();
+
+    let text_style = egui::TextStyle::Body;
+    let text_font = ui.style().text_styles.get(&text_style).cloned().unwrap_or_default();
+    let text_color = ui.style().visuals.text_color();
+
+    let mut job = egui::text::LayoutJob::simple(
+        text.to_owned(),
+        text_font,
+        text_color,
+        rect.width()
+    );
+    job.halign = egui::Align::Center;
+
+    let galley = ui.fonts(|f| f.layout_job(job));
+
+    let mut text_rect = egui::Rect::NOTHING;
+    for row in &galley.rows {
+        text_rect = text_rect.union(row.visuals.mesh.calc_bounds());
+    }
+    let text_size = text_rect.size();
+
+    let center_pos = egui::pos2(
+        rect.left() + (rect.width() - text_size.x) / 2.0,
+        rect.top() + (rect.height() - text_size.y) / 2.0
+    );
+
+    let paint_pos = center_pos - text_rect.min.to_vec2();
+
+    ui.painter().galley(paint_pos, galley, text_color);
+}
+
 fn paginated_window_layout(ui: &mut egui::Ui, id: egui::Id, i: &mut usize, page_count: usize, add_page_content: impl FnOnce(&mut egui::Ui, usize) -> bool) -> bool {
     let allow_next = add_page_content(ui, *i);
     egui::TopBottomPanel::bottom(id.with("bottom_panel"))
@@ -782,13 +815,9 @@ impl Window for SimpleYesNoDialog {
         .id(self.id)
         .open(&mut open)
         .show(ctx, |ui| {
-            simple_window_layout(ui, self.id,
-                |ui| {
-                    ui.centered_and_justified(|ui| {
-                        ui.label(&self.content);
-                    });
-                },
-                |ui| {
+            egui::TopBottomPanel::bottom(self.id.with("bottom_panel"))
+            .show_inside(ui, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                     if ui.button(t!("no")).clicked() {
                         open2 = false;
                     }
@@ -796,8 +825,14 @@ impl Window for SimpleYesNoDialog {
                         result = true;
                         open2 = false;
                     }
-                }
-            );
+                })
+            });
+
+            egui::CentralPanel::default()
+                .frame(egui::Frame::none())
+                .show_inside(ui, |ui| {
+                centered_and_wrapped_text(ui, &self.content);
+            });
         });
 
         if open && open2 {
@@ -837,18 +872,20 @@ impl Window for SimpleOkDialog {
         .id(self.id)
         .open(&mut open)
         .show(ctx, |ui| {
-            simple_window_layout(ui, self.id,
-                |ui| {
-                    ui.centered_and_justified(|ui| {
-                        ui.label(&self.content);
-                    });
-                },
-                |ui| {
+            egui::TopBottomPanel::bottom(self.id.with("bottom_panel"))
+            .show_inside(ui, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                     if ui.button(t!("ok")).clicked() {
                         open2 = false;
                     }
-                }
-            );
+                })
+            });
+
+            egui::CentralPanel::default()
+                .frame(egui::Frame::none())
+                .show_inside(ui, |ui| {
+                centered_and_wrapped_text(ui, &self.content);
+            });
         });
 
         if open && open2 {
