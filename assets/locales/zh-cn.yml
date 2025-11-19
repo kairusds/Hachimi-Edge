@@ -71,13 +71,22 @@ first_time_setup:
   welcome_heading: "欢迎"
   welcome_content: >-
     Hachimi 已安装成功！本向导将引导您完成初始设置。
+    
     如果您不需要使用翻译功能，可以直接关闭此窗口跳过设置。
+    
+    免责声明：Hachimi 是一个社区驱动的项目。所有翻译均由不同的社区贡献者制作。
+    该项目并非由 Cygames, Inc. 开发或认可，且违反了游戏的服务条款。继续使用即表示
+    您接受自行承担使用风险。
   translation_repo_heading: "翻译仓库"
   select_translation_repo: "选择翻译仓库："
+  no_compatible_repo: "没有与此游戏版本兼容的翻译仓库。"
+  skip_translation: "跳过翻译设置。"
   complete_heading: "全部完成！"
   complete_content: >-
-    翻译仓库已设置完成。点击"完成"后，配置将被保存，
-    系统将自动检查更新并提示您下载最新的翻译数据。
+    点击「完成」以保存配置。
+    
+    如果您选择了翻译仓库，系统将执行更新检查，
+    并提示您下载新的翻译数据。
 
 about:
   title: "关于"
@@ -98,6 +107,7 @@ config_editor:
   graphics_tab: "\uf03e 图形"
   gameplay_tab: "\uf11b 游戏玩法"
   language: "语言"
+  restore_defaults: "恢复默认设置"
   disable_overlay: "禁用覆盖层(GUI)"
   disable_overlay_warning: >-
     此选项将在游戏重启后禁用Hachimi的GUI，
@@ -111,6 +121,11 @@ config_editor:
   enable_ipc: "启用 IPC"
   ipc_listen_all: "IPC 监听所有地址"
   auto_translate_stories: "自动翻译剧情"
+  auto_tl_warning: >-
+    此选项需要搭配兼容的翻译服务提供程序，
+    或使用与 py3translationServer 相同框架的云服务才能正常工作。如果未安装这些提供程序，
+    则不会进行任何额外的翻译，并且很可能会影响游戏体验。
+    如果您没有安装翻译框架，请保持此选项为禁用状态。
   auto_translate_ui: "自动翻译游戏界面\n(可能导致游戏界面异常)"
   target_fps: "目标帧率"
   virtual_resolution_multiplier: "分辨率缩放倍数"
@@ -136,9 +151,9 @@ config_editor:
   disable_skill_name_translation: "禁用技能名称翻译"
   hide_ingame_ui_hotkey: "隐藏游戏内 UI 的快捷键"
   hide_ingame_ui_hotkey_info: >-
-    此选项允许使用一个快捷键来切换游戏内的用户界面（UI）。
-    对于 Android 设备，操作是在 0.3 秒内双击“音量增大”键。
-    对于 PC（电脑）/安卓（带键盘） 而言，它是 Insert 键。这个键也可以在 配置文件（config file） 中更改。
+    此选项允许使用一个快捷键来切换游戏内的UI是否显示。
+    在Android上，此快捷键为快速双击「音量+」键。
+    PC或带键盘的Android中此快捷键为 Insert 键。该快捷键也可以在配置文件中更改。
 
 tl_update_dialog:
   title: "新翻译更新可用"
@@ -153,3 +168,12 @@ update_prompt_dialog:
 updating_dialog:
   title: "更新中"
   content: "正在下载更新，游戏即将重启..."
+
+steam_overlay_conflict_dialog:
+  title: "注意"
+  content: >-
+    启用 Hachimi GUI 时，内购功能可能无法正常工作。
+    如果 Steam 覆盖层可以显示而且您可以正常进行内购，请忽略此消息并按「否」。
+    如果您无法进行内购，请按「是」以临时禁用 Hachimi 覆盖层并关闭游戏。
+    在下次启动游戏时，Hachimi GUI 将被禁用，此时您可以正常进行内购操作。
+    购买完成后，请重启游戏以重新启用 Hachimi GUI。
