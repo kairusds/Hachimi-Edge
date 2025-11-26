@@ -10,11 +10,17 @@ pub fn get__textureSetColor(this: *mut Il2CppObject) -> *mut Il2CppObject {
     get_field_object_value(this, unsafe { _TEXTURESETCOLOR_FIELD })
 }
 
+static mut _TEXTURESETA_FIELD: *mut FieldInfo = null_mut();
+pub fn get__textureSetA(this: *mut Il2CppObject) -> *mut Il2CppObject {
+    get_field_object_value(this, unsafe { _TEXTURESETA_FIELD })
+}
+
 pub fn init(Plugins: *const Il2CppImage) {
     get_class_or_return!(Plugins, AnimateToUnity, AnMeshInfoParameterGroup);
 
     unsafe {
         GET_TEXTURESETNAME_ADDR = get_method_addr(AnMeshInfoParameterGroup, c"get_TextureSetName", 0);
         _TEXTURESETCOLOR_FIELD = get_field_from_name(AnMeshInfoParameterGroup, c"_textureSetColor");
+        _TEXTURESETA_FIELD = get_field_from_name(AnMeshInfoParameterGroup, c"_textureSetAlpha");
     }
 }
