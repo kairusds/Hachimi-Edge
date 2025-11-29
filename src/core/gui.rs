@@ -773,9 +773,15 @@ fn centered_and_wrapped_text(ui: &mut egui::Ui, text: &str) {
     ui.painter().galley(paint_pos, galley, text_color);
 }
 
-fn paginated_window_layout(ui: &mut egui::Ui, id: egui::Id, i: &mut usize, page_count: usize, add_page_content: impl FnOnce(&mut egui::Ui, usize) -> bool) -> bool {
-    let allow_next = add_page_content(ui, *i);
-    egui::TopBottomPanel::bottom(id.with("bottom_panel"))
+fn paginated_window_layout(
+    ui: &mut egui::Ui,
+    id: egui::Id,
+    i: &mut usize,
+    page_count: usize,
+    allow_next: bool,
+    add_page_content: impl FnOnce(&mut egui::Ui, usize)
+) -> bool {
+    let open = egui::TopBottomPanel::bottom(id.with("bottom_panel"))
     .show_inside(ui, |ui| {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
             let mut open = true;
@@ -793,9 +799,13 @@ fn paginated_window_layout(ui: &mut egui::Ui, id: egui::Id, i: &mut usize, page_
                 *i -= 1;
             }
 
-            open
-        }).inner
-    }).inner
+             open
+         }).inner
+    }).inner;
+
+    add_page_content(ui, *i);
+
+    open
 }
 
 fn async_request_ui_content<T: Send + Sync + 'static>(ui: &mut egui::Ui, request: Arc<AsyncRequest<T>>, add_contents: impl FnOnce(&mut egui::Ui, &T)) {
@@ -812,11 +822,43 @@ fn async_request_ui_content<T: Send + Sync + 'static>(ui: &mut egui::Ui, request
     match result {
         Ok(v) => add_contents(ui, v),
         Err(e) => {
-            ui.centered_and_justified(|ui| {
-                ui.label(e.to_string());
-                if ui.button(t!("retry")).clicked() {
-                    request.call();
-                }
+            let rect = ui.available_rect_before_wrap();
+
+            let text_style = egui::TextStyle::Body;
+            let text_font = ui.style().text_styles.get(&text_style).cloned().unwrap_or_default();
+            let text_color = ui.visuals().text_color();
+
+            let mut text_job = egui::text::LayoutJob::simple(e.to_string(), text_font, text_color, rect.width());
+            text_job.halign = egui::Align::Center;
+            let text_galley = ui.painter().layout_job(text_job.clone());
+            let text_height = text_galley.size().y;
+
+            let btn_text = t!("retry");
+            let btn_style = egui::TextStyle::Button;
+            let btn_font = ui.style().text_styles.get(&btn_style).cloned().unwrap_or_default();
+            let btn_job = egui::text::LayoutJob::simple(btn_text.to_string(), btn_font, text_color, f32::INFINITY);
+            let btn_galley = ui.painter().layout_job(btn_job);
+            let btn_padding = ui.style().spacing.button_padding;
+            let btn_height = btn_galley.size().y + btn_padding.y * 2.0;
+
+            let spacing = ui.spacing().item_spacing.y;
+            let total_height = text_height + spacing + btn_height;
+
+            let center_y = rect.center().y;
+            let top_y = (center_y - total_height / 2.0).max(rect.top());
+
+            let content_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.left(), top_y),
+                egui::vec2(rect.width(), total_height)
+            );
+
+            ui.allocate_ui_at_rect(content_rect, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.label(text_job);
+                    if ui.button(btn_text).clicked() {
+                        request.call();
+                    }
+                });
             });
         }
     }
@@ -1366,7 +1408,14 @@ impl Window for FirstTimeSetupWindow {
         .id(self.id)
         .open(&mut open)
         .show(ctx, |ui| {
-            page_open = paginated_window_layout(ui, self.id, &mut self.current_page, 3, |ui, i| {
+            let allow_next = match self.current_page {
+                1 => {
+                    (**self.index_request.result.load()).as_ref().map_or(false, |r| r.is_ok())
+                },
+                _ => true
+            };
+
+            page_open = paginated_window_layout(ui, self.id, &mut self.current_page, 3, allow_next, |ui, i| {
                 match i {
                     0 => {
                         ui.heading(t!("first_time_setup.welcome_heading"));
@@ -1382,10 +1431,9 @@ impl Window for FirstTimeSetupWindow {
                                 let mut config = config.clone();
                                 config.language = language;
                                 save_and_reload_config(config);
-                            }   
+                            }
                         });
                         ui.label(t!("first_time_setup.welcome_content"));
-                        true
                     }
                     1 => {
                         ui.heading(t!("first_time_setup.translation_repo_heading"));
@@ -1393,9 +1441,7 @@ impl Window for FirstTimeSetupWindow {
                         ui.label(t!("first_time_setup.select_translation_repo"));
                         ui.add_space(4.0);
 
-                        let mut is_index_loaded = false;
                         async_request_ui_content(ui, self.index_request.clone(), |ui, repo_list| {
-                            is_index_loaded = true;
                             let filtered_repos: Vec<_> = repo_list.iter()
                                 .filter(|repo| repo.region == Hachimi::instance().game.region)
                                 .collect();
@@ -1417,15 +1463,13 @@ impl Window for FirstTimeSetupWindow {
                                 });
                             });
                         });
-                        is_index_loaded
                     }
                     2 => {
                         ui.heading(t!("first_time_setup.complete_heading"));
                         ui.separator();
                         ui.label(t!("first_time_setup.complete_content"));
-                        true
                     }
-                    _ => false
+                    _ => {}
                 }
             });
         });
