@@ -65,6 +65,8 @@ notification:
   errors_during_update: "更新过程中出现 %{count} 个错误，详情请参阅日志"
   checking_for_updates: "正在检查更新..."
   no_updates: "无可用更新"
+  press_to_set_menu_key: "请在游戏窗口按下新的按键以设为打开菜单按键"
+  menu_open_key_set: "已设置打开菜单按键为 %{key}"
 
 first_time_setup:
   title: "初始化设置"
@@ -154,6 +156,8 @@ config_editor:
     此选项允许使用一个快捷键来切换游戏内的UI是否显示。
     在Android上，此快捷键为快速双击「音量+」键。
     PC或带键盘的Android中此快捷键为 Insert 键。该快捷键也可以在配置文件中更改。
+  menu_open_key: "打开菜单按键"
+  menu_open_key_set: "按下以设置"
 
 tl_update_dialog:
   title: "新翻译更新可用"
@@ -174,6 +178,50 @@ steam_overlay_conflict_dialog:
   content: >-
     启用 Hachimi GUI 时，内购功能可能无法正常工作。
     如果 Steam 覆盖层可以显示而且您可以正常进行内购，请忽略此消息并按「否」。
-    如果您无法进行内购，请按「是」以临时禁用 Hachimi 覆盖层并关闭游戏。
+    如果您无法进行内购，请按「是」以临时禁用 Hachimi GUI 并关闭游戏。
     在下次启动游戏时，Hachimi GUI 将被禁用，此时您可以正常进行内购操作。
     购买完成后，请重启游戏以重新启用 Hachimi GUI。
+    
+key_names:
+  left: "左方向键"
+  right: "右方向键"
+  up: "上方向键"
+  down: "下方向键"
+  insert: "Insert"
+  delete: "Delete"
+  home: "Home"
+  end: "End"
+  page_up: "Page Up"
+  page_down: "Page Down"
+  escape: "Esc"
+  tab: "Tab"
+  enter: "回车"
+  space: "空格"
+  backspace: "退格"
+  clear: "清除"
+  pause: "暂停"
+  caps_lock: "大写锁定"
+  scroll_lock: "滚动锁定"
+  num_lock: "数字锁定"
+  print_screen: "打印屏幕"
+  left_win: "左 Windows 键"
+  right_win: "右 Windows 键"
+  apps: "菜单键"
+  alt: "Alt"
+  ctrl: "Ctrl"
+  shift: "Shift"
+  numpad_0: "小键盘0"
+  numpad_1: "小键盘1"
+  numpad_2: "小键盘2"
+  numpad_3: "小键盘3"
+  numpad_4: "小键盘4"
+  numpad_5: "小键盘5"
+  numpad_6: "小键盘6"
+  numpad_7: "小键盘7"
+  numpad_8: "小键盘8"
+  numpad_9: "小键盘9"
+  numpad_add: "小键盘+"
+  numpad_subtract: "小键盘-"
+  numpad_multiply: "小键盘*"
+  numpad_divide: "小键盘/"
+  numpad_decimal: "小键盘."

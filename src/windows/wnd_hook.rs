@@ -1,4 +1,4 @@
-use std::{os::raw::c_uint, sync::atomic::{self, AtomicIsize}};
+use std::{os::raw::c_uint, sync::{atomic::{self, AtomicIsize}, Arc}};
 
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
@@ -12,12 +12,18 @@ use windows::{core::w, Win32::{
 }};
 
 use crate::{core::{game::Region, Gui, Hachimi}, il2cpp::{hook::{umamusume::SceneManager, UnityEngine_CoreModule}, symbols::Thread}, windows::utils};
+use rust_i18n::t;
 
 use super::{gui_impl::input, discord};
 
 static TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
 pub fn get_target_hwnd() -> HWND {
     HWND(TARGET_HWND.load(atomic::Ordering::Relaxed))
+}
+
+static MENU_KEY_CAPTURE: atomic::AtomicBool = atomic::AtomicBool::new(false);
+pub fn start_menu_key_capture() {
+    MENU_KEY_CAPTURE.store(true, atomic::Ordering::Relaxed);
 }
 
 // Safety: only modified once on init
@@ -31,6 +37,22 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
     match umsg {
         // Check for Home key presses
         WM_KEYDOWN | WM_SYSKEYDOWN => {
+            if MENU_KEY_CAPTURE.load(atomic::Ordering::Relaxed) {
+                MENU_KEY_CAPTURE.store(false, atomic::Ordering::Relaxed);
+                let hachimi = Hachimi::instance();
+                let mut new_config = hachimi.config.load().as_ref().clone();
+                new_config.windows.menu_open_key = wparam.0 as u16;
+                let _ = hachimi.save_config(&new_config);
+                hachimi.config.store(Arc::new(new_config));
+                let key_label = crate::windows::utils::vk_to_display_label(Hachimi::instance().config.load().windows.menu_open_key);
+                let msg = t!("notification.menu_open_key_set", key = key_label);
+                std::thread::spawn(move || {
+                    if let Some(gui) = Gui::instance() {
+                        gui.lock().unwrap().show_notification(&msg);
+                    }
+                });
+                return LRESULT(0);
+            }
             if wparam.0 as u16 == Hachimi::instance().config.load().windows.menu_open_key {
                 let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
                     return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };

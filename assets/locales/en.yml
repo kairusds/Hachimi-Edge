@@ -66,6 +66,8 @@ notification:
   errors_during_update: "%{count} errors occurred during update. Check logs for more info."
   checking_for_updates: "Checking for updates..."
   no_updates: "No updates available."
+  press_to_set_menu_key: "Press a key in the game window to set the open-menu hotkey."
+  menu_open_key_set: "Open-menu hotkey set to %{key}"
 
 first_time_setup:
   title: "First Time Setup"
@@ -156,6 +158,8 @@ config_editor:
     For Android, it's double tap the Volume Up key within 0.3 seconds.
     For PC/Android with keyboard, it's the Insert key. This key can also be changed in the config file.
   discord_rpc: "Discord RPC"
+  menu_open_key: "Open menu hotkey"
+  menu_open_key_set: "Press to set"
 
 tl_update_dialog:
   title: "New update available"
@@ -179,3 +183,46 @@ steam_overlay_conflict_dialog:
     to temporarily disable the Hachimi overlay. It will close the game, and the next time the game starts up,
     the Hachimi overlay will be disabled and you will be able to make a purchase. After that, you may restart
     the game again to re-enable the Hachimi overlay.
+key_names:
+  left: "Left arrow"
+  right: "Right arrow"
+  up: "Up arrow"
+  down: "Down arrow"
+  insert: "Insert"
+  delete: "Delete"
+  home: "Home"
+  end: "End"
+  page_up: "Page Up"
+  page_down: "Page Down"
+  escape: "Escape"
+  tab: "Tab"
+  enter: "Enter"
+  space: "Space"
+  backspace: "Backspace"
+  clear: "Clear"
+  pause: "Pause"
+  caps_lock: "Caps Lock"
+  scroll_lock: "Scroll Lock"
+  num_lock: "Num Lock"
+  print_screen: "Print Screen"
+  left_win: "Left Windows"
+  right_win: "Right Windows"
+  apps: "Menu"
+  alt: "Alt"
+  ctrl: "Ctrl"
+  shift: "Shift"
+  numpad_0: "Numpad 0"
+  numpad_1: "Numpad 1"
+  numpad_2: "Numpad 2"
+  numpad_3: "Numpad 3"
+  numpad_4: "Numpad 4"
+  numpad_5: "Numpad 5"
+  numpad_6: "Numpad 6"
+  numpad_7: "Numpad 7"
+  numpad_8: "Numpad 8"
+  numpad_9: "Numpad 9"
+  numpad_add: "Numpad +"
+  numpad_subtract: "Numpad -"
+  numpad_multiply: "Numpad *"
+  numpad_divide: "Numpad /"
+  numpad_decimal: "Numpad ."
