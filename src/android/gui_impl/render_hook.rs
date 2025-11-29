@@ -116,7 +116,7 @@ fn init_painter() -> Result<&'static mut egui_glow::Painter, Error> {
     }
 
     let gl = init_gl();
-    let painter = egui_glow::Painter::new(Arc::new(gl), "", None)?;
+    let painter = egui_glow::Painter::new(Arc::new(gl), "", None, false)?;
     unsafe {
         PAINTER.set(painter).unwrap_unchecked();
     }

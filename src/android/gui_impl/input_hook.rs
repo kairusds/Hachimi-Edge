@@ -67,7 +67,11 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
                 .unwrap()
                 .f()
                 .unwrap();
-            gui.input.events.push(egui::Event::Scroll(Vec2::new(x, y) * SCROLL_AXIS_SCALE));
+            gui.input.events.push(egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: Vec2::new(x, y) * SCROLL_AXIS_SCALE,
+                modifiers: egui::Modifiers::default(),
+            });
         }
         else {
             // borrowing egui's touch phase enum

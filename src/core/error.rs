@@ -1,4 +1,5 @@
 use std::fmt;
+#[cfg(target_os = "windows")]
 use windows::core::Error as WindowsError;
 
 #[derive(Debug)]
@@ -96,6 +97,7 @@ impl From<zip::result::ZipError> for Error {
     }
 }
 
+#[cfg(target_os = "windows")]
 impl From<WindowsError> for Error {
     fn from(e: WindowsError) -> Self {
         Error::RuntimeError(e.to_string())
