@@ -1,5 +1,5 @@
 use rust_i18n::t;
-use windows::Win32::UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE};
+use windows::Win32::{Foundation::{WPARAM, LPARAM}, UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE}};
 
 use crate::{core::{gui::SimpleYesNoDialog, Gui, Hachimi}, il2cpp::{symbols::get_method_addr, types::*}, windows::{steamworks, wnd_hook}};
 
@@ -18,7 +18,7 @@ extern "C" fn StartPurchase(this: *mut Il2CppObject, store_product_id: *mut Il2C
                     config.disable_gui_once = true;
                     _ = hachimi.save_and_reload_config(config);
                     unsafe {
-                        _ = PostMessageW(wnd_hook::get_target_hwnd(), WM_CLOSE, None, None);
+                        _ = PostMessageW(None, WM_CLOSE, WPARAM(0), LPARAM(0));
                     }
                 }
             }

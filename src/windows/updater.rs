@@ -7,14 +7,14 @@ use widestring::Utf16Str;
 use windows::{
     core::{HSTRING, PCWSTR},
     Win32::{
-        Foundation::MAX_PATH, System::LibraryLoader::GetModuleFileNameW,
+        Foundation::{MAX_PATH, WPARAM, LPARAM}, System::LibraryLoader::GetModuleFileNameW,
         UI::{Shell::ShellExecuteW, WindowsAndMessaging::{PostMessageW, SW_NORMAL, WM_CLOSE}}
     }
 };
 
 use crate::core::{gui::{PersistentMessageWindow, SimpleYesNoDialog}, http, Error, Gui, Hachimi};
 
-use super::{main::DLL_HMODULE, utils, wnd_hook};
+use super::{main::DLL_HMODULE, utils};
 
 const REPO_PATH: &str = "kairusds/Hachimi-Edge";
 
@@ -112,7 +112,7 @@ impl Updater {
 
         // Launch the installer
         let mut slice = [0u16; MAX_PATH as usize];
-        let length = unsafe { GetModuleFileNameW(DLL_HMODULE, &mut slice) } as usize;
+        let length = unsafe { GetModuleFileNameW(Some(DLL_HMODULE), &mut slice) } as usize;
         let hachimi_path_str = unsafe { Utf16Str::from_slice_unchecked(&slice[..length]) };
         let game_dir = utils::get_game_dir();
         unsafe {
@@ -129,7 +129,7 @@ impl Updater {
             );
 
             // Close the game
-            _ = PostMessageW(wnd_hook::get_target_hwnd(), WM_CLOSE, None, None);
+            _ = PostMessageW(None, WM_CLOSE, WPARAM(0), LPARAM(0));
         }
 
         Ok(())

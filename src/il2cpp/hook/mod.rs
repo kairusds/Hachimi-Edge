@@ -7,7 +7,7 @@ macro_rules! new_hook {
         if !hachimi.config.load().disabled_hooks.contains(stringify!($hook)) {
             info!("new_hook!: {}", stringify!($hook));
             if ($orig != 0) {
-                let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
+                let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
                 if let Err(e) = res {
                     error!("{}", e);
                 }

@@ -99,6 +99,6 @@ impl Interceptor {
 
 macro_rules! get_orig_fn {
     ($hook:ident, $type:tt) => (
-        unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }
+        unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
     )
 }

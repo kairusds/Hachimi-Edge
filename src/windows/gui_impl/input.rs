@@ -1,5 +1,5 @@
 // Originally from sy1ntexx/egui-d3d11
-use egui::{Event, Key, Modifiers, PointerButton, Pos2, RawInput, Vec2};
+use egui::{Event, Key, Modifiers, MouseWheelUnit, PointerButton, Pos2, RawInput, Vec2};
 use std::ffi::CStr;
 use windows::Win32::{
     Foundation::HWND,
@@ -112,7 +112,11 @@ pub fn process(input: &mut RawInput, zoom_factor: f32, umsg: u32, wparam: usize,
                 input.events.push(Event::Zoom(if delta > 0. { 1.5 } else { 0.5 }));
                 InputResult::Zoom
             } else {
-                input.events.push(Event::Scroll(Vec2::new(0., delta)));
+                input.events.push(Event::MouseWheel {
+                    unit: MouseWheelUnit::Line,
+                    delta: Vec2::new(0., delta),
+                    modifiers: Modifiers::default()
+                });
                 InputResult::Scroll
             }
         }
@@ -123,7 +127,11 @@ pub fn process(input: &mut RawInput, zoom_factor: f32, umsg: u32, wparam: usize,
                 input.events.push(Event::Zoom(if delta > 0. { 1.5 } else { 0.5 }));
                 InputResult::Zoom
             } else {
-                input.events.push(Event::Scroll(Vec2::new(delta, 0.)));
+                input.events.push(Event::MouseWheel {
+                    unit: MouseWheelUnit::Line,
+                    delta: Vec2::new(delta, 0.),
+                    modifiers: Modifiers::default()
+                });
                 InputResult::Scroll
             }
         }
@@ -237,7 +245,7 @@ fn get_key(wparam: usize) -> Option<Key> {
 
 fn get_clipboard_text() -> Option<String> {
     unsafe {
-        if OpenClipboard(HWND::default()).is_ok() {
+        if OpenClipboard(Some(HWND::default())).is_ok() {
             if let Ok(handle) = GetClipboardData(CF_TEXT.0 as u32) {
                 let txt = handle.0 as *const i8;
                 let data = Some(CStr::from_ptr(txt).to_str().ok()?.to_string());

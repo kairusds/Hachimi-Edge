@@ -6,7 +6,6 @@ mod AnMeshParameter;
 pub mod AnRoot;
 mod AnMeshParameterGroup;
 mod AnRootParameter;
-mod AnPlaneParameter;
 mod AnMotionParameterGroup;
 mod AnMotionParameter;
 mod AnTextParameter;
@@ -21,7 +20,6 @@ pub fn init(image: *const Il2CppImage) {
     AnMeshParameterGroup::init(image);
     AnRootParameter::init(image);
     AnMotionParameterGroup::init(image);
-    AnPlaneParameter::init(image);
     AnMotionParameter::init(image);
     AnTextParameter::init(image);
     AnObjectParameterBase::init(image);

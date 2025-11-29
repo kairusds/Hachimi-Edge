@@ -1,13 +1,11 @@
-use std::{os::raw::c_uint, sync::{atomic::{self, AtomicIsize}, Arc}};
+use std::{os::raw::c_uint, ptr, sync::{atomic::{self, AtomicIsize}, Arc}};
 
-use egui::mutex::Mutex;
-use once_cell::sync::Lazy;
 use windows::{core::w, Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     System::Threading::GetCurrentThreadId,
     UI::WindowsAndMessaging::{
         CallNextHookEx, DefWindowProcW, FindWindowW, GetWindowLongPtrW, SetWindowsHookExW, UnhookWindowsHookEx,
-        GWLP_WNDPROC, HCBT_MINMAX, HHOOK, SW_RESTORE, WH_CBT, WM_CLOSE, WM_KEYDOWN, WM_SYSKEYDOWN, WM_SIZE, WNDPROC
+        GWLP_WNDPROC, HCBT_MINMAX, HHOOK, SW_RESTORE, WH_CBT, WM_CLOSE, WM_KEYDOWN, WM_SYSKEYDOWN, WNDPROC
     }
 }};
 
@@ -18,7 +16,7 @@ use super::{gui_impl::input, discord};
 
 static TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
 pub fn get_target_hwnd() -> HWND {
-    HWND(TARGET_HWND.load(atomic::Ordering::Relaxed))
+    HWND(TARGET_HWND.load(atomic::Ordering::Relaxed) as *mut _)
 }
 
 static MENU_KEY_CAPTURE: atomic::AtomicBool = atomic::AtomicBool::new(false);
@@ -65,7 +63,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
             }
         },
         WM_CLOSE => {
-            if let Some(hook) = Hachimi::instance().interceptor.unhook(wnd_proc as _) {
+            if let Some(hook) = Hachimi::instance().interceptor.unhook(wnd_proc as *const () as _) {
                 unsafe { WNDPROC_RECALL = hook.orig_addr; }
                 Thread::main_thread().schedule(|| {
                     unsafe {
@@ -104,7 +102,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
     LRESULT(0)
 }
 
-static mut HCBTHOOK: HHOOK = HHOOK(0);
+static mut HCBTHOOK: HHOOK = HHOOK(ptr::null_mut());
 extern "system" fn cbt_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if ncode == HCBT_MINMAX as i32 &&
         lparam.0 as i32 != SW_RESTORE.0 &&
@@ -114,7 +112,7 @@ extern "system" fn cbt_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESU
         return LRESULT(1);
     }
 
-    unsafe { CallNextHookEx(HCBTHOOK, ncode, wparam, lparam) }
+    unsafe { CallNextHookEx(Some(HCBTHOOK), ncode, wparam, lparam) }
 }
 
 pub fn init() {
@@ -131,16 +129,16 @@ pub fn init() {
             // is case insensitive so it works. why am i surprised
             w!("umamusume")
         };
-        let hwnd = FindWindowW(w!("UnityWndClass"), window_name);
-        if hwnd.0 == 0 {
+        let hwnd = FindWindowW(w!("UnityWndClass"), window_name).unwrap_or_default();
+        if hwnd.0 == ptr::null_mut() {
             error!("Failed to find game window");
             return;
         }
-        TARGET_HWND.store(hwnd.0, atomic::Ordering::Relaxed);
+        TARGET_HWND.store(hwnd.0 as isize, atomic::Ordering::Relaxed);
 
         info!("Hooking WndProc");
         let wnd_proc_addr = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
-        match hachimi.interceptor.hook(wnd_proc_addr as _, wnd_proc as _) {
+        match hachimi.interceptor.hook(wnd_proc_addr as _, wnd_proc as *const () as _) {
             Ok(trampoline_addr) => WNDPROC_ORIG = trampoline_addr as _,
             Err(e) => error!("Failed to hook WndProc: {}", e)
         }
@@ -165,12 +163,12 @@ pub fn init() {
 
 pub fn uninit() {
     unsafe {
-        if HCBTHOOK.0 != 0 {
+        if HCBTHOOK.0 != ptr::null_mut() {
             info!("Removing CBT hook");
             if let Err(e) = UnhookWindowsHookEx(HCBTHOOK) {
                 error!("Failed to remove CBT hook: {}", e);
             }
-            HCBTHOOK = HHOOK(0);
+            HCBTHOOK = HHOOK(ptr::null_mut());
         }
         if let Err(e) = discord::stop_rpc() {
             error!("{}", e);

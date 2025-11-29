@@ -1,7 +1,7 @@
 use std::os::raw::{c_ulong, c_void};
 
 use widestring::U16CString;
-use windows::{core::PCWSTR, Win32::{Foundation::{BOOL, HMODULE, TRUE}, System::LibraryLoader::LoadLibraryW}};
+use windows::{core::PCWSTR, Win32::{Foundation::{HMODULE, TRUE}, System::LibraryLoader::LoadLibraryW}};
 
 use crate::{core::{plugin_api::Plugin, Hachimi}, windows::utils};
 
@@ -45,11 +45,11 @@ pub static mut DLL_HMODULE: HMODULE = HMODULE(0 as _);
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn DllMain(hmodule: HMODULE, call_reason: c_ulong, _reserved: *mut c_void) -> BOOL {
+pub extern "C" fn DllMain(hmodule: HMODULE, call_reason: c_ulong, _reserved: *mut c_void) -> bool {
     if call_reason == DLL_PROCESS_ATTACH {
         unsafe { DLL_HMODULE = hmodule; }
         if !Hachimi::init() {
-            return TRUE;
+            return TRUE.into();
         }
 
         let hachimi = Hachimi::instance();
@@ -64,5 +64,5 @@ pub extern "C" fn DllMain(hmodule: HMODULE, call_reason: c_ulong, _reserved: *mu
         info!("Unhooking everything");
         Hachimi::instance().interceptor.unhook_all();
     }
-    TRUE
+    TRUE.into()
 }

@@ -24,9 +24,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 fnv = "1.0"
 widestring = "1.1"
-egui = { version = "0.27", default-features = false }
-egui_extras = { version = "0.27", default-features = false, features = ["image"] }
-image = { version = "0.24", default-features = false, features = ["png"] }
+egui = { version = "0.33.2", default-features = false }
+egui_extras = { version = "0.33.2", default-features = false, features = ["image"] }
+image = { version = "0.25.9", default-features = false, features = ["png"] }
 png = "0.17"
 sqlparser = "0.43"
 textwrap = "0.16"
@@ -45,19 +45,19 @@ libc = "0.2"
 android_logger = "0.15.1"
 procfs = "0.16"
 jni = "0.21"
-egui_glow = "0.27"
+egui_glow = "0.33.2"
 glow = "0.13"
 dobby-rs = "0.1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windebug_logger = "0.1"
 minhook = "0.5"
-egui-directx11 = "0.4"
+egui-directx11 = "0.12.1"
 discord-rich-presence = "1.0.0"
 pelite = "0.10"
 
 [target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.56"
+version = "0.62.2"
 features = [
     "Win32_System_LibraryLoader",
     "Win32_System_Memory",

@@ -25,7 +25,7 @@ macro_rules! add_font {
     ($fonts:expr, $family_fonts:expr, $filename:literal) => {
         $fonts.font_data.insert(
             $filename.to_owned(),
-            egui::FontData::from_static(include_bytes!(concat!("../../assets/fonts/", $filename)))
+            egui::FontData::from_static(include_bytes!(concat!("../../assets/fonts/", $filename))).into()
         );
         $family_fonts.push($filename.to_owned());
     };
@@ -225,7 +225,7 @@ impl Gui {
         self.update_fps();
         let input = self.take_input();
 
-        self.context.begin_frame(input);
+        self.context.begin_pass(input);
         
         if self.menu_visible { self.run_menu(); }
         if self.update_progress_visible { self.run_update_progress(); }
@@ -238,7 +238,7 @@ impl Gui {
         // Store this as an atomic value so the input thread can check it without locking the gui
         IS_CONSUMING_INPUT.store(self.is_consuming_input(), atomic::Ordering::Relaxed);
 
-        self.context.end_frame()
+        self.context.end_pass()
     }
 
     const ICON_IMAGE: egui::ImageSource<'static> = egui::include_image!("../../assets/icon.png");
@@ -267,9 +267,9 @@ impl Gui {
             y: 16.0
         })
         .show(ctx, |ui| {
-            egui::Frame::none()
+            egui::Frame::NONE
             .fill(BACKGROUND_COLOR)
-            .inner_margin(egui::Margin::same(10.0))
+            .inner_margin(egui::Margin::same(10))
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.add(Self::icon());
@@ -550,10 +550,10 @@ impl Gui {
             y: 4.0
         })
         .show(ctx, |ui| {
-            egui::Frame::none()
+            egui::Frame::NONE
             .fill(BACKGROUND_COLOR)
-            .inner_margin(egui::Margin::same(4.0))
-            .rounding(4.0)
+            .inner_margin(egui::Margin::same(4))
+            .corner_radius(4.0)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label(t!("tl_updater.title"));
@@ -709,9 +709,9 @@ impl Notification {
             )
         )
         .show(ctx, |ui| {
-            egui::Frame::none()
+            egui::Frame::NONE
             .fill(BACKGROUND_COLOR)
-            .inner_margin(egui::Margin::symmetric(10.0, 8.0))
+            .inner_margin(egui::Margin::symmetric(10, 8))
             .show(ui, |ui| {
                 ui.set_width(Self::WIDTH);
                 ui.label(&self.content);
@@ -731,7 +731,7 @@ pub trait Window {
 fn new_window<'a>(ctx: &egui::Context, title: impl Into<egui::WidgetText>) -> egui::Window<'a> {
     egui::Window::new(title)
     .pivot(egui::Align2::CENTER_CENTER)
-    .fixed_pos(ctx.screen_rect().max / 2.0)
+    .fixed_pos(ctx.viewport_rect().max / 2.0)
     .max_width(320.0)
     .max_height(250.0)
     .collapsible(false)
@@ -739,11 +739,12 @@ fn new_window<'a>(ctx: &egui::Context, title: impl Into<egui::WidgetText>) -> eg
 }
 
 fn simple_window_layout(ui: &mut egui::Ui, id: egui::Id, add_contents: impl FnOnce(&mut egui::Ui), add_buttons: impl FnOnce(&mut egui::Ui)) {
-    add_contents(ui);
     egui::TopBottomPanel::bottom(id.with("bottom_panel"))
     .show_inside(ui, |ui| {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), add_buttons)
     });
+
+    add_contents(ui);
 }
 
 fn centered_and_wrapped_text(ui: &mut egui::Ui, text: &str) {
@@ -761,21 +762,14 @@ fn centered_and_wrapped_text(ui: &mut egui::Ui, text: &str) {
     );
     job.halign = egui::Align::Center;
 
-    let galley = ui.fonts(|f| f.layout_job(job));
+    let galley = ui.painter().layout_job(job);
 
-    let mut text_rect = egui::Rect::NOTHING;
-    for row in &galley.rows {
-        text_rect = text_rect.union(row.visuals.mesh.calc_bounds());
-    }
+    let text_rect = galley.rect;
     let text_size = text_rect.size();
 
-    let center_pos = egui::pos2(
-        rect.left() + (rect.width() - text_size.x) / 2.0,
-        rect.top() + (rect.height() - text_size.y) / 2.0
-    );
+    let center_pos = rect.min + (rect.size() - text_size) / 2.0;
 
     let paint_pos = center_pos - text_rect.min.to_vec2();
-
     ui.painter().galley(paint_pos, galley, text_color);
 }
 
@@ -870,7 +864,7 @@ impl Window for SimpleYesNoDialog {
             });
 
             egui::CentralPanel::default()
-                .frame(egui::Frame::none())
+                .frame(egui::Frame::NONE)
                 .show_inside(ui, |ui| {
                 centered_and_wrapped_text(ui, &self.content);
             });
@@ -923,7 +917,7 @@ impl Window for SimpleOkDialog {
             });
 
             egui::CentralPanel::default()
-                .frame(egui::Frame::none())
+                .frame(egui::Frame::NONE)
                 .show_inside(ui, |ui| {
                 centered_and_wrapped_text(ui, &self.content);
             });
@@ -1255,16 +1249,16 @@ impl Window for ConfigEditor {
             simple_window_layout(ui, self.id,
                 |ui| {
                     egui::ScrollArea::horizontal()
-                    .id_source("tabs_scroll")
+                    .id_salt("tabs_scroll")
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             let style = ui.style_mut();
                             style.spacing.button_padding = egui::vec2(8.0, 5.0);
                             style.spacing.item_spacing = egui::Vec2::ZERO;
                             let widgets = &mut style.visuals.widgets;
-                            widgets.inactive.rounding = egui::Rounding::ZERO;
-                            widgets.hovered.rounding = egui::Rounding::ZERO;
-                            widgets.active.rounding = egui::Rounding::ZERO;
+                            widgets.inactive.corner_radius = egui::CornerRadius::ZERO;
+                            widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
+                            widgets.active.corner_radius = egui::CornerRadius::ZERO;
 
                             for (tab, label) in ConfigEditorTab::display_list() {
                                 if ui.selectable_label(self.current_tab == tab, label.as_ref()).clicked() {
@@ -1277,10 +1271,10 @@ impl Window for ConfigEditor {
                     ui.add_space(4.0);
 
                     egui::ScrollArea::vertical()
-                    .id_source("body_scroll")
+                    .id_salt("body_scroll")
                     .show(ui, |ui| {
-                        egui::Frame::none()
-                        .inner_margin(egui::Margin::symmetric(8.0, 0.0))
+                        egui::Frame::NONE
+                        .inner_margin(egui::Margin::symmetric(8, 0))
                         .show(ui, |ui| {
                             egui::Grid::new(self.id.with("options_grid"))
                             .striped(true)
@@ -1406,8 +1400,8 @@ impl Window for FirstTimeSetupWindow {
                                 .filter(|repo| repo.region == Hachimi::instance().game.region)
                                 .collect();
                             egui::ScrollArea::vertical().show(ui, |ui| {
-                                egui::Frame::none()
-                                .inner_margin(egui::Margin::symmetric(8.0, 0.0))
+                                egui::Frame::NONE
+                                .inner_margin(egui::Margin::symmetric(8, 0))
                                 .show(ui, |ui| {
                                     if filtered_repos.is_empty() {
                                         ui.label(t!("first_time_setup.no_compatible_repo"));
