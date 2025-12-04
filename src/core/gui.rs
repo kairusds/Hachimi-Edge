@@ -168,28 +168,8 @@ impl Gui {
     }
 
     pub fn set_screen_size(&mut self, width: i32, height: i32) {
-        let is_landscape = width > height;
-
-        let main_axis_size = if is_landscape {
-            height
-        } else {
-            width
-        };
-
-        let scaling_ratio = if is_landscape {
-            #[cfg(target_os = "android")]
-            {
-                PIXELS_PER_POINT_RATIO  // Android uses default (3.0/1080.0)
-            }
-            #[cfg(target_os = "windows")]
-            {
-                1.5 / 1080.0  // Windows scaling
-            }
-        } else {
-            PIXELS_PER_POINT_RATIO  // 3.0/1080.0
-        };
-
-        let pixels_per_point = main_axis_size as f32 * scaling_ratio;
+        let main_axis_size = if width < height { width } else { height };
+        let pixels_per_point = main_axis_size as f32 * PIXELS_PER_POINT_RATIO;
         self.context.set_pixels_per_point(pixels_per_point);
 
         self.input.screen_rect = Some(egui::Rect {
