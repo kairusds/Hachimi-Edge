@@ -25,6 +25,7 @@ serde_json = "1.0"
 fnv = "1.0"
 widestring = "1.1"
 egui = { version = "0.33.2", default-features = false }
+egui-scale = "0.3.0"
 egui_extras = { version = "0.33.2", default-features = false, features = ["image"] }
 image = { version = "0.25.9", default-features = false, features = ["png"] }
 png = "0.17"
