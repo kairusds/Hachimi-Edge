@@ -14,28 +14,40 @@ extern "C" fn PopulateWithErrors(
     let localized_data = &Hachimi::instance().localized_data.load();
     let hashed_dict = &localized_data.hashed_dict;
 
-    if let Some(text) = hashed_dict.is_empty().not()
-        .then(|| hashed_dict.get(&unsafe { (*str_).hash() }))
-        .flatten()
-    {
-        orig_fn(this, text.to_il2cpp_string(), settings, context)
-    }
-    else if !localized_data.localize_dict.is_empty() || !localized_data.text_data_dict.is_empty() {
-        let str = unsafe { (*str_).as_utf16str() };
+    let mut new_str: Option<&String> = None;
+    let mut has_template: bool = false;
+    let ld_str: String;
 
-        // Only try to evaluate a template if it looks like one
-        let new_str = if str.as_slice().contains(&36) { // 36 = dollar sign ($)
-            let mut context = TemplateContext {
+    // Check if the hashed dict has a match.
+    let hashed_text = hashed_dict.is_empty().not()
+        .then(|| hashed_dict.get(&unsafe { (*str_).hash() }))
+        .flatten();
+    if let Some(text) = hashed_text {
+        new_str = hashed_text;
+        has_template = text.contains("$");
+    }
+    // The string can be localized or original. Skip if we are sure it's not localized.
+    else if !localized_data.localize_dict.is_empty() || !localized_data.text_data_dict.is_empty() {
+        let utf_str = unsafe { (*str_).as_utf16str() };
+        if utf_str.as_slice().contains(&36) { // 36 = dollar sign ($)
+            has_template = true;
+            ld_str = utf_str.to_string();
+            new_str = Some(&ld_str);
+        }
+    }
+
+    if let Some(text) = new_str {
+        // Only try to evaluate a template if it looked like one
+        if has_template {
+            let mut template_context = TemplateContext {
                 settings: &mut settings
             };
-            Hachimi::instance().template_parser
-                .eval_with_context(&str.to_string(), &mut context)
-                .to_il2cpp_string()
+            let tpl_text = &Hachimi::instance().template_parser.eval_with_context(text, &mut template_context);
+            orig_fn(this, tpl_text.to_il2cpp_string(), settings, context)
         }
         else {
-            str_
-        };
-        orig_fn(this, new_str, settings, context)
+            orig_fn(this, text.to_il2cpp_string(), settings, context)
+        }
     }
     else {
         orig_fn(this, str_, settings, context)
@@ -51,10 +63,10 @@ impl<'a> template::Context for TemplateContext<'a> {
         // Extra filters to modify the text generation settings
         match name {
             "nb" => {
-                self.settings.horizontalOverflow = HorizontalWrapMode_Overflow;
+                self.settings.horizontalOverflow = TextOverflow_Allow;
                 self.settings.generateOutOfBounds = true;
             }
-            
+
             "anchor" => {
                 // Anchor values:
                 // 1  2  3
@@ -107,6 +119,18 @@ impl<'a> template::Context for TemplateContext<'a> {
                 self.settings.verticalOverflow = overflow;
             }
 
+            "ls" => {
+                let value = args.get(0)?;
+                let template::Token::NumberLit(ls) = *value else {
+                    return None;
+                };
+                self.settings.lineSpacing = ls as f32;
+            }
+
+            "ub" => {
+                self.settings.updateBounds = true;
+            }
+
             _ => return None
         }
 
@@ -120,7 +144,7 @@ pub struct IgnoreTGFiltersContext();
 impl template::Context for IgnoreTGFiltersContext {
     fn on_filter_eval(&mut self, _name: &str, _args: &[template::Token]) -> Option<String> {
         match _name {
-            "nb" | "anchor" | "scale" | "ho" | "vo" => Some(String::new()),
+            "nb" | "anchor" | "scale" | "ho" | "vo" | "ls" | "ub" => Some(String::new()),
             _ => None
         }
     }

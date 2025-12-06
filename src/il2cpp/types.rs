@@ -2965,9 +2965,8 @@ pub struct Quaternion_t {
     pub y: f32,
     pub z: f32,
 }
-pub const HorizontalWrapMode_Wrap: HorizontalWrapMode = 0;
-pub const HorizontalWrapMode_Overflow: HorizontalWrapMode = 1;
-pub type HorizontalWrapMode = ::std::os::raw::c_int;
+pub const TextOverflow_Disallow: i32 = 0;
+pub const TextOverflow_Allow: i32 = 1;
 #[repr(C)]
 #[derive(Debug)]
 pub struct TextGenerationSettings_t {
@@ -2985,7 +2984,7 @@ pub struct TextGenerationSettings_t {
     pub resizeTextMaxSize: i32,
     pub updateBounds: bool,
     pub verticalOverflow: i32,
-    pub horizontalOverflow: HorizontalWrapMode,
+    pub horizontalOverflow: i32,
     pub generationExtents: Vector2_t,
     pub pivot: Vector2_t,
     pub generateOutOfBounds: bool,
@@ -3032,6 +3031,27 @@ pub struct Resolution {
 pub struct RefreshRate {
     pub numerator: u32,
     pub denominator: u32
+}
+
+#[repr(C)]
+pub struct CharacterSystemText {
+    pub obj: Il2CppObject,
+    pub characterId: i32,
+    pub voiceId: i32,
+    pub text: *mut Il2CppString,
+    pub cueSheet: *mut Il2CppString,
+    pub cueId: i32,
+    pub motionSet: i32,
+    pub scene: i32,
+    pub useGallery: i32,
+    pub cardId: i32,
+    pub lipSyncData: *mut Il2CppString,
+    pub gender: i32,
+    pub motionSecondSet: i32,
+    pub motionSecondStart: i32,
+    pub galleryKeyUsageCondition: i32,
+    pub startDate: i64,
+    _cueSheetString: *mut Il2CppString
 }
 
 /************** ACTk (READ-ONLY) **************/

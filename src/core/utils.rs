@@ -48,10 +48,15 @@ impl<'a> Iterator for IsolateTags<'a> {
         }
 
         let start = self.i;
+        // Unity tags
         let mut tag_start = 0;
         let mut in_tag = false;
         let mut in_closing_tag = false;
         let mut expecting_tag_name = false;
+        // Template expressions
+        let mut expecting_expr_open = false;
+        let mut in_expression = false;
+
         while let Some(c) = self.current_byte {
             if in_tag {
                 match c {
@@ -70,7 +75,7 @@ impl<'a> Iterator for IsolateTags<'a> {
                                 }
                             }
                             expecting_tag_name = false;
-                        }   
+                        }
 
                         if c == b'>' {
                             // in_tag = false;
@@ -107,6 +112,26 @@ impl<'a> Iterator for IsolateTags<'a> {
                     }
                 }
             }
+            else if in_expression {
+                if c == b')'  {
+                    if !self.s[self.i..].contains(")") {
+                        in_expression = false;
+                    }
+                    else {
+                        loop {
+                            self.i += 1;
+                            self.current_byte = self.bytes.next();
+                            if let Some(c) = self.current_byte {
+                                if char::from(c).is_whitespace() {
+                                    continue;
+                                }
+                            }
+                            break;
+                        }
+                        return Some((&self.s[start..self.i], false));
+                    }
+                }
+            }
             else if c == b'<' {
                 if start == self.i {
                     in_tag = true;
@@ -116,6 +141,24 @@ impl<'a> Iterator for IsolateTags<'a> {
                 else {
                     break;
                 }
+            }
+            else if c == b'$' {
+                expecting_expr_open = true;
+            }
+            else if c == b'(' {
+                if expecting_expr_open {
+                    if self.i != start + 1 {
+                        self.i -= 1;
+                        self.bytes = self.s.bytes();
+                        self.current_byte = self.bytes.nth(self.i);
+                        break;
+                    }
+                    in_expression = true;
+                    expecting_expr_open = false;
+                }
+            }
+            else if expecting_expr_open {
+                expecting_expr_open = false;
             }
 
             self.i += 1;
@@ -170,7 +213,9 @@ fn custom_wrap_algorithm<'a, 'b>(words: &'b [Word<'a>], line_widths: &'b [usize]
     let mut removed_indices = Vec::with_capacity(words.len());
     let mut remove_offset = 0;
     for (i, word) in words.iter().enumerate() {
-        if word.starts_with("<") && word.ends_with(">") {
+        let is_tag = word.starts_with("<") && word.ends_with(">");
+        let is_expr = word.starts_with("$(") && word.ends_with(")");
+        if is_tag || is_expr {
             removed_indices.push(i - remove_offset);
             remove_offset += 1;
             continue;
@@ -178,14 +223,16 @@ fn custom_wrap_algorithm<'a, 'b>(words: &'b [Word<'a>], line_widths: &'b [usize]
         clean_fragments.push(words[i]);
     }
 
+    let config = &Hachimi::instance().localized_data.load();
+    let penalties = &config.wrapper_penalties;
     // quick escape!!!11
     let f64_line_widths = line_widths.iter().map(|w| *w as f64).collect::<Vec<_>>();
     if remove_offset == 0 {
-        return wrap_algorithms::wrap_optimal_fit(words, &f64_line_widths, &wrap_algorithms::Penalties::new()).unwrap();
+        return wrap_algorithms::wrap_optimal_fit(words, &f64_line_widths, penalties).unwrap();
     }
 
     // Wrap without formatting tags
-    let wrapped = wrap_algorithms::wrap_optimal_fit(&clean_fragments, &f64_line_widths, &wrap_algorithms::Penalties::new()).unwrap();
+    let wrapped = wrap_algorithms::wrap_optimal_fit(&clean_fragments, &f64_line_widths, penalties).unwrap();
 
     // Create results with formatting tags added back
     // Note: The break word option doesn't really affect the extra long lines since
@@ -329,7 +376,7 @@ pub fn wrap_fit_text_il2cpp(string: *mut Il2CppString, base_line_width: i32, max
             return Some(result.to_il2cpp_string());
         }
     }
-    
+
     None
 }
 
