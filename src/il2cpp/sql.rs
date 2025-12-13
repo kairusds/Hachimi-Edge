@@ -1,4 +1,4 @@
-use std::sync::atomic::{self, AtomicBool};
+use std::{ptr, sync::atomic::{self, AtomicPtr}};
 
 use sqlparser::ast;
 
@@ -101,26 +101,35 @@ pub struct TextDataQuery {
     category: Column,
     index: Column
 }
+pub struct TextFormatting {
+    pub line_len: i32,
+    pub line_count: i32,
+    pub font_size: i32
+}
 
-pub static TDQ_IS_SKILL_LEARNING_QUERY: AtomicBool = AtomicBool::new(false);
+#[derive(Default)]
+pub struct SkillTextFormatting {
+    pub name: Option<TextFormatting>,
+    pub desc: Option<TextFormatting>
+}
+
+pub static TDQ_SKILL_TEXT_FORMAT:AtomicPtr<SkillTextFormatting> = AtomicPtr::new(ptr::null_mut());
 
 impl TextDataQuery {
-    // These values are guesstimated
-    const SKILL_NAME_LINE_WIDTH: i32 = 13;
-    const SKILL_NAME_FONT_SIZE: i32 = 32;
-
-    const SKILL_DESC_LINE_WIDTH: i32 = 18;
-    const SKILL_DESC_LINE_COUNT: i32 = 4;
-    const SKILL_DESC_FONT_SIZE: i32 = 28;
-
-    pub fn with_skill_learning_query(callback: impl FnOnce()) {
-        TDQ_IS_SKILL_LEARNING_QUERY.store(true, atomic::Ordering::Relaxed);
+    pub fn with_skill_query(text_cfg: SkillTextFormatting, callback: impl FnOnce()) {
+        let cfg_ptr = (&text_cfg as *const SkillTextFormatting).cast_mut();
+        TDQ_SKILL_TEXT_FORMAT.store(cfg_ptr, atomic::Ordering::Relaxed);
         callback();
-        TDQ_IS_SKILL_LEARNING_QUERY.store(false, atomic::Ordering::Relaxed);
+        TDQ_SKILL_TEXT_FORMAT.store(ptr::null_mut(), atomic::Ordering::Relaxed);
     }
 
-    fn is_skill_learning_query() -> bool {
-        TDQ_IS_SKILL_LEARNING_QUERY.load(atomic::Ordering::Relaxed)
+    // Abuse static lifetime for our funky not-really static pointer because we like living on the Edge :>
+    fn requested_skill_format() -> Result<&'static SkillTextFormatting, ()> {
+        let cfg_ptr = TDQ_SKILL_TEXT_FORMAT.load(atomic::Ordering::Relaxed);
+        if cfg_ptr.is_null() {
+            return Err(());
+        }
+        Ok(unsafe{&*cfg_ptr})
     }
 
     fn get_skill_name(index: i32) -> Option<*mut Il2CppString> {
@@ -137,20 +146,21 @@ impl TextDataQuery {
             .unwrap_or_default();
 
         if let Some(text) = text_opt {
-            // Fit the text when it's being used in the skill learning screen
-            if Self::is_skill_learning_query() {
-                if let Some(fitted) = utils::fit_text(text, Self::SKILL_NAME_LINE_WIDTH, Self::SKILL_NAME_FONT_SIZE) {
-                    return Some(fitted.to_il2cpp_string())
-                }
-            }
-            Some(text.to_il2cpp_string())
+            // Fit text if and as requested.
+            Self::requested_skill_format().ok()
+                .and_then(|cfg| cfg.name.as_ref())
+                .and_then(|name| utils::wrap_fit_text(text, name.line_len, name.line_count, name.font_size))
+                .map_or_else(
+                    || Some(text.to_il2cpp_string()),
+                    |fitted| Some(fitted.to_il2cpp_string()),
+                )
         }
         else {
             None
         }
     }
 
-    fn get_skill_desc(mut index: i32) -> Option<*mut Il2CppString> {
+    fn get_skill_desc(index: i32) -> Option<*mut Il2CppString> {
         let localized_data = Hachimi::instance().localized_data.load();
         let text_opt = localized_data
             .text_data_dict
@@ -159,15 +169,14 @@ impl TextDataQuery {
             .unwrap_or_default();
 
         if let Some(text) = text_opt {
-            // Do some prewrapping when it's being used in the skill learning screen
-            if Self::is_skill_learning_query() {
-                if let Some(fitted) = utils::wrap_fit_text(text,
-                    Self::SKILL_DESC_LINE_WIDTH, Self::SKILL_DESC_LINE_COUNT, Self::SKILL_DESC_FONT_SIZE
-                ) {
-                    return Some(fitted.to_il2cpp_string());
-                }
-            }
-            Some(text.to_il2cpp_string())
+            // Fit text if and as requested.
+            Self::requested_skill_format().ok()
+                .and_then(|cfg| cfg.desc.as_ref())
+                .and_then(|desc| utils::wrap_fit_text(text, desc.line_len, desc.line_count, desc.font_size))
+                .map_or_else(
+                    || Some(text.to_il2cpp_string()),
+                    |fitted| Some(fitted.to_il2cpp_string()),
+                )
         }
         else {
             None
@@ -209,7 +218,6 @@ impl SelectQueryState for TextDataQuery {
                     _ => ()
                 };
 
-                
                 return Hachimi::instance().localized_data.load()
                     .text_data_dict
                     .get(&category)
@@ -365,7 +373,7 @@ impl SelectExt for ast::Select {
                 }
             }
         }
-    
+
         None
     }
 }

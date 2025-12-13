@@ -162,7 +162,7 @@ impl Parser {
                         in_filter = false;
                     },
 
-                    b' ' => if !in_string && token_start != 0 {
+                    b' ' | b'\n' | b'\r' | b'\t' => if !in_string && token_start != 0 {
                         let res = Self::parse_token(&input[token_start..i]);
                         if let Some(token) = res {
                             tokens.push(token);

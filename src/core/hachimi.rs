@@ -3,6 +3,7 @@ use arc_swap::ArcSwap;
 use fnv::{FnvHashMap, FnvHashSet};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use textwrap::wrap_algorithms::Penalties;
 
 use crate::{core::plugin_api::Plugin, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}}};
 
@@ -420,7 +421,9 @@ pub struct LocalizedData {
     assets_path: Option<PathBuf>,
 
     pub plural_form: plurals::Resolver,
-    pub ordinal_form: plurals::Resolver
+    pub ordinal_form: plurals::Resolver,
+
+    pub wrapper_penalties: Penalties
 }
 
 impl LocalizedData {
@@ -457,6 +460,8 @@ impl LocalizedData {
         let plural_form = Self::parse_plural_form_or_default(&config.plural_form)?;
         let ordinal_form = Self::parse_plural_form_or_default(&config.ordinal_form)?;
 
+        let wrapper_penalties = Self::parse_wrap_penalties_or_default(&config.wrapper_penalties);
+
         Ok(LocalizedData {
             localize_dict: Self::load_dict_static(&path, config.localize_dict.as_ref()).unwrap_or_default(),
             hashed_dict: Self::load_dict_static(&path, config.hashed_dict.as_ref()).unwrap_or_default(),
@@ -472,6 +477,8 @@ impl LocalizedData {
 
             plural_form,
             ordinal_form,
+
+            wrapper_penalties,
 
             config,
             path
@@ -529,6 +536,19 @@ impl LocalizedData {
         }
     }
 
+    fn parse_wrap_penalties_or_default(opt: &Option<PenaltiesConfig>) -> Penalties {
+        let Some(cfg) = opt else {
+            return Penalties::new()
+        };
+        Penalties {
+            nline_penalty: cfg.nline_penalty,
+            overflow_penalty: cfg.overflow_penalty,
+            short_last_line_fraction: cfg.short_last_line_fraction,
+            short_last_line_penalty: cfg.short_last_line_penalty,
+            hyphen_penalty: cfg.hyphen_penalty
+        }
+    }
+
     pub fn get_assets_path<P: AsRef<Path>>(&self, rel_path: P) -> Option<PathBuf> {
         self.assets_path.as_ref().map(|p| p.join(rel_path))
     }
@@ -576,13 +596,17 @@ pub struct LocalizedDataConfig {
     // Predefined line widths are counts of cjk characters.
     // 1 cjk char = 2 columns, so setting this value to 2 replicates the default behaviour.
     pub line_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub systext_cue_lines: FnvHashMap<String, i32>,
+    pub wrapper_penalties: Option<PenaltiesConfig>,
 
     #[serde(default)]
     pub auto_adjust_story_clip_length: bool,
     pub story_line_count_offset: Option<i32>,
     pub text_frame_line_spacing_multiplier: Option<f32>,
     pub text_frame_font_size_multiplier: Option<f32>,
-    pub skill_list_item_desc_font_size_multiplier: Option<f32>,
+    #[serde(default)]
+    pub skill_formatting: SkillFormatting,
     #[serde(default)]
     pub text_common_allow_overflow: bool,
     #[serde(default)]
@@ -662,4 +686,44 @@ impl<T> AssetInfo<T> {
 #[derive(Deserialize, Clone, Default)]
 pub struct AssetMetadata {
     pub bundle_name: Option<String>
+}
+
+#[derive(Deserialize, Clone)]
+pub struct PenaltiesConfig {
+    nline_penalty: usize,
+    overflow_penalty: usize,
+    short_last_line_fraction: usize,
+    short_last_line_penalty: usize,
+    hyphen_penalty: usize
+}
+
+#[derive(Deserialize, Clone)]
+pub struct SkillFormatting {
+    #[serde(default = "SkillFormatting::default_length")]
+    pub name_length: i32,
+    #[serde(default = "SkillFormatting::default_length")]
+    pub desc_length: i32,
+    #[serde(default = "SkillFormatting::default_lines")]
+    pub name_short_lines: i32,
+
+    #[serde(default = "SkillFormatting::default_mult")]
+    pub name_short_mult: f32,
+    #[serde(default = "SkillFormatting::default_mult")]
+    pub name_sp_mult: f32,
+}
+impl SkillFormatting {
+    fn default_length() -> i32 { 18 }
+    fn default_lines() -> i32 { 1 }
+    fn default_mult() -> f32 { 1.0 }
+}
+
+impl Default for SkillFormatting {
+    fn default() -> Self {
+        SkillFormatting {
+            name_length: 13,
+            desc_length: 18,
+            name_short_lines: 1,
+            name_short_mult: 1.0,
+            name_sp_mult: 1.0 }
+    }
 }
