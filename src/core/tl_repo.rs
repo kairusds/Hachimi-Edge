@@ -16,6 +16,7 @@ pub struct RepoInfo {
     pub name: String,
     pub index: String,
     pub short_desc: Option<String>,
+    pub lang: String,
     #[serde(default)]
     pub region: Region
 }
@@ -59,7 +60,11 @@ struct UpdateInfo {
     files: Vec<RepoFile>, // only contains files needed for update
     is_new_repo: bool,
     cached_files: FnvHashMap<String, String>, // from repo cache
-    size: usize
+    size: usize,
+    // New fields for better user communication
+    update_size: usize,      // Size of changed files only
+    total_size: usize,       // Total size of all files (for ZIP downloads)
+    will_use_zip: bool,      // Whether ZIP download will be used
 }
 
 #[derive(Default, Clone)]
@@ -97,8 +102,15 @@ static NUM_THREADS: Lazy<usize> = Lazy::new(|| {
     let parallelism = thread::available_parallelism().unwrap().get();
     max(1, parallelism / 2)
 });
-// lowered for unauthenticated github rate limit
-const INCREMENTAL_UPDATE_LIMIT: usize = 50;
+
+// Hybrid update limits based on hosting platform
+const INCREMENTAL_UPDATE_LIMIT_GITHUB: usize = 50;  // Conservative for GitHub
+const INCREMENTAL_UPDATE_LIMIT_CDN: usize = 200;    // Aggressive for CDN/custom servers
+const INCREMENTAL_SIZE_THRESHOLD: usize = 50 * 1024 * 1024; // 50MB
+
+// Warn user if ZIP download is N times larger than actual changes
+const ZIP_SIZE_WARNING_RATIO: f64 = 2.0;  // Warn if ZIP is 2x+ larger than changes
+
 const MIN_CHUNK_SIZE: u64 = 1024 * 1024 * 5;
 
 struct DownloadJob {
@@ -124,6 +136,50 @@ impl Updater {
                 error!("{}", e);
             }
         });
+    }
+
+    // Determine if a URL is hosted on GitHub
+    fn is_github_hosted(url: &str) -> bool {
+        url.contains("github.com") || 
+        url.contains("githubusercontent.com") ||
+        url.contains("github.io")
+    }
+
+    // Determine whether to use ZIP download based on multiple factors
+    fn should_use_zip_download(
+        file_count: usize,
+        update_size: usize,
+        base_url: &str
+    ) -> bool {
+        // Factor 1: Hosting platform determines file count limit
+        let file_limit = if Self::is_github_hosted(base_url) {
+            debug!("GitHub hosting detected, using conservative limit: {}", INCREMENTAL_UPDATE_LIMIT_GITHUB);
+            INCREMENTAL_UPDATE_LIMIT_GITHUB
+        } else {
+            debug!("CDN/Custom hosting detected, using aggressive limit: {}", INCREMENTAL_UPDATE_LIMIT_CDN);
+            INCREMENTAL_UPDATE_LIMIT_CDN
+        };
+
+        // Factor 2: Total size consideration
+        let size_exceeds_threshold = update_size > INCREMENTAL_SIZE_THRESHOLD;
+        
+        if size_exceeds_threshold {
+            debug!("Update size ({} MB) exceeds threshold, preferring ZIP download", 
+                   update_size / (1024 * 1024));
+        }
+
+        // Decision: Use ZIP if either condition is met
+        let use_zip = file_count > file_limit || size_exceeds_threshold;
+        
+        debug!(
+            "Download strategy decision: files={}, limit={}, size={} MB, use_zip={}", 
+            file_count, 
+            file_limit, 
+            update_size / (1024 * 1024),
+            use_zip
+        );
+
+        use_zip
     }
 
     fn check_for_updates_internal(&self, pedantic: bool) -> Result<(), Error> {
@@ -189,8 +245,18 @@ impl Updater {
             total_size += file.size;
         }
 
-        let is_zip_download = update_files.len() > INCREMENTAL_UPDATE_LIMIT;
         if !update_files.is_empty() {
+            // Determine download strategy
+            let will_use_zip = Self::should_use_zip_download(
+                update_files.len(),
+                update_size,
+                &index.base_url
+            );
+
+            // Calculate actual download size
+            let actual_download_size = if will_use_zip { total_size } else { update_size };
+
+            // Store update info with all relevant sizes
             self.new_update.store(Arc::new(Some(UpdateInfo {
                 is_new_repo,
                 base_url: index.base_url,
@@ -198,12 +264,43 @@ impl Updater {
                 zip_dir: index.zip_dir,
                 files: update_files,
                 cached_files: repo_cache.files,
-                size: if is_zip_download { total_size } else { update_size }
+                size: actual_download_size,
+                update_size,
+                total_size,
+                will_use_zip,
             })));
+
             if let Some(mutex) = Gui::instance() {
+                // Determine the dialog message based on download strategy
+                let dialog_message = if will_use_zip && update_size > 0 {
+                    let size_ratio = total_size as f64 / update_size as f64;
+                    
+                    if size_ratio >= ZIP_SIZE_WARNING_RATIO {
+                        // Warn user about larger ZIP download
+                        debug!(
+                            "ZIP download warning: changed={} MB, total={} MB, ratio={:.2}x",
+                            update_size / (1024 * 1024),
+                            total_size / (1024 * 1024),
+                            size_ratio
+                        );
+                        
+                        t!(
+                            "tl_update_dialog.content_zip_warning",
+                            changed_size = Size::from_bytes(update_size),
+                            download_size = Size::from_bytes(total_size)
+                        )
+                    } else {
+                        // ZIP is being used but size difference is not significant
+                        t!("tl_update_dialog.content", size = Size::from_bytes(actual_download_size))
+                    }
+                } else {
+                    // Incremental update or no warning needed
+                    t!("tl_update_dialog.content", size = Size::from_bytes(actual_download_size))
+                };
+
                 mutex.lock().unwrap().show_window(Box::new(SimpleYesNoDialog::new(
                     &t!("tl_update_dialog.title"),
-                    &t!("tl_update_dialog.content", size = Size::from_bytes(update_size)),
+                    &dialog_message,
                     |ok| {
                         if !ok { return; }
                         Hachimi::instance().tl_updater.clone().run();
@@ -258,16 +355,14 @@ impl Updater {
 
         fs::create_dir_all(&localized_data_dir)?;
 
-        // Download the files
+        // Download the files - use the pre-determined strategy
         let cached_files = Arc::new(Mutex::new(update_info.cached_files.clone()));
-        // There are errors that can be ignored, let the downloader count how many non-fatal errors there are
-        let error_count = if update_info.files.len() > INCREMENTAL_UPDATE_LIMIT {
-            // It would be too slow to do a large amount of HTTP requests, so just download a zip file and extract it
+        let error_count = if update_info.will_use_zip {
             self.clone().download_zip(&update_info, &localized_data_dir, cached_files.clone())
         }
         else {
             self.clone().download_incremental(&update_info, &localized_data_dir, cached_files.clone())
-        }?; // <-- looga this question mark
+        }?;
         
         // Modify the config if needed
         if hachimi.config.load().localized_data_dir.is_none() {
@@ -523,7 +618,7 @@ impl Updater {
                                         if out_file.write_all(data_slice).is_err() {
                                             *fatal_error_clone.lock().unwrap() = Some(Error::OutOfDiskSpace);
                                             stop_signal_clone.store(true, atomic::Ordering::Relaxed);
-                                            return; // Exit the thread
+                                            return;
                                         }
                                         hasher.update(data_slice);
                                         let prev_size = current_bytes_clone.fetch_add(read_bytes, atomic::Ordering::SeqCst);
@@ -541,7 +636,7 @@ impl Updater {
                                 let path_str = path.to_str().unwrap_or("").to_string();
                                 *fatal_error_clone.lock().unwrap() = Some(Error::FileHashMismatch(path_str));
                                 stop_signal_clone.store(true, atomic::Ordering::Relaxed);
-                                return; // Exit the thread
+                                return;
                             }
                             
                             cached_files_clone.lock().unwrap().insert(repo_file.path.clone(), hash);
