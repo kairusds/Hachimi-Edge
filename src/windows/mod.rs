@@ -13,3 +13,4 @@ pub mod wnd_hook;
 mod ffi;
 pub mod steamworks;
 pub mod discord;
+mod cursor;

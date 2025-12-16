@@ -12,7 +12,7 @@ use crate::{
     }
 };
 
-use super::{utils, wnd_hook};
+use super::{cursor, utils, wnd_hook};
 
 pub fn is_il2cpp_lib(filename: &str) -> bool {
     filename == "GameAssembly.dll"
@@ -49,6 +49,7 @@ pub fn on_hooking_finished(hachimi: &Hachimi) {
 
     // Clean up the update installer
     _ = std::fs::remove_file(utils::get_tmp_installer_path());
+    cursor::init();
 }
 
 #[derive(Deserialize, Serialize, Clone)]
