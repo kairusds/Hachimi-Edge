@@ -16,7 +16,6 @@ pub struct RepoInfo {
     pub name: String,
     pub index: String,
     pub short_desc: Option<String>,
-    pub lang: String,
     #[serde(default)]
     pub region: Region
 }
