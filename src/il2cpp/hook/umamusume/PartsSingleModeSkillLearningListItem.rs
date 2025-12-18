@@ -16,7 +16,6 @@ extern "C" fn UpdateCurrent(this: *mut Il2CppObject) {
 
     let mut skill_cfg = sql::SkillTextFormatting::default();
     if !name.is_null() {
-        Text::set_horizontalOverflow(name, 1);
         skill_cfg.name = Some(sql::TextFormatting{
             line_len: 13,
             line_count: 1,
@@ -24,7 +23,6 @@ extern "C" fn UpdateCurrent(this: *mut Il2CppObject) {
         });
     }
     if !desc.is_null() {
-        Text::set_horizontalOverflow(desc, 1);
         skill_cfg.desc = Some(sql::TextFormatting{
             line_len: 18,
             line_count: 4,
@@ -32,9 +30,18 @@ extern "C" fn UpdateCurrent(this: *mut Il2CppObject) {
         });
     }
 
-    TextDataQuery::with_skill_query(skill_cfg, || {
+    TextDataQuery::with_skill_query(&skill_cfg, || {
         get_orig_fn!(UpdateCurrent, UpdateCurrentFn)(this);
     });
+
+    if skill_cfg.is_localized {
+        if !name.is_null() {
+            Text::set_horizontalOverflow(name, 1);
+        }
+        if !desc.is_null() {
+           Text::set_horizontalOverflow(desc, 1);
+        }
+    }
 }
 
 pub fn init(umamusume: *const Il2CppImage) {

@@ -1,5 +1,5 @@
 use crate::{
-    core::{Hachimi, utils::mul_int},
+    core::{Hachimi, game::Region, utils::mul_int},
     il2cpp::{hook::{UnityEngine_UI::Text}, sql::{self, TextDataQuery}, symbols::{get_field_from_name, get_field_object_value, get_method_addr}, types::*}
 };
 
@@ -19,9 +19,7 @@ impl_addr_wrapper_fn!(get_IsDrawDesc, get_IsDrawDesc_addr, bool, this: *mut Il2C
 static mut get_IsDrawNeedSkillPoint_addr: usize = 0;
 impl_addr_wrapper_fn!(get_IsDrawNeedSkillPoint, get_IsDrawNeedSkillPoint_addr, bool, this: *mut Il2CppObject);
 
-
-type UpdateItemFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32);
-extern "C" fn UpdateItem(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32) {
+fn UpdateItemCommon(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, orig_fn_cb: impl FnOnce()) {
     let skill_cfg = &Hachimi::instance().localized_data.load().config.skill_formatting;
     let mut txt_cfg = sql::SkillTextFormatting::default();
 
@@ -51,11 +49,6 @@ extern "C" fn UpdateItem(this: *mut Il2CppObject, skill_info: *mut Il2CppObject,
             line_count: name_lines,
             font_size: Text::get_fontSize(name)
         });
-
-        if name_lines > 1 {
-            Text::set_verticalOverflow(name, 1);
-        }
-        Text::set_horizontalOverflow(name, 1);
     }
 
     if get_IsDrawDesc(skill_info) && !desc.is_null() {
@@ -70,12 +63,34 @@ extern "C" fn UpdateItem(this: *mut Il2CppObject, skill_info: *mut Il2CppObject,
             line_count: 4,
             font_size: Text::get_fontSize(desc)
         });
-
-        Text::set_horizontalOverflow(desc, 1);
     }
 
-    TextDataQuery::with_skill_query(txt_cfg, || {
-        get_orig_fn!(UpdateItem, UpdateItemFn)(this, skill_info, is_plate_effect_enable, resource_hash);
+    TextDataQuery::with_skill_query(&txt_cfg, orig_fn_cb);
+
+    if txt_cfg.is_localized {
+        if !name.is_null() {
+            Text::set_horizontalOverflow(name, 1);
+            if txt_cfg.name.map(|opts| opts.line_count).unwrap_or(1) > 1 {
+                Text::set_verticalOverflow(name, 1);
+            }
+        }
+        if !desc.is_null() {
+            Text::set_horizontalOverflow(desc, 1);
+        }
+    }
+}
+
+type UpdateItemJpFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32);
+extern "C" fn UpdateItemJp(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32) {
+    UpdateItemCommon(this, skill_info, || {
+        get_orig_fn!(UpdateItemJp, UpdateItemJpFn)(this, skill_info, is_plate_effect_enable, resource_hash);
+    });
+}
+
+type UpdateItemOtherFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool);
+extern "C" fn UpdateItemOther(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool) {
+    UpdateItemCommon(this, skill_info, || {
+        get_orig_fn!(UpdateItemOther, UpdateItemOtherFn)(this, skill_info, is_plate_effect_enable);
     });
 }
 
@@ -83,8 +98,14 @@ pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, PartsSingleModeSkillListItem);
     find_nested_class_or_return!(PartsSingleModeSkillListItem, Info);
 
-    let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 3);
-    new_hook!(UpdateItem_addr, UpdateItem);
+    if Hachimi::instance().game.region == Region::Japan {
+        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 3);
+        new_hook!(UpdateItem_addr, UpdateItemJp);
+    }
+    else {
+        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 2);
+        new_hook!(UpdateItem_addr, UpdateItemOther);
+    }
 
     unsafe {
         NAMETEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_nameText");

@@ -110,26 +110,27 @@ pub struct TextFormatting {
 #[derive(Default)]
 pub struct SkillTextFormatting {
     pub name: Option<TextFormatting>,
-    pub desc: Option<TextFormatting>
+    pub desc: Option<TextFormatting>,
+    pub is_localized: bool
 }
 
 pub static TDQ_SKILL_TEXT_FORMAT:AtomicPtr<SkillTextFormatting> = AtomicPtr::new(ptr::null_mut());
 
 impl TextDataQuery {
-    pub fn with_skill_query(text_cfg: SkillTextFormatting, callback: impl FnOnce()) {
-        let cfg_ptr = (&text_cfg as *const SkillTextFormatting).cast_mut();
+    pub fn with_skill_query(text_cfg: &SkillTextFormatting, callback: impl FnOnce()) {
+        let cfg_ptr = (text_cfg as *const SkillTextFormatting).cast_mut();
         TDQ_SKILL_TEXT_FORMAT.store(cfg_ptr, atomic::Ordering::Relaxed);
         callback();
         TDQ_SKILL_TEXT_FORMAT.store(ptr::null_mut(), atomic::Ordering::Relaxed);
     }
 
     // Abuse static lifetime for our funky not-really static pointer because we like living on the Edge :>
-    fn requested_skill_format() -> Result<&'static SkillTextFormatting, ()> {
+    fn requested_skill_format() -> Result<&'static mut SkillTextFormatting, ()> {
         let cfg_ptr = TDQ_SKILL_TEXT_FORMAT.load(atomic::Ordering::Relaxed);
         if cfg_ptr.is_null() {
             return Err(());
         }
-        Ok(unsafe{&*cfg_ptr})
+        Ok(unsafe{&mut *cfg_ptr})
     }
 
     fn get_skill_name(index: i32) -> Option<*mut Il2CppString> {
@@ -148,7 +149,10 @@ impl TextDataQuery {
         if let Some(text) = text_opt {
             // Fit text if and as requested.
             Self::requested_skill_format().ok()
-                .and_then(|cfg| cfg.name.as_ref())
+                .and_then(|cfg| {
+                    cfg.is_localized = true;
+                    cfg.name.as_ref()
+                })
                 .and_then(|name| { match name.line_count {
                     1 => utils::fit_text(text, name.line_len, name.font_size),
                     _ => utils::wrap_fit_text(text, name.line_len, name.line_count, name.font_size)
@@ -175,7 +179,10 @@ impl TextDataQuery {
         if let Some(text) = text_opt {
             // Fit text if and as requested.
             Self::requested_skill_format().ok()
-                .and_then(|cfg| cfg.desc.as_ref())
+                .and_then(|cfg| {
+                    cfg.is_localized = true;
+                    cfg.desc.as_ref()
+                })
                 .and_then(|desc| utils::wrap_fit_text(text, desc.line_len, desc.line_count, desc.font_size))
                 .map_or_else(
                     || Some(text.to_il2cpp_string()),
