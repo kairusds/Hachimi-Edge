@@ -78,23 +78,23 @@ first_time_setup:
     el proceso con solo cerrar este diálogo.
 
 
-    DISCLAIMER: Hachimi es un proyecto impulsado por la comunidad. Cada traducción ha sido realizada por varios
+    DISCLAIMER: Hachimi es un proyecto impulsado por la comunidad. Las traducciones han sido realizadas por varios
     miembros de la comunidad. Ten en cuenta que este proyecto no está desarrollado ni respaldado por Cygames, Inc.
     Asimismo, su uso infringe los términos de servicio del propio juego. De continuar, estarás aceptando
     los riesgos que esto conlleva.
   translation_repo_heading: "Repositorio de traducción"
   select_translation_repo: "Selecciona un repositorio de traducción:"
   no_compatible_repo: "No se han encontrado repositorios compatibles con esta versión del juego."
-  skip_translation: "Saltar traducciones"
+  skip_translation: "Omitir traducciones"
   complete_heading: "¡Todo listo!"
   complete_content: >-
-    Se ha ajustado el repositorio de traducción. Cuando pulses sobre Listo, se guardará
+    Se ha ajustado el repositorio de traducción. Cuando pulses en Listo, se guardará
     la configuración y seguido se hará una búsqueda de actualizaciones que te
     preguntará para descargar los datos de traducción disponibles.
 
 about:
   title: "Acerca de"
-  copyright: "© 2024-2025 LeadRDRK y contribuidores"
+  copyright: "© 2024-%{year} LeadRDRK y contribuidores"
   view_license: "Ver licencia"
   check_for_updates: "Buscar actualizaciones"
 
@@ -119,7 +119,7 @@ config_editor:
     Si no es un cambio intencional, cierra este diálogo y DESACTIVA esta opción.
   debug_mode: "Modo depuración"
   translator_mode: "Modo traductor"
-  skip_first_time_setup: "Saltar instalación inicial"
+  skip_first_time_setup: "Omitir instalación inicial"
   disable_auto_update_check: "Desactivar búsquedas\nde actualizaciones"
   disable_translations: "Desactivar traducciones"
   enable_ipc: "Habilitar IPC"
@@ -184,11 +184,11 @@ updating_dialog:
 steam_overlay_conflict_dialog:
   title: "Aviso"
   content: >-
-    Las compras podrían no funcionar con el overlay de Hachimi activado. Si el overlay de Steam ya apareció
-    para realizar la compra, ignora este mensaje y pulsa No. Si no funcionó, pulsa Sí para desactivar
-    temporalmente el overlay de Hachimi. Esto cerrará el juego, y la próxima vez que se inicie, el overlay de
-    Hachimi estará desactivado y podrás realizar la compra. Después de esto, puedes volver a iniciar el juego
-    para volver a activar el overlay de Hachimi.
+    Las compras podrían no funcionar con el overlay de Hachimi activo. Si el overlay de Steam ya apareció
+    para realizar compras, ignora este mensaje y pulsa No. Si no apareció nada, pulsa Sí para desactivar
+    temporalmente el overlay de Hachimi. Esto cerrará el juego, y la próxima vez que se inicie el overlay de
+    Hachimi estará desactivado para que puedas realizar compras. Después de realizar tus compras, podrás
+    volver a usar el overlay de Hachimi al reiniciar el juego.
 key_names:
   left: "Flecha Izq."
   right: "Flecha Der."
