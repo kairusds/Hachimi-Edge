@@ -4,7 +4,7 @@ use windows::{core::HRESULT, Win32::Graphics::{
         ID3D11Device, ID3D11DeviceContext, ID3D11RenderTargetView, ID3D11Texture2D,
         D3D11_RENDER_TARGET_VIEW_DESC, D3D11_RTV_DIMENSION_TEXTURE2D
     },
-    Dxgi::{Common::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, IDXGISwapChain}
+    Dxgi::{Common::DXGI_FORMAT_R8G8B8A8_UNORM, IDXGISwapChain}
 }};
 
 use crate::core::Error;
@@ -79,7 +79,7 @@ impl D3D11Painter {
         };
 
         let mut render_target_desc = D3D11_RENDER_TARGET_VIEW_DESC::default();
-        render_target_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        render_target_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         render_target_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
         if let Err(e) = unsafe { device.CreateRenderTargetView(
             &backbuffer,
