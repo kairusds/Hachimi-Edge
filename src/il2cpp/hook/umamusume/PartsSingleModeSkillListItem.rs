@@ -31,18 +31,20 @@ fn UpdateItemCommon(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, orig
         let mut name_len = skill_cfg.name_length;
         let mut name_lines = 1;
 
-        // Uma info
+        // Uma info, "short ver".
         if !get_IsDrawDesc(skill_info) {
             name_len = mul_int(name_len, skill_cfg.name_short_mult);
             name_lines = skill_cfg.name_short_lines;
+        }
+        // "Draw Skill Pt" is also true on the short ver, even though it doesn't show there.
+        // So, apply only when desc shows.
+        else if get_IsDrawNeedSkillPoint(skill_info) {
+            name_len = mul_int(name_len, skill_cfg.name_sp_mult);
         }
         // todo: When lvl display!?
         // if get_IsDrawUniqSkillInfo(skill_info) || get_Level(skill_info) > 1 {
         //     name_len = mul_int(name_len, skill_cfg.name_lvl_mult);
         // }
-        if get_IsDrawNeedSkillPoint(skill_info) {
-            name_len = mul_int(name_len, skill_cfg.name_sp_mult);
-        }
 
         txt_cfg.name = Some(sql::TextFormatting {
             line_len: name_len,
