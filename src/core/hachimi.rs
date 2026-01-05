@@ -384,6 +384,9 @@ pub enum Language {
     #[serde(rename = "vi")]
     Vietnamese,
 
+    #[serde(rename = "id")]
+    Indonesian,
+
     #[serde(rename = "es")]
     Spanish
 }
@@ -397,6 +400,8 @@ impl Default for Language {
             Self::SChinese
         } else if locale.starts_with("vi") {
             Self::Vietnamese
+        } else if locale.starts_with("id") {
+            Self::Indonesian
         } else if locale.starts_with("es") {
             Self::Spanish
         } else {
@@ -411,6 +416,7 @@ impl Language {
         Self::TChinese.choice(),
         Self::SChinese.choice(),
         Self::Vietnamese.choice(),
+        Self::Indonesian.choice(),
         Self::Spanish.choice()
     ];
 
@@ -424,6 +430,7 @@ impl Language {
             Language::TChinese => "zh-tw",
             Language::SChinese => "zh-cn",
             Language::Vietnamese => "vi",
+            Language::Indonesian => "id",
             Language::Spanish => "es"
         }
     }
@@ -434,6 +441,7 @@ impl Language {
             Language::TChinese => "繁體中文",
             Language::SChinese => "简体中文",
             Language::Vietnamese => "Tiếng Việt",
+            Language::Indonesian => "Bahasa Indonesia",
             Language::Spanish => "Español (ES)"
         }
     }
