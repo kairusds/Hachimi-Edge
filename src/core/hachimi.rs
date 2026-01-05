@@ -420,6 +420,22 @@ impl Language {
         Self::Spanish.choice()
     ];
 
+    /// Returns the regions where this language is available.
+    /// Languages are restricted to their respective regions to avoid showing
+    /// language options that don't make sense for a game version.
+    /// Only Global region gets all languages (except region-specific ones).
+    pub fn supported_regions(&self) -> &'static [crate::core::game::Region] {
+        use crate::core::game::Region;
+        match self {
+            Language::English => &[Region::Global],  // English is typically Global-only
+            Language::TChinese => &[Region::Taiwan],
+            Language::SChinese => &[Region::China],
+            Language::Vietnamese => &[Region::Global],  // Vietnamese typically Global
+            Language::Indonesian => &[Region::Global],  // Indonesian typically Global
+            Language::Spanish => &[Region::Global],  // Spanish typically Global
+        }
+    }
+
     pub fn set_locale(&self) {
         rust_i18n::set_locale(self.locale_str());
     }

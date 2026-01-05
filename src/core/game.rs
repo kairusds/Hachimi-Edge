@@ -12,7 +12,7 @@ pub struct Game {
     pub is_steam_release: bool
 }
 
-#[derive(PartialEq, Eq, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Deserialize)]
 pub enum Region {
     Unknown,
     Japan,
