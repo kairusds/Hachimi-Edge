@@ -114,7 +114,7 @@ config_editor:
   disable_overlay: "Matikan overlay (GUI)"
   disable_overlay_warning: >-
     Opsi ini akan mematikan overlay Hachimi setelah kamu memulai ulang gim,
-    yang dimana artinya kamu tidak bisa mengakses editor konfgurasi setelahnya.
+    yang dimana artinya kamu tidak bisa mengakses editor konfigurasi setelahnya.
     Jika ini tidak disengaja, mohon tutup dialog ini dan matikan opsinya!
   debug_mode: "Moda Debug"
   translator_mode: "Moda Translasi"
