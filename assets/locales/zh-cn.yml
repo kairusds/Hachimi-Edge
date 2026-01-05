@@ -67,6 +67,7 @@ notification:
   no_updates: "无可用更新"
   press_to_set_menu_key: "请在游戏窗口按下新的按键以设为打开菜单按键"
   menu_open_key_set: "已设置打开菜单按键为 %{key}"
+  ipc_softreset_exec: "已远程软重启（IPC）"
 
 first_time_setup:
   title: "初始化设置"

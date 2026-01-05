@@ -3,9 +3,7 @@ use std::sync::{Condvar, Mutex};
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use tiny_http::{Header, Method, Request, Response, Server};
-
-use crate::{core::utils::notify_error, il2cpp::{hook::umamusume::{StoryTimelineController, StoryTimelineData}, symbols::{IList, Thread}}};
-
+use crate::{core::utils::notify_error, il2cpp::{hook::umamusume::{GameSystem, StoryTimelineController, StoryTimelineData}, symbols::{IList, Thread}}};
 use super::{Error, Gui, Hachimi};
 
 pub fn start_http(listen_all: bool) {
@@ -151,6 +149,17 @@ fn on_http_request(request: &mut Request) -> Result<CommandResponse, Error> {
             if let Some(mutex) = Gui::instance() {
                 mutex.lock().unwrap().show_notification(&t!("notification.localized_data_reloaded"));
             }
+        },
+
+        Command::SoftReset { exec } => {
+            if exec == true {
+                Thread::main_thread().schedule(|| {
+                    GameSystem::SoftwareReset(GameSystem::instance());
+                });
+                if let Some(mutex) = Gui::instance() {
+                mutex.lock().unwrap().show_notification(&t!("notification.ipc_softreset_exec"));
+                }
+            } else { notify_error("SoftReset needs exec=true"); }
         }
     }
 
@@ -181,8 +190,10 @@ enum Command {
         #[serde(default)]
         incremental: bool
     },
-
-    ReloadLocalizedData
+    ReloadLocalizedData,
+    SoftReset {
+        exec: bool
+    }
 }
 
 #[derive(Serialize)]

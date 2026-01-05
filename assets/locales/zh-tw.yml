@@ -65,6 +65,7 @@ notification:
   errors_during_update: "更新時發生 %{count} 個錯誤，請確認日誌以獲取更多資訊。"
   checking_for_updates: "檢查更新"
   no_updates: "無可用的更新。"
+  ipc_softreset_exec: "已遠端軟重啟（IPC）。"
 
 first_time_setup:
   title: "設定精靈"

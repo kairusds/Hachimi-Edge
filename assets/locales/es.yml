@@ -68,6 +68,8 @@ notification:
   no_updates: "No hay actualizaciones."
   press_to_set_menu_key: "Pulsa una tecla para establecer la tecla que abre el menú."
   menu_open_key_set: "Tecla para abrir el menú: %{key}"
+  ipc_softreset_exec: "Se ha ejecutado un reinicio suave remoto (IPC)."
+
 
 first_time_setup:
   title: "Instalación Inicial"
