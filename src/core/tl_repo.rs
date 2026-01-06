@@ -19,7 +19,7 @@ pub struct RepoInfo {
     #[serde(default)]
     pub language: Option<Language>,
     #[serde(default)]
-    pub region: Option<Region>
+    pub region: Region
 }
 
 pub fn new_meta_index_request() -> AsyncRequest<Vec<RepoInfo>> {

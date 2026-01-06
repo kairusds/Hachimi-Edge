@@ -21,7 +21,6 @@ use crate::il2cpp::hook::umamusume::WebViewManager;
 use crate::il2cpp::hook::UnityEngine_CoreModule::QualitySettings;
 
 use super::{hachimi::{self, Language}, http::AsyncRequest, tl_repo::{self, RepoInfo}, utils, Hachimi};
-use crate::core::game::Region;
 
 macro_rules! add_font {
     ($fonts:expr, $family_fonts:expr, $filename:literal) => {
@@ -1509,7 +1508,6 @@ impl Window for FirstTimeSetupWindow {
                         async_request_ui_content(ui, self.index_request.clone(), |ui, repo_list| {
                             let hachimi = Hachimi::instance();
                             let current_language = hachimi.config.load().language;
-                            let game_region = hachimi.game.region.clone();
                             
                             // Auto-select matched repo if not yet selected
                             if self.current_tl_repo.is_none() {
@@ -1519,14 +1517,7 @@ impl Window for FirstTimeSetupWindow {
                             }
                             
                             let mut filtered_repos: Vec<_> = repo_list.iter()
-                                .filter(|repo| {
-                                    // If repo specifies a region, respect it
-                                    // If repo has no region, show on all versions
-                                    match &repo.region {
-                                        Some(region) => *region == game_region,
-                                        None => true,
-                                    }
-                                })
+                                .filter(|repo| repo.region == hachimi.game.region)
                                 .collect();
                             
                             // Sort: explicitly-matching language first, then others
