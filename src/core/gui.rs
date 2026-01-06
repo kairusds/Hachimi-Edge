@@ -1520,24 +1520,11 @@ impl Window for FirstTimeSetupWindow {
                             
                             let mut filtered_repos: Vec<_> = repo_list.iter()
                                 .filter(|repo| {
-                                    // Region filtering logic:
-                                    // 1. If repo specifies region == Global: only show for Global game version
-                                    // 2. If repo has no region specified: only show for non-Global game versions (JP, China, Taiwan, etc)
-                                    // 3. If repo specifies a region: only show if it matches game region
-                                    
+                                    // If repo specifies a region, respect it
+                                    // If repo has no region, show on all versions
                                     match &repo.region {
-                                        Some(Region::Global) => {
-                                            // Explicit Global repos only for Global games
-                                            game_region == Region::Global
-                                        },
-                                        None => {
-                                            // Unspecified repos only for non-Global games
-                                            game_region != Region::Global
-                                        },
-                                        Some(region) => {
-                                            // Region-specific repos only for matching region
-                                            *region == game_region
-                                        }
+                                        Some(region) => *region == game_region,
+                                        None => true,
                                     }
                                 })
                                 .collect();
