@@ -1542,6 +1542,7 @@ impl Window for FirstTimeSetupWindow {
                                     
                                     for repo in filtered_repos.iter() {
                                         let is_matched = repo.language.as_ref().map_or(false, |l| *l == current_language);
+                                        let is_selected = self.current_tl_repo.as_ref() == Some(&repo.index);
                                         
                                         // Add separator before switching from matched to unmatched
                                         if let Some(prev_matched) = last_section {
@@ -1550,8 +1551,8 @@ impl Window for FirstTimeSetupWindow {
                                             }
                                         }
                                         
-                                        // Visual indicator for matched language repo
-                                        if is_matched {
+                                        // Visual indicator for auto-selected matched language repo
+                                        if is_matched && is_selected {
                                             let repo_label = format!("★ {}", repo.name);
                                             ui.radio_value(&mut self.current_tl_repo, Some(repo.index.clone()), repo_label);
                                             if let Some(short_desc) = &repo.short_desc {
