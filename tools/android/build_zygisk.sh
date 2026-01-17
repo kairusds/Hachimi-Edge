@@ -37,7 +37,7 @@ get_toml_value() {
         sed -n "/^\[$section\]/,/^\[/p" "$file" | sed '$d'
     }
         
-    get_section "$file" "$section" | grep "^$key " | cut -d "=" -f2- | tr -d ' "'
+    get_section "$file" "$section" | grep "^$key" | sed -E 's/.*=[[:space:]]*"([^"]+)".*/\1/'
 }
 
 version_to_code() {
@@ -86,8 +86,6 @@ clean
 cp -r -v ./tools/android/zygisk-template "$ZYGISK_BUILD_DIR"
 copy_lib aarch64-linux-android arm64-v8a
 copy_lib armv7-linux-androideabi armeabi-v7a
-copy_lib i686-linux-android x86
-copy_lib x86_64-linux-android x86_64
 
 cat << EOF > "$ZYGISK_BUILD_DIR/module.prop"
 id=$MODID
