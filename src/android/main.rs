@@ -3,7 +3,7 @@ use jni::{sys::jint, JavaVM};
 
 use crate::core::Hachimi;
 
-use super::hook;
+use super::{hook, plugin_loader};
 
 #[allow(non_camel_case_types)]
 type JniOnLoadFn = extern "C" fn(vm: JavaVM, reserved: *mut c_void) -> jint;
@@ -23,6 +23,8 @@ pub extern "C" fn JNI_OnLoad(vm: JavaVM, reserved: *mut c_void) -> jint {
     if !Hachimi::init() {
         return orig_fn(vm, reserved);
     }
+    let hachimi = Hachimi::instance();
+    *hachimi.plugins.lock().unwrap() = plugin_loader::load_libraries();
     let env = vm.get_env().unwrap();
     hook::init(env.get_raw());
 

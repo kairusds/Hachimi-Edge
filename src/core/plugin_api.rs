@@ -1,10 +1,17 @@
 use std::ffi::{c_char, c_void, CStr};
 
-use crate::{core::{Hachimi, Interceptor}, il2cpp::{self, types::{il2cpp_array_size_t, FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo}}};
+use once_cell::sync::OnceCell;
 
-const VERSION: i32 = 1;
+use crate::{core::{gui, Hachimi, Interceptor}, il2cpp::{self, types::{il2cpp_array_size_t, FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo}}};
+
+const VERSION: i32 = 2;
+
+static PLUGIN_VTABLE: OnceCell<Vtable> = OnceCell::new();
 
 pub type HachimiInitFn = extern "C" fn(vtable: *const Vtable, version: i32) -> InitResult;
+pub type GuiMenuCallback = extern "C" fn(userdata: *mut c_void);
+pub type GuiMenuSectionCallback = extern "C" fn(ui: *mut c_void, userdata: *mut c_void);
+pub type GuiUiCallback = extern "C" fn(ui: *mut c_void, userdata: *mut c_void);
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -207,6 +214,179 @@ unsafe extern "C" fn log(level: i32, target: *const c_char, message: *const c_ch
     log!(target: &target, level, "{}", message);
 }
 
+unsafe extern "C" fn gui_register_menu_item(
+    label: *const c_char,
+    callback: Option<GuiMenuCallback>,
+    userdata: *mut c_void
+) -> bool {
+    if label.is_null() {
+        return false;
+    }
+    let Ok(label) = CStr::from_ptr(label).to_str() else {
+        return false;
+    };
+    gui::register_plugin_menu_item(label.to_owned(), callback, userdata);
+    true
+}
+
+unsafe extern "C" fn gui_register_menu_section(
+    callback: Option<GuiMenuSectionCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(callback) = callback else {
+        return false;
+    };
+    gui::register_plugin_menu_section(callback, userdata);
+    true
+}
+
+unsafe extern "C" fn gui_show_notification(message: *const c_char) -> bool {
+    if message.is_null() {
+        return false;
+    }
+    let Ok(message) = CStr::from_ptr(message).to_str() else {
+        return false;
+    };
+    gui::enqueue_plugin_notification(message.to_owned());
+    true
+}
+
+unsafe fn ui_from_ptr<'a>(ui: *mut c_void) -> Option<&'a mut egui::Ui> {
+    if ui.is_null() {
+        return None;
+    }
+    Some(&mut *(ui as *mut egui::Ui))
+}
+
+unsafe fn cstr_or_empty(ptr: *const c_char) -> &'static str {
+    if ptr.is_null() {
+        return "";
+    }
+    CStr::from_ptr(ptr).to_str().unwrap_or("")
+}
+
+unsafe extern "C" fn gui_ui_heading(ui: *mut c_void, text: *const c_char) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.heading(cstr_or_empty(text));
+    true
+}
+
+unsafe extern "C" fn gui_ui_label(ui: *mut c_void, text: *const c_char) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.label(cstr_or_empty(text));
+    true
+}
+
+unsafe extern "C" fn gui_ui_small(ui: *mut c_void, text: *const c_char) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.small(cstr_or_empty(text));
+    true
+}
+
+unsafe extern "C" fn gui_ui_separator(ui: *mut c_void) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.separator();
+    true
+}
+
+unsafe extern "C" fn gui_ui_button(ui: *mut c_void, text: *const c_char) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.button(cstr_or_empty(text)).clicked()
+}
+
+unsafe extern "C" fn gui_ui_small_button(ui: *mut c_void, text: *const c_char) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.small_button(cstr_or_empty(text)).clicked()
+}
+
+unsafe extern "C" fn gui_ui_checkbox(
+    ui: *mut c_void,
+    text: *const c_char,
+    value: *mut bool
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if value.is_null() { return false; }
+    let mut current = *value;
+    let changed = ui.checkbox(&mut current, cstr_or_empty(text)).changed();
+    if changed {
+        *value = current;
+    }
+    changed
+}
+
+unsafe extern "C" fn gui_ui_text_edit_singleline(
+    ui: *mut c_void,
+    buffer: *mut c_char,
+    buffer_len: usize
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if buffer.is_null() || buffer_len == 0 { return false; }
+    let bytes = std::slice::from_raw_parts_mut(buffer as *mut u8, buffer_len);
+    let end = bytes.iter().position(|b| *b == 0).unwrap_or(buffer_len);
+    let mut value = String::from_utf8_lossy(&bytes[..end]).into_owned();
+    let changed = ui.text_edit_singleline(&mut value).changed();
+    if changed {
+        bytes.fill(0);
+        let src = value.as_bytes();
+        let copy_len = src.len().min(buffer_len.saturating_sub(1));
+        bytes[..copy_len].copy_from_slice(&src[..copy_len]);
+    }
+    changed
+}
+
+unsafe extern "C" fn gui_ui_horizontal(
+    ui: *mut c_void,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    ui.horizontal(|ui| {
+        callback(ui as *mut _ as *mut c_void, userdata);
+    });
+    true
+}
+
+unsafe extern "C" fn gui_ui_grid(
+    ui: *mut c_void,
+    id: *const c_char,
+    columns: usize,
+    spacing_x: f32,
+    spacing_y: f32,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    let id = cstr_or_empty(id);
+    egui::Grid::new(id)
+        .num_columns(columns)
+        .spacing([spacing_x, spacing_y])
+        .show(ui, |ui| {
+            callback(ui as *mut _ as *mut c_void, userdata);
+        });
+    true
+}
+
+unsafe extern "C" fn gui_ui_end_row(ui: *mut c_void) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.end_row();
+    true
+}
+
+unsafe extern "C" fn gui_ui_colored_label(
+    ui: *mut c_void,
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+    text: *const c_char
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    ui.colored_label(egui::Color32::from_rgba_unmultiplied(r, g, b, a), cstr_or_empty(text));
+    true
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Vtable {
@@ -275,6 +455,51 @@ pub struct Vtable {
     pub il2cpp_get_singleton_like_instance: unsafe extern "C" fn(class: *mut Il2CppClass) -> *mut Il2CppObject,
 
     pub log: unsafe extern "C" fn(level: i32, target: *const c_char, message: *const c_char),
+    pub gui_register_menu_item: unsafe extern "C" fn(
+        label: *const c_char,
+        callback: Option<GuiMenuCallback>,
+        userdata: *mut c_void
+    ) -> bool,
+    pub gui_register_menu_section: unsafe extern "C" fn(
+        callback: Option<GuiMenuSectionCallback>,
+        userdata: *mut c_void
+    ) -> bool,
+    pub gui_show_notification: unsafe extern "C" fn(message: *const c_char) -> bool,
+    pub gui_ui_heading: unsafe extern "C" fn(ui: *mut c_void, text: *const c_char) -> bool,
+    pub gui_ui_label: unsafe extern "C" fn(ui: *mut c_void, text: *const c_char) -> bool,
+    pub gui_ui_small: unsafe extern "C" fn(ui: *mut c_void, text: *const c_char) -> bool,
+    pub gui_ui_separator: unsafe extern "C" fn(ui: *mut c_void) -> bool,
+    pub gui_ui_button: unsafe extern "C" fn(ui: *mut c_void, text: *const c_char) -> bool,
+    pub gui_ui_small_button: unsafe extern "C" fn(ui: *mut c_void, text: *const c_char) -> bool,
+    pub gui_ui_checkbox: unsafe extern "C" fn(ui: *mut c_void, text: *const c_char, value: *mut bool) -> bool,
+    pub gui_ui_text_edit_singleline: unsafe extern "C" fn(
+        ui: *mut c_void,
+        buffer: *mut c_char,
+        buffer_len: usize
+    ) -> bool,
+    pub gui_ui_horizontal: unsafe extern "C" fn(
+        ui: *mut c_void,
+        callback: Option<GuiUiCallback>,
+        userdata: *mut c_void
+    ) -> bool,
+    pub gui_ui_grid: unsafe extern "C" fn(
+        ui: *mut c_void,
+        id: *const c_char,
+        columns: usize,
+        spacing_x: f32,
+        spacing_y: f32,
+        callback: Option<GuiUiCallback>,
+        userdata: *mut c_void
+    ) -> bool,
+    pub gui_ui_end_row: unsafe extern "C" fn(ui: *mut c_void) -> bool,
+    pub gui_ui_colored_label: unsafe extern "C" fn(
+        ui: *mut c_void,
+        r: u8,
+        g: u8,
+        b: u8,
+        a: u8,
+        text: *const c_char
+    ) -> bool,
 }
 
 impl Vtable {
@@ -307,6 +532,21 @@ impl Vtable {
         il2cpp_create_array,
         il2cpp_get_singleton_like_instance,
         log,
+        gui_register_menu_item,
+        gui_register_menu_section,
+        gui_show_notification,
+        gui_ui_heading,
+        gui_ui_label,
+        gui_ui_small,
+        gui_ui_separator,
+        gui_ui_button,
+        gui_ui_small_button,
+        gui_ui_checkbox,
+        gui_ui_text_edit_singleline,
+        gui_ui_horizontal,
+        gui_ui_grid,
+        gui_ui_end_row,
+        gui_ui_colored_label,
     };
 
     pub fn instantiate() -> Self {
@@ -321,6 +561,7 @@ pub struct Plugin {
 
 impl Plugin {
     pub fn init(&self) -> InitResult {
-        (self.init_fn)(&Vtable::instantiate(), VERSION)
+        let vtable = PLUGIN_VTABLE.get_or_init(Vtable::instantiate);
+        (self.init_fn)(vtable as *const Vtable, VERSION)
     }
 }

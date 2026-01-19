@@ -22,6 +22,8 @@ pub struct Config {
     #[serde(default = "Config::default_hide_ingame_ui_hotkey_bind")]
     pub hide_ingame_ui_hotkey_bind: i32,
     #[serde(default)]
+    pub load_libraries: Vec<String>,
+    #[serde(default)]
     pub hook_libc_dlopen: bool
 }
 

@@ -1,8 +1,8 @@
-use std::{borrow::Cow, ops::RangeInclusive, sync::{atomic::{self, AtomicBool}, Arc, Mutex}, thread, time::Instant};
+use std::{borrow::Cow, ops::RangeInclusive, os::raw::c_void, panic::{self, AssertUnwindSafe}, sync::{atomic::{self, AtomicBool}, Arc, Mutex}, thread, time::Instant};
 
 use egui_scale::EguiScale;
 use fnv::FnvHashSet;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use rust_i18n::t;
 use chrono::{Utc, Datelike};
 
@@ -73,6 +73,57 @@ static INSTANCE: OnceCell<Mutex<Gui>> = OnceCell::new();
 static IS_CONSUMING_INPUT: AtomicBool = AtomicBool::new(false);
 static mut DISABLED_GAME_UIS: once_cell::unsync::Lazy<FnvHashSet<*mut crate::il2cpp::types::Il2CppObject>> =
     once_cell::unsync::Lazy::new(|| FnvHashSet::default());
+static PLUGIN_MENU_ITEMS: Lazy<Mutex<Vec<PluginMenuItem>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static PLUGIN_MENU_SECTIONS: Lazy<Mutex<Vec<PluginMenuSection>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static PLUGIN_NOTIFICATIONS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
+
+pub type PluginMenuCallback = extern "C" fn(userdata: *mut c_void);
+pub type PluginMenuSectionCallback = extern "C" fn(ui: *mut c_void, userdata: *mut c_void);
+
+#[derive(Clone)]
+struct PluginMenuItem {
+    label: String,
+    callback: Option<PluginMenuCallback>,
+    userdata: usize
+}
+
+#[derive(Clone)]
+struct PluginMenuSection {
+    callback: PluginMenuSectionCallback,
+    userdata: usize
+}
+
+pub fn register_plugin_menu_item(label: String, callback: Option<PluginMenuCallback>, userdata: *mut c_void) {
+    PLUGIN_MENU_ITEMS.lock().unwrap().push(PluginMenuItem {
+        label,
+        callback,
+        userdata: userdata as usize
+    });
+}
+
+pub fn register_plugin_menu_section(callback: PluginMenuSectionCallback, userdata: *mut c_void) {
+    PLUGIN_MENU_SECTIONS.lock().unwrap().push(PluginMenuSection {
+        callback,
+        userdata: userdata as usize
+    });
+}
+
+pub fn enqueue_plugin_notification(message: String) {
+    PLUGIN_NOTIFICATIONS.lock().unwrap().push(message);
+}
+
+fn get_plugin_menu_items() -> Vec<PluginMenuItem> {
+    PLUGIN_MENU_ITEMS.lock().unwrap().clone()
+}
+
+fn get_plugin_menu_sections() -> Vec<PluginMenuSection> {
+    PLUGIN_MENU_SECTIONS.lock().unwrap().clone()
+}
+
+fn drain_plugin_notifications() -> Vec<String> {
+    let mut notifications = PLUGIN_NOTIFICATIONS.lock().unwrap();
+    std::mem::take(&mut *notifications)
+}
 
 fn get_scale_salt(ctx: &egui::Context) -> f32 {
     ctx.data(|d| d.get_temp::<f32>(egui::Id::new("gui_scale_salt"))).unwrap_or(1.0)
@@ -304,10 +355,6 @@ impl Gui {
     }
 
     fn run_menu(&mut self) {
-        let ctx = &self.context;
-        let scale = get_scale(ctx);
-        let salt = self.finalized_scale;
-
         let hachimi = Hachimi::instance();
         let localized_data = hachimi.localized_data.load();
         let localize_dict_count = localized_data.localize_dict.len().to_string();
@@ -315,159 +362,198 @@ impl Gui {
 
         let mut show_notification: Option<Cow<'_, str>> = None;
         let mut show_window: Option<BoxedWindow> = None;
-        egui::SidePanel::left(egui::Id::new("hachimi_menu").with(salt.to_bits()))
-            .min_width(96.0 * scale)
-            .default_width(200.0 * scale)
-            .show_animated(ctx, self.show_menu, |ui| {
-            ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
-                ui.horizontal(|ui| {
-                    ui.add(Self::icon(ctx));
-                    ui.heading(t!("hachimi"));
-                    if ui.button(" \u{f29c} ").clicked() {
-                        show_window = Some(Box::new(AboutWindow::new()));
-                    }
-                });
-                ui.label(env!("HACHIMI_DISPLAY_VERSION"));
-                if ui.button(t!("menu.close_menu")).clicked() {
-                    self.show_menu = false;
-                    self.menu_anim_time = None;
-                }
-                ui.separator();
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.heading(t!("menu.stats_heading"));
-                    ui.label(&self.fps_text);
-                    ui.label(t!("menu.localize_dict_entries", count = localize_dict_count));
-                    ui.label(t!("menu.hashed_dict_entries", count = hashed_dict_count));
-                    ui.separator();
-
-                    ui.heading(t!("menu.config_heading"));
-                    if ui.button(t!("menu.open_config_editor")).clicked() {
-                        show_window = Some(Box::new(ConfigEditor::new()));
-                    }
-                    if ui.button(t!("menu.reload_config")).clicked() {
-                        hachimi.reload_config();
-                        show_notification = Some(t!("notification.config_reloaded"));
-                    }
-                    if ui.button(t!("menu.open_first_time_setup")).clicked() {
-                        show_window = Some(Box::new(FirstTimeSetupWindow::new()));
-                    }
-                    ui.separator();
-
-                    ui.heading(t!("menu.graphics_heading"));
+        {
+            let ctx = &self.context;
+            let scale = get_scale(ctx);
+            let salt = self.finalized_scale;
+            egui::SidePanel::left(egui::Id::new("hachimi_menu").with(salt.to_bits()))
+                .min_width(96.0 * scale)
+                .default_width(200.0 * scale)
+                .show_animated(ctx, self.show_menu, |ui| {
+                ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(t!("menu.fps_label"));
-                        let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=240));
-                        if res.lost_focus() || res.drag_stopped() {
-                            hachimi.target_fps.store(self.menu_fps_value, atomic::Ordering::Relaxed);
-                            Thread::main_thread().schedule(|| {
-                                // doesnt matter which value's used here, hook will override it
-                                Application::set_targetFrameRate(30);
-                            });
+                        ui.add(Self::icon(ctx));
+                        ui.heading(t!("hachimi"));
+                        if ui.button(" \u{f29c} ").clicked() {
+                            show_window = Some(Box::new(AboutWindow::new()));
                         }
                     });
-                    #[cfg(target_os = "windows")]
-                    {
-                        use crate::windows::{discord, utils::set_window_topmost, wnd_hook};
-
-                        ui.horizontal(|ui| {
-                            let prev_value = self.menu_vsync_value;
-
-                            ui.label(t!("menu.vsync_label"));
-                            Self::run_vsync_combo(ui, &mut self.menu_vsync_value);
-
-                            if prev_value != self.menu_vsync_value {
-                                hachimi.vsync_count.store(self.menu_vsync_value, atomic::Ordering::Relaxed);
-                                Thread::main_thread().schedule(|| {
-                                    QualitySettings::set_vSyncCount(1);
-                                });
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            let mut value = hachimi.window_always_on_top.load(atomic::Ordering::Relaxed);
-
-                            ui.label(t!("menu.stay_on_top"));
-                            if ui.checkbox(&mut value, "").changed() {
-                                hachimi.window_always_on_top.store(value, atomic::Ordering::Relaxed);
-                                Thread::main_thread().schedule(|| {
-                                    let topmost = Hachimi::instance().window_always_on_top.load(atomic::Ordering::Relaxed);
-                                    unsafe { _ = set_window_topmost(wnd_hook::get_target_hwnd(), topmost); }
-                                });
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            let mut value = hachimi.discord_rpc.load(atomic::Ordering::Relaxed);
-                            
-                            ui.label(t!("menu.discord_rpc"));
-                            if ui.checkbox(&mut value, "").changed() {
-                                hachimi.discord_rpc.store(value, atomic::Ordering::Relaxed);
-                                if let Err(e) = if value { discord::start_rpc() } else { discord::stop_rpc() } {
-                                    error!("{}", e);
-                                }
-                            }
-                        });
+                    ui.label(env!("HACHIMI_DISPLAY_VERSION"));
+                    if ui.button(t!("menu.close_menu")).clicked() {
+                        self.show_menu = false;
+                        self.menu_anim_time = None;
                     }
                     ui.separator();
 
-                    ui.heading(t!("menu.translation_heading"));
-                    if ui.button(t!("menu.reload_localized_data")).clicked() {
-                        hachimi.load_localized_data();
-                        show_notification = Some(t!("notification.localized_data_reloaded"));
-                    }
-                    if ui.button(t!("menu.check_for_updates")).clicked() {
-                        hachimi.tl_updater.clone().check_for_updates(false);
-                    }
-                    if ui.button(t!("menu.check_for_updates_pedantic")).clicked() {
-                        hachimi.tl_updater.clone().check_for_updates(true);
-                    }
-                    if hachimi.config.load().translator_mode {
-                        if ui.button(t!("menu.dump_localize_dict")).clicked() {
-                            Thread::main_thread().schedule(|| {
-                                let data = Localize::dump_strings();
-                                let dict_path = Hachimi::instance().get_data_path("localize_dump.json");
-                                let mut gui = Gui::instance().unwrap().lock().unwrap();
-                                if let Err(e) = utils::write_json_file(&data, dict_path) {
-                                    gui.show_notification(&e.to_string())
-                                }
-                                else {
-                                    gui.show_notification(&t!("notification.saved_localize_dump"))
-                                }
-                            })
-                        }
-                    }
-                    ui.separator();
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.heading(t!("menu.stats_heading"));
+                        ui.label(&self.fps_text);
+                        ui.label(t!("menu.localize_dict_entries", count = localize_dict_count));
+                        ui.label(t!("menu.hashed_dict_entries", count = hashed_dict_count));
+                        ui.separator();
 
-                    ui.heading(t!("menu.danger_zone_heading"));
-                    ui.vertical(|ui| {
-                        ui.label(t!("menu.danger_zone_warning"));
+                        ui.heading(t!("menu.config_heading"));
+                        if ui.button(t!("menu.open_config_editor")).clicked() {
+                            show_window = Some(Box::new(ConfigEditor::new()));
+                        }
+                        if ui.button(t!("menu.reload_config")).clicked() {
+                            hachimi.reload_config();
+                            show_notification = Some(t!("notification.config_reloaded"));
+                        }
+                        if ui.button(t!("menu.open_first_time_setup")).clicked() {
+                            show_window = Some(Box::new(FirstTimeSetupWindow::new()));
+                        }
+                        ui.separator();
+
+                        ui.heading(t!("menu.graphics_heading"));
+                        ui.horizontal(|ui| {
+                            ui.label(t!("menu.fps_label"));
+                            let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=240));
+                            if res.lost_focus() || res.drag_stopped() {
+                                hachimi.target_fps.store(self.menu_fps_value, atomic::Ordering::Relaxed);
+                                Thread::main_thread().schedule(|| {
+                                    Application::set_targetFrameRate(30);
+                                });
+                            }
+                        });
+                        #[cfg(target_os = "windows")]
+                        {
+                            use crate::windows::{discord, utils::set_window_topmost, wnd_hook};
+
+                            ui.horizontal(|ui| {
+                                let prev_value = self.menu_vsync_value;
+
+                                ui.label(t!("menu.vsync_label"));
+                                Self::run_vsync_combo(ui, &mut self.menu_vsync_value);
+
+                                if prev_value != self.menu_vsync_value {
+                                    hachimi.vsync_count.store(self.menu_vsync_value, atomic::Ordering::Relaxed);
+                                    Thread::main_thread().schedule(|| {
+                                        QualitySettings::set_vSyncCount(1);
+                                    });
+                                }
+                            });
+                            ui.horizontal(|ui| {
+                                let mut value = hachimi.window_always_on_top.load(atomic::Ordering::Relaxed);
+
+                                ui.label(t!("menu.stay_on_top"));
+                                if ui.checkbox(&mut value, "").changed() {
+                                    hachimi.window_always_on_top.store(value, atomic::Ordering::Relaxed);
+                                    Thread::main_thread().schedule(|| {
+                                        let topmost = Hachimi::instance().window_always_on_top.load(atomic::Ordering::Relaxed);
+                                        unsafe { _ = set_window_topmost(wnd_hook::get_target_hwnd(), topmost); }
+                                    });
+                                }
+                            });
+                            ui.horizontal(|ui| {
+                                let mut value = hachimi.discord_rpc.load(atomic::Ordering::Relaxed);
+                                
+                                ui.label(t!("menu.discord_rpc"));
+                                if ui.checkbox(&mut value, "").changed() {
+                                    hachimi.discord_rpc.store(value, atomic::Ordering::Relaxed);
+                                    if let Err(e) = if value { discord::start_rpc() } else { discord::stop_rpc() } {
+                                        error!("{}", e);
+                                    }
+                                }
+                            });
+                        }
+                        ui.separator();
+
+                        ui.heading(t!("menu.translation_heading"));
+                        if ui.button(t!("menu.reload_localized_data")).clicked() {
+                            hachimi.load_localized_data();
+                            show_notification = Some(t!("notification.localized_data_reloaded"));
+                        }
+                        if ui.button(t!("menu.check_for_updates")).clicked() {
+                            hachimi.tl_updater.clone().check_for_updates(false);
+                        }
+                        if ui.button(t!("menu.check_for_updates_pedantic")).clicked() {
+                            hachimi.tl_updater.clone().check_for_updates(true);
+                        }
+                        if hachimi.config.load().translator_mode {
+                            if ui.button(t!("menu.dump_localize_dict")).clicked() {
+                                Thread::main_thread().schedule(|| {
+                                    let data = Localize::dump_strings();
+                                    let dict_path = Hachimi::instance().get_data_path("localize_dump.json");
+                                    let mut gui = Gui::instance().unwrap().lock().unwrap();
+                                    if let Err(e) = utils::write_json_file(&data, dict_path) {
+                                        gui.show_notification(&e.to_string())
+                                    }
+                                    else {
+                                        gui.show_notification(&t!("notification.saved_localize_dump"))
+                                    }
+                                })
+                            }
+                        }
+                        ui.separator();
+
+                        let plugin_items = get_plugin_menu_items();
+                        if !plugin_items.is_empty() {
+                            ui.heading("Plugins");
+                            for item in plugin_items {
+                                if ui.button(&item.label).clicked() {
+                                    if let Some(callback) = item.callback {
+                                        let _ = panic::catch_unwind(AssertUnwindSafe(|| {
+                                            callback(item.userdata as *mut c_void);
+                                        }))
+                                        .inspect_err(|_| {
+                                            error!("plugin menu item callback panicked: {}", item.label);
+                                        });
+                                    }
+                                }
+                            }
+                            ui.separator();
+                        }
+
+                        let plugin_sections = get_plugin_menu_sections();
+                        if !plugin_sections.is_empty() {
+                            for section in plugin_sections {
+                                let _ = panic::catch_unwind(AssertUnwindSafe(|| {
+                                    (section.callback)(ui as *mut _ as *mut c_void, section.userdata as *mut c_void);
+                                }))
+                                .inspect_err(|_| {
+                                    error!("plugin menu section callback panicked");
+                                });
+                            }
+                            ui.separator();
+                        }
+
+                        ui.heading(t!("menu.danger_zone_heading"));
+                        ui.vertical(|ui| {
+                            ui.label(t!("menu.danger_zone_warning"));
+                        });
+                        if ui.button(t!("menu.soft_restart")).clicked() {
+                            show_window = Some(Box::new(SimpleYesNoDialog::new(&t!("confirm_dialog_title"), &t!("soft_restart_confirm_content"), |ok| {
+                                if !ok { return; }
+                                Thread::main_thread().schedule(|| {
+                                    GameSystem::SoftwareReset(GameSystem::instance());
+                                });
+                            })));
+                        }
+                        #[cfg(not(target_os = "windows"))]
+                        if ui.button(t!("menu.open_in_game_browser")).clicked() {
+                            show_window = Some(Box::new(SimpleYesNoDialog::new(&t!("confirm_dialog_title"), &t!("in_game_browser_confirm_content"), |ok| {
+                                if !ok { return; }
+                                Thread::main_thread().schedule(|| {
+                                    WebViewManager::quick_open(&t!("browser_dialog_title"), &Hachimi::instance().config.load().open_browser_url);
+                                });
+                            })));
+                        }
+                        if ui.button(t!("menu.toggle_game_ui")).clicked() {
+                            Thread::main_thread().schedule(Self::toggle_game_ui);
+                        }
                     });
-                    if ui.button(t!("menu.soft_restart")).clicked() {
-                        show_window = Some(Box::new(SimpleYesNoDialog::new(&t!("confirm_dialog_title"), &t!("soft_restart_confirm_content"), |ok| {
-                            if !ok { return; }
-                            Thread::main_thread().schedule(|| {
-                                GameSystem::SoftwareReset(GameSystem::instance());
-                            });
-                        })));
-                    }
-                    #[cfg(not(target_os = "windows"))]
-                    if ui.button(t!("menu.open_in_game_browser")).clicked() {
-                        show_window = Some(Box::new(SimpleYesNoDialog::new(&t!("confirm_dialog_title"), &t!("in_game_browser_confirm_content"), |ok| {
-                            if !ok { return; }
-                            Thread::main_thread().schedule(|| {
-                                WebViewManager::quick_open(&t!("browser_dialog_title"), &Hachimi::instance().config.load().open_browser_url);
-                            });
-                        })));
-                    }
-                    if ui.button(t!("menu.toggle_game_ui")).clicked() {
-                        Thread::main_thread().schedule(Self::toggle_game_ui);
-                    }
                 });
             });
-        });
+        }
+
+        for message in drain_plugin_notifications() {
+            self.show_notification(&message);
+        }
 
         if !self.show_menu {
             if let Some(time) = self.menu_anim_time {
-                if time.elapsed().as_secs_f32() >= ctx.style().animation_time {
+                if time.elapsed().as_secs_f32() >= self.context.style().animation_time {
                     self.menu_visible = false;
                 }
             }
