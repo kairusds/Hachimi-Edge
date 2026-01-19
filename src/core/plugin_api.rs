@@ -324,7 +324,9 @@ unsafe extern "C" fn gui_ui_text_edit_singleline(
     let bytes = std::slice::from_raw_parts_mut(buffer as *mut u8, buffer_len);
     let end = bytes.iter().position(|b| *b == 0).unwrap_or(buffer_len);
     let mut value = String::from_utf8_lossy(&bytes[..end]).into_owned();
-    let changed = ui.text_edit_singleline(&mut value).changed();
+    let changed = ui
+        .add(egui::TextEdit::singleline(&mut value).desired_width(80.0))
+        .changed();
     if changed {
         bytes.fill(0);
         let src = value.as_bytes();
