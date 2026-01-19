@@ -1,6 +1,7 @@
 use std::ffi::{c_char, c_void, CStr};
 
 use once_cell::sync::OnceCell;
+use egui::Align;
 
 use crate::{core::{gui, Hachimi, Interceptor}, il2cpp::{self, types::{il2cpp_array_size_t, FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo}}};
 
@@ -324,9 +325,14 @@ unsafe extern "C" fn gui_ui_text_edit_singleline(
     let bytes = std::slice::from_raw_parts_mut(buffer as *mut u8, buffer_len);
     let end = bytes.iter().position(|b| *b == 0).unwrap_or(buffer_len);
     let mut value = String::from_utf8_lossy(&bytes[..end]).into_owned();
-    let changed = ui
-        .add(egui::TextEdit::singleline(&mut value).desired_width(80.0))
-        .changed();
+    let response = ui.add(egui::TextEdit::singleline(&mut value).desired_width(80.0));
+    if response.clicked() || response.gained_focus() {
+        gui::request_ime();
+    }
+    if response.gained_focus() {
+        response.scroll_to_me(Some(Align::Center));
+    }
+    let changed = response.changed();
     if changed {
         bytes.fill(0);
         let src = value.as_bytes();

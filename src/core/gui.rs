@@ -45,6 +45,7 @@ pub struct Gui {
     last_fps_update: Instant,
     tmp_frame_count: u32,
     fps_text: String,
+    last_focused: Option<egui::Id>,
 
     show_menu: bool,
 
@@ -133,6 +134,32 @@ fn get_scale(ctx: &egui::Context) -> f32 {
     ctx.data(|d| d.get_temp::<f32>(egui::Id::new("gui_scale"))).unwrap_or(1.0)
 }
 
+static IME_REQUESTED: AtomicBool = AtomicBool::new(false);
+static IME_VISIBLE: AtomicBool = AtomicBool::new(false);
+
+pub fn request_ime() {
+    IME_REQUESTED.store(true, atomic::Ordering::Relaxed);
+}
+
+pub fn take_ime_request() -> bool {
+    IME_REQUESTED.swap(false, atomic::Ordering::Relaxed)
+}
+
+pub fn set_ime_visible(visible: bool) {
+    IME_VISIBLE.store(visible, atomic::Ordering::Relaxed);
+}
+
+pub fn is_ime_visible() -> bool {
+    IME_VISIBLE.load(atomic::Ordering::Relaxed)
+}
+
+fn ime_scroll_padding(ctx: &egui::Context) -> f32 {
+    if !is_ime_visible() {
+        return 0.0;
+    }
+    ctx.input(|i| i.screen_rect().height() * 0.35)
+}
+
 impl Gui {
     // Call this from the render thread!
     pub fn instance_or_init(open_key_id: &str) -> &Mutex<Gui> {
@@ -184,6 +211,7 @@ impl Gui {
             last_fps_update: now,
             tmp_frame_count: 0,
             fps_text: "FPS: 0".to_string(),
+            last_focused: None,
 
             show_menu: false,
 
@@ -304,6 +332,12 @@ impl Gui {
         self.run_notifications();
 
         if self.splash_visible { self.run_splash(); }
+
+        let focused = self.context.memory(|m| m.focused());
+        if focused.is_some() && focused != self.last_focused && self.context.wants_keyboard_input() {
+            request_ime();
+        }
+        self.last_focused = focused;
 
         // Store this as an atomic value so the input thread can check it without locking the gui
         IS_CONSUMING_INPUT.store(self.is_consuming_input(), atomic::Ordering::Relaxed);
@@ -541,6 +575,10 @@ impl Gui {
                         }
                         if ui.button(t!("menu.toggle_game_ui")).clicked() {
                             Thread::main_thread().schedule(Self::toggle_game_ui);
+                        }
+                        let padding = ime_scroll_padding(ui.ctx());
+                        if padding > 0.0 {
+                            ui.add_space(padding);
                         }
                     });
                 });
@@ -1470,6 +1508,10 @@ impl Window for ConfigEditor {
                                 Self::run_options_grid(&mut config, ui, self.current_tab);
                             });
                         });
+                        let padding = ime_scroll_padding(ui.ctx());
+                        if padding > 0.0 {
+                            ui.add_space(padding);
+                        }
                     });
                 },
                 |ui| {
@@ -1641,6 +1683,10 @@ impl Window for FirstTimeSetupWindow {
                                     
                                     ui.radio_value(&mut self.current_tl_repo, None, t!("first_time_setup.skip_translation"));
                                 });
+                                let padding = ime_scroll_padding(ui.ctx());
+                                if padding > 0.0 {
+                                    ui.add_space(padding);
+                                }
                             });
                         });
                     }
@@ -1740,9 +1786,13 @@ impl Window for LicenseWindow {
         new_window(ctx, self.id, t!("license.title"))
         .open(&mut open)
         .show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.label(include_str!("../../LICENSE"));
-            });
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                ui.label(include_str!("../../LICENSE"));
+                                let padding = ime_scroll_padding(ui.ctx());
+                                if padding > 0.0 {
+                                    ui.add_space(padding);
+                                }
+                            });
         });
 
         open
