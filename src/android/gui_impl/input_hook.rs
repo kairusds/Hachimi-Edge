@@ -1,11 +1,15 @@
 #![allow(non_snake_case)]
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
 
 use egui::Vec2;
-use jni::{objects::{JMap, JObject}, sys::{jboolean, jint, JNI_TRUE}, JNIEnv};
+use jni::{
+    objects::{JMap, JObject, JValue},
+    sys::{jboolean, jint, JNI_TRUE},
+    JNIEnv,
+};
 
 use crate::{core::{Error, Gui, Hachimi}, il2cpp::symbols::Thread};
 
@@ -32,6 +36,7 @@ static VOLUME_UP_PRESSED: AtomicBool = AtomicBool::new(false);
 static VOLUME_DOWN_PRESSED: AtomicBool = AtomicBool::new(false);
 static VOLUME_UP_LAST_TAP: once_cell::sync::Lazy<Arc<Mutex<Option<Instant>>>> = 
     once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(None)));
+static IME_REQUESTED: AtomicI32 = AtomicI32::new(-1);
 
 static SCROLL_AXIS_SCALE: f32 = 10.0;
 
@@ -221,7 +226,9 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
 
 fn get_ppp(mut env: JNIEnv, gui: &Gui) -> f32 {
     // SAFETY: view doesn't live past the lifetime of this function
-    let view = get_view(unsafe { env.unsafe_clone() });
+    let Some(view) = get_view(unsafe { env.unsafe_clone() }) else {
+        return gui.context.pixels_per_point();
+    };
     let view_width = env.call_method(&view, "getWidth", "()I", &[]).unwrap().i().unwrap();
     let view_height = env.call_method(&view, "getHeight", "()I", &[]).unwrap().i().unwrap();
     let view_main_axis_size = if view_width < view_height { view_width } else { view_height };
@@ -229,44 +236,176 @@ fn get_ppp(mut env: JNIEnv, gui: &Gui) -> f32 {
     gui.context.zoom_factor() * (view_main_axis_size as f32 / gui.prev_main_axis_size as f32)
 }
 
-fn get_view(mut env: JNIEnv) -> JObject<'_> {
-    let activity_thread_class = env.find_class("android/app/ActivityThread").unwrap();
+fn get_activity(mut env: JNIEnv) -> Option<JObject<'_>> {
+    let activity_thread_class = env.find_class("android/app/ActivityThread").ok()?;
     let activity_thread = env
         .call_static_method(
             activity_thread_class,
             "currentActivityThread",
             "()Landroid/app/ActivityThread;",
-            &[]
+            &[],
         )
-        .unwrap()
+        .ok()?
         .l()
-        .unwrap();
+        .ok()?;
     let activities = env
         .get_field(activity_thread, "mActivities", "Landroid/util/ArrayMap;")
-        .unwrap()
+        .ok()?
         .l()
-        .unwrap();
-    let activities_map = JMap::from_env(&mut env, &activities).unwrap();
+        .ok()?;
+    let activities_map = JMap::from_env(&mut env, &activities).ok()?;
 
     // Get the first activity in the map
-    let (_, activity_record) = activities_map.iter(&mut env).unwrap().next(&mut env).unwrap().unwrap();
+    let (_, activity_record) = activities_map
+        .iter(&mut env)
+        .ok()?
+        .next(&mut env)
+        .ok()??
+        ;
     let activity = env
         .get_field(activity_record, "activity", "Landroid/app/Activity;")
-        .unwrap()
+        .ok()?
         .l()
-        .unwrap();
+        .ok()?;
+    Some(activity)
+}
 
+fn get_view(mut env: JNIEnv) -> Option<JObject<'_>> {
+    let activity = get_activity(unsafe { env.unsafe_clone() })?;
     let jni_window = env
         .call_method(activity, "getWindow", "()Landroid/view/Window;", &[])
-        .unwrap()
+        .ok()?
         .l()
-        .unwrap();
+        .ok()?;
 
-    env
-        .call_method(jni_window, "getDecorView", "()Landroid/view/View;", &[])
-        .unwrap()
+    env.call_method(jni_window, "getDecorView", "()Landroid/view/View;", &[])
+        .ok()?
         .l()
-        .unwrap()
+        .ok()
+}
+
+fn clear_jni_exception(env: &mut JNIEnv, context: &str) -> bool {
+    if env.exception_check().unwrap_or(false) {
+        let _ = env.exception_describe();
+        let _ = env.exception_clear();
+        warn!("IME: cleared JNI exception at {}", context);
+        return true;
+    }
+    false
+}
+
+pub(crate) fn set_ime_visible(visible: bool) {
+    info!("IME set_visible={}", visible);
+    crate::core::gui::set_ime_visible(visible);
+    let Some(vm) = crate::android::main::java_vm() else {
+        warn!("IME: JavaVM unavailable");
+        return;
+    };
+    let Ok(mut env) = vm.attach_current_thread() else {
+        warn!("IME: attach_current_thread failed");
+        return;
+    };
+    let Some(activity) = get_activity(unsafe { env.unsafe_clone() }) else {
+        warn!("IME: get_activity failed");
+        return;
+    };
+    if clear_jni_exception(&mut env, "get_activity") {
+        return;
+    }
+    let Some(view) = get_view(unsafe { env.unsafe_clone() }) else {
+        warn!("IME: get_view failed");
+        return;
+    };
+    if clear_jni_exception(&mut env, "get_view") {
+        return;
+    }
+    let target_view = match env
+        .call_method(&activity, "getCurrentFocus", "()Landroid/view/View;", &[])
+        .and_then(|v| v.l())
+    {
+        Ok(focus) if !focus.is_null() => focus,
+        _ => view,
+    };
+    let _ = clear_jni_exception(&mut env, "getCurrentFocus");
+    let context = activity;
+    let Ok(context_class) = env.find_class("android/content/Context") else {
+        warn!("IME: find Context class failed");
+        return;
+    };
+    let Ok(service_name) = env
+        .get_static_field(context_class, "INPUT_METHOD_SERVICE", "Ljava/lang/String;")
+        .and_then(|v| v.l())
+    else {
+        warn!("IME: get INPUT_METHOD_SERVICE failed");
+        return;
+    };
+    let Ok(imm) = env
+        .call_method(
+            &context,
+            "getSystemService",
+            "(Ljava/lang/String;)Ljava/lang/Object;",
+            &[JValue::Object(&service_name)],
+        )
+        .and_then(|v| v.l())
+    else {
+        warn!("IME: getSystemService failed");
+        return;
+    };
+    if clear_jni_exception(&mut env, "getSystemService") {
+        return;
+    }
+    if visible {
+        let res = env.call_method(
+            &imm,
+            "showSoftInput",
+            "(Landroid/view/View;I)Z",
+            &[JValue::Object(&target_view), JValue::Int(2)],
+        );
+        let shown = res.ok().and_then(|v| v.z().ok()).unwrap_or(false);
+        if !shown {
+            let _ = env.call_method(
+                &imm,
+                "toggleSoftInput",
+                "(II)V",
+                &[JValue::Int(2), JValue::Int(1)],
+            );
+            warn!("IME: showSoftInput returned false, toggled instead");
+        }
+        let _ = clear_jni_exception(&mut env, "showSoftInput");
+    } else {
+        let Ok(window_token) = env
+            .call_method(&target_view, "getWindowToken", "()Landroid/os/IBinder;", &[])
+            .and_then(|v| v.l())
+        else {
+            warn!("IME: getWindowToken failed");
+            return;
+        };
+        let res = env.call_method(
+            &imm,
+            "hideSoftInputFromWindow",
+            "(Landroid/os/IBinder;I)Z",
+            &[JValue::Object(&window_token), JValue::Int(0)],
+        );
+        if res.is_err() {
+            warn!("IME: hideSoftInputFromWindow failed");
+        }
+        let _ = clear_jni_exception(&mut env, "hideSoftInputFromWindow");
+    }
+}
+
+pub(crate) fn request_ime_visible(visible: bool) {
+    let desired = if visible { 1 } else { 0 };
+    IME_REQUESTED.store(desired, Ordering::Relaxed);
+    Thread::main_thread().schedule(apply_ime_request);
+}
+
+fn apply_ime_request() {
+    let desired = IME_REQUESTED.swap(-1, Ordering::Relaxed);
+    if desired == 1 {
+        set_ime_visible(true);
+    } else if desired == 0 {
+        set_ime_visible(false);
+    }
 }
 
 fn reset_volume_up_tap_state() {

@@ -3,11 +3,13 @@
 use std::num::NonZeroU32;
 use std::os::raw::c_char;
 use std::os::raw::{c_uint, c_void};
-use std::sync::Arc;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use glow::HasContext;
 use once_cell::unsync::OnceCell;
 
 use crate::core::{Error, Gui, Hachimi};
+
+use super::input_hook;
 
 type EGLBoolean = c_uint;
 type EGLDisplay = *mut c_void;
@@ -64,6 +66,25 @@ extern "C" fn eglSwapBuffers(display: EGLDisplay, surface: EGLSurface) -> EGLBoo
 
     gui.set_screen_size(width, height);
     let output = gui.run();
+    let wants_keyboard = gui.context.wants_keyboard_input();
+    static mut LAST_WANTS_KEYBOARD: Option<bool> = None;
+    let changed = unsafe {
+        let changed = LAST_WANTS_KEYBOARD.map_or(true, |v| v != wants_keyboard);
+        if changed {
+            LAST_WANTS_KEYBOARD = Some(wants_keyboard);
+        }
+        changed
+    };
+    if changed {
+        info!("IME wants_keyboard_input={}", wants_keyboard);
+    }
+    let ime_request = crate::core::gui::take_ime_request();
+    if ime_request && wants_keyboard {
+        IME_VISIBLE.store(true, Ordering::Relaxed);
+        input_hook::request_ime_visible(true);
+    } else if !wants_keyboard && IME_VISIBLE.swap(false, Ordering::Relaxed) {
+        input_hook::request_ime_visible(false);
+    }
 
     let clipped_primitives = gui.context.tessellate(output.shapes, output.pixels_per_point);
     let dimensions: [u32; 2] = [width as u32, height as u32];
@@ -109,6 +130,7 @@ extern "C" fn eglSwapBuffers(display: EGLDisplay, surface: EGLSurface) -> EGLBoo
 }
 
 static mut PAINTER: OnceCell<egui_glow::Painter> = OnceCell::new();
+static IME_VISIBLE: AtomicBool = AtomicBool::new(false);
 
 fn init_painter() -> Result<&'static mut egui_glow::Painter, Error> {
     if let Some(painter) = unsafe { PAINTER.get_mut() } {
