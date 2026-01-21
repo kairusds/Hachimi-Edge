@@ -6,3 +6,50 @@ EXPORTS
     criVvp9_GetAlphaInterface
     criVvp9_GetInterface
     criVvp9_SetUserAllocator
+
+    ; winhttp.dll
+    WinHttpAddRequestHeaders
+    WinHttpCheckPlatform
+    WinHttpCloseHandle
+    WinHttpConnect
+    WinHttpCrackUrl
+    WinHttpCreateProxyResolver
+    WinHttpCreateUrl
+    WinHttpDetectAutoProxyConfigUrl
+    WinHttpFreeProxyResult
+    WinHttpFreeProxyResultEx
+    WinHttpFreeProxySettings
+    WinHttpGetDefaultProxyConfiguration
+    WinHttpGetIEProxyConfigForCurrentUser
+    WinHttpGetProxyForUrl
+    WinHttpGetProxyForUrlEx
+    WinHttpGetProxyForUrlEx2
+    WinHttpGetProxyResult
+    WinHttpGetProxyResultEx
+    WinHttpGetProxySettingsVersion
+    WinHttpOpen
+    WinHttpOpenRequest
+    WinHttpQueryAuthSchemes
+    WinHttpQueryDataAvailable
+    WinHttpQueryHeaders
+    WinHttpQueryOption
+    WinHttpReadData
+    WinHttpReadProxySettings
+    WinHttpReceiveResponse
+    WinHttpResetAutoProxy
+    WinHttpSendRequest
+    WinHttpSetCredentials
+    WinHttpSetDefaultProxyConfiguration
+    WinHttpSetOption
+    WinHttpSetStatusCallback
+    WinHttpSetTimeouts
+    WinHttpTimeFromSystemTime
+    WinHttpTimeToSystemTime
+    WinHttpWebSocketClose
+    WinHttpWebSocketCompleteUpgrade
+    WinHttpWebSocketQueryCloseStatus
+    WinHttpWebSocketReceive
+    WinHttpWebSocketSend
+    WinHttpWebSocketShutdown
+    WinHttpWriteData
+    WinHttpWriteProxySettings
