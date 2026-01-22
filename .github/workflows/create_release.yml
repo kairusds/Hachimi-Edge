@@ -126,7 +126,12 @@ jobs:
           for hash in $COMMIT_HASHES; do
             subject=$(git show -s --format=%s $hash)
             body=$(git show -s --format=%b $hash)
-            author=$(git show -s --format=%an $hash)
+            author_login=$(gh api "repos/${{ github.repository }}/commits/$hash" --jq '.author.login' 2>/dev/null || echo "")
+            if [ -n "$author_login" ]; then
+              author="$author_login"
+            else
+              author=$(git show -s --format=%an $hash)
+            fi
             short_hash=$(git show -s --format=%h $hash)
 
             echo "* **$subject**" >> CHANGELOG.md
@@ -144,6 +149,7 @@ jobs:
 
           unset IFS
         env:
+          GH_TOKEN: ${{ github.token }}
           LATEST_TAG: ${{ env.RELEASE_VERSION }}
 
       - name: Upload binaries to a release
