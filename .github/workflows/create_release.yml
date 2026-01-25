@@ -37,6 +37,25 @@ jobs:
       - uses: actions/checkout@v5
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
+
+      - name: Setup and Patch Dependencies
+        shell: powershell
+        run: |
+          pushd ..
+
+          git clone --revision 903043939a076dc81e122a1c8451755bfb3979c8 https://github.com/Nekomaru-PKU/egui-directx11.git
+          cd egui-directx11
+
+          $fxc = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "fxc.exe" | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1
+          if (-not $fxc) { Write-Error "fxc.exe not found"; exit 1 }
+
+          & $fxc.FullName /nologo /O3 /T vs_4_0 /E vs_egui /Fo shaders/vs_egui.bin shaders/egui.hlsl
+          & $fxc.FullName /nologo /O3 /T ps_4_0 /E ps_egui /Fo shaders/ps_egui.bin shaders/egui.hlsl
+
+          popd
+
+          Add-Content -Path "Cargo.toml" -Value "egui-directx11 = { path = '../egui-directx11' }"
+
       - uses: dtolnay/rust-toolchain@stable
       - name: Build Hachimi for Windows
         run: |
