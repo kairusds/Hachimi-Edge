@@ -1327,6 +1327,10 @@ impl ConfigEditor {
                 ui.checkbox(&mut config.debug_mode, "");
                 ui.end_row();
 
+                ui.label(t!("config_editor.enable_file_logging"));
+                ui.checkbox(&mut config.enable_file_logging, "");
+                ui.end_row();
+
                 ui.label(t!("config_editor.translator_mode"));
                 ui.checkbox(&mut config.translator_mode, "");
                 ui.end_row();

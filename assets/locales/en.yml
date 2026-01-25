@@ -117,6 +117,7 @@ config_editor:
     which means that you will NOT be able to access the Config Editor after this.
     If this was not intentional, close this dialog and DISABLE the option.
   debug_mode: "Debug mode"
+  enable_file_logging: "Enable file logging"
   translator_mode: "Translator mode"
   skip_first_time_setup: "Skip first time setup"
   disable_auto_update_check: "Disable auto update\ncheck"
