@@ -14,6 +14,20 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
 
+      - name: Setup and Patch Dependencies
+        run: |
+          pushd ..
+
+          git clone --revision 44cdd653e2317d300fb8a6c9c36b03f23991e803 https://github.com/emilk/egui.git
+          cd egui
+
+          sed -i 's/ui.set_min_width(ui.available_width());/\/\/ ui.set_min_width(ui.available_width());/' crates/egui/src/containers/combo_box.rs
+
+          popd
+
+          echo 'egui = { path = "../egui/crates/egui" }' >> Cargo.toml
+          echo 'egui_extras = { path = "../egui/crates/egui_extras" }' >> Cargo.toml
+
       - name: Grant execute permission to build script
         run: chmod +x tools/android/build.sh
       - uses: dtolnay/rust-toolchain@stable
@@ -43,6 +57,14 @@ jobs:
         run: |
           pushd ..
 
+          git clone --revision 44cdd653e2317d300fb8a6c9c36b03f23991e803 https://github.com/emilk/egui.git
+          cd egui
+
+          $File = "crates/egui/src/containers/combo_box.rs"
+          (Get-Content $File) -replace 'ui.set_min_width\(ui.available_width\(\)\);', '// ui.set_min_width(ui.available_width());' | Set-Content $File
+
+          cd ..
+
           git clone --revision 903043939a076dc81e122a1c8451755bfb3979c8 https://github.com/Nekomaru-PKU/egui-directx11.git
           cd egui-directx11
 
@@ -54,7 +76,12 @@ jobs:
 
           popd
 
-          Add-Content -Path "Cargo.toml" -Value "egui-directx11 = { path = '../egui-directx11' }"
+          $patches = @(
+            "egui-directx11 = { path = '../egui-directx11' }",
+            "egui = { path = '../egui/crates/egui' }",
+            "egui_extras = { path = '../egui/crates/egui_extras' }"
+          )
+          Add-Content -Path "Cargo.toml" -Value $patches
 
       - uses: dtolnay/rust-toolchain@stable
       - name: Build Hachimi for Windows
