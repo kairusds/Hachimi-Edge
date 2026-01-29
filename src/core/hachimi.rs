@@ -52,7 +52,7 @@ impl Hachimi {
         let instance = match Self::new() {
             Ok(v) => v,
             Err(e) => {
-                super::log::init(false); // early init to log error
+                super::log::init(false, false); // early init to log error
                 error!("Init failed: {}", e);
                 return false;
             }
@@ -68,7 +68,7 @@ impl Hachimi {
             instance.config.store(Arc::new(config));
         }
 
-        super::log::init(instance.config.load().debug_mode);
+        super::log::init(config.debug_mode, config.enable_file_logging);
 
         info!("Hachimi {}", env!("HACHIMI_DISPLAY_VERSION"));
         info!("Game region: {}", instance.game.region);
@@ -261,6 +261,8 @@ fn default_serde_instance<'a, T: Deserialize<'a>>() -> Option<T> {
 pub struct Config {
     #[serde(default)]
     pub debug_mode: bool,
+    #[serde(default)]
+    pub enable_file_logging: bool,
     #[serde(default)]
     pub translator_mode: bool,
     #[serde(default)]
