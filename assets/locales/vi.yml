@@ -144,6 +144,7 @@ config_editor:
   menu_open_key_set: "Nhấn để thiết lập"
   render_scale: "Tỷ lệ kết xuất"
   aniso_level: "Lọc dị hướng"
+  shadow_resolution: "Độ phân giải bóng đổ"
 
 tl_update_dialog:
   title: "Bản cập nhật mới"

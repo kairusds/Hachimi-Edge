@@ -162,6 +162,7 @@ config_editor:
   menu_open_key_set: "按下以设置"
   render_scale: "渲染比例"
   aniso_level: "各向异性过滤"
+  shadow_resolution: "阴影分辨率"
 
 tl_update_dialog:
   title: "新翻译更新可用"

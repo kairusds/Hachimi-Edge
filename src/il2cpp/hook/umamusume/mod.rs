@@ -52,6 +52,7 @@ mod ApplicationSettingSaveLoader;
 mod LiveTheaterCharaSelect;
 mod LiveTheaterViewController;
 pub mod CySpringController;
+pub mod CameraData;
 
 #[cfg(target_os = "windows")]
 pub mod SceneManager;
@@ -123,4 +124,5 @@ pub fn init() {
         PaymentUtility::init(image);
     }
     LowResolutionCamera::init(image);
+    CameraData::init(image);
 }

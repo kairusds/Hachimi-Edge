@@ -149,6 +149,7 @@ config_editor:
   menu_open_key_set: "按下按鍵進行設定"
   render_scale: "渲染比例"
   aniso_level: "各向異性過濾"
+  shadow_resolution: "陰影解析度"
 
 tl_update_dialog:
   title: "有可用的更新"
