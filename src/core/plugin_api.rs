@@ -395,6 +395,113 @@ unsafe extern "C" fn gui_ui_colored_label(
     true
 }
 
+unsafe extern "C" fn gui_register_menu_item_icon(
+    label: *const c_char,
+    icon_uri: *const c_char,
+    icon_ptr: *const u8,
+    icon_len: usize
+) -> bool {
+    if label.is_null() || icon_ptr.is_null() || icon_len == 0 {
+        return false;
+    }
+    let Ok(label) = CStr::from_ptr(label).to_str() else {
+        return false;
+    };
+    let uri = if icon_uri.is_null() {
+        format!("bytes://plugin-icon/{}.png", label)
+    }
+    else {
+        let Ok(uri) = CStr::from_ptr(icon_uri).to_str() else {
+            return false;
+        };
+        uri.to_owned()
+    };
+    let bytes = std::slice::from_raw_parts(icon_ptr, icon_len);
+    gui::register_plugin_menu_icon(label.to_owned(), uri, bytes.to_vec())
+}
+
+unsafe extern "C" fn gui_register_menu_section_with_icon(
+    title: *const c_char,
+    icon_uri: *const c_char,
+    icon_ptr: *const u8,
+    icon_len: usize,
+    callback: Option<GuiMenuSectionCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(callback) = callback else {
+        return false;
+    };
+    if title.is_null() || icon_ptr.is_null() || icon_len == 0 {
+        return false;
+    }
+    let Ok(title) = CStr::from_ptr(title).to_str() else {
+        return false;
+    };
+    let uri = if icon_uri.is_null() {
+        format!("bytes://plugin-section/{}.png", title)
+    }
+    else {
+        let Ok(uri) = CStr::from_ptr(icon_uri).to_str() else {
+            return false;
+        };
+        uri.to_owned()
+    };
+    let bytes = std::slice::from_raw_parts(icon_ptr, icon_len);
+    gui::register_plugin_menu_section_with_icon(
+        title.to_owned(),
+        uri,
+        bytes.to_vec(),
+        callback,
+        userdata
+    )
+}
+
+
+#[cfg(target_os = "android")]
+unsafe extern "C" fn android_dex_load(dex_ptr: *const u8, dex_len: usize, class_name: *const c_char) -> u64 {
+    crate::android::dex_bridge::dex_load(dex_ptr, dex_len, class_name)
+}
+
+#[cfg(not(target_os = "android"))]
+unsafe extern "C" fn android_dex_load(_dex_ptr: *const u8, _dex_len: usize, _class_name: *const c_char) -> u64 {
+    0
+}
+
+#[cfg(target_os = "android")]
+unsafe extern "C" fn android_dex_unload(handle: u64) -> bool {
+    crate::android::dex_bridge::dex_unload(handle)
+}
+
+#[cfg(not(target_os = "android"))]
+unsafe extern "C" fn android_dex_unload(_handle: u64) -> bool {
+    false
+}
+
+#[cfg(target_os = "android")]
+unsafe extern "C" fn android_dex_call_static_noargs(handle: u64, method: *const c_char, sig: *const c_char) -> bool {
+    let method = CStr::from_ptr(method);
+    let sig = CStr::from_ptr(sig);
+    crate::android::dex_bridge::call_static_noargs(handle, method, sig)
+}
+
+#[cfg(not(target_os = "android"))]
+unsafe extern "C" fn android_dex_call_static_noargs(_handle: u64, _method: *const c_char, _sig: *const c_char) -> bool {
+    false
+}
+
+#[cfg(target_os = "android")]
+unsafe extern "C" fn android_dex_call_static_string(handle: u64, method: *const c_char, sig: *const c_char, arg: *const c_char) -> bool {
+    let method = CStr::from_ptr(method);
+    let sig = CStr::from_ptr(sig);
+    let arg = CStr::from_ptr(arg);
+    crate::android::dex_bridge::call_static_string(handle, method, sig, arg)
+}
+
+#[cfg(not(target_os = "android"))]
+unsafe extern "C" fn android_dex_call_static_string(_handle: u64, _method: *const c_char, _sig: *const c_char, _arg: *const c_char) -> bool {
+    false
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Vtable {
@@ -508,6 +615,26 @@ pub struct Vtable {
         a: u8,
         text: *const c_char
     ) -> bool,
+    pub gui_register_menu_item_icon: unsafe extern "C" fn(
+        label: *const c_char,
+        icon_uri: *const c_char,
+        icon_ptr: *const u8,
+        icon_len: usize
+    ) -> bool,
+    pub gui_register_menu_section_with_icon: unsafe extern "C" fn(
+        title: *const c_char,
+        icon_uri: *const c_char,
+        icon_ptr: *const u8,
+        icon_len: usize,
+        callback: Option<GuiMenuSectionCallback>,
+        userdata: *mut c_void
+    ) -> bool,
+
+    // Generic DEX/JNI helpers (version >= 2)
+    pub android_dex_load: unsafe extern "C" fn(dex_ptr: *const u8, dex_len: usize, class_name: *const c_char) -> u64,
+    pub android_dex_unload: unsafe extern "C" fn(handle: u64) -> bool,
+    pub android_dex_call_static_noargs: unsafe extern "C" fn(handle: u64, method: *const c_char, sig: *const c_char) -> bool,
+    pub android_dex_call_static_string: unsafe extern "C" fn(handle: u64, method: *const c_char, sig: *const c_char, arg: *const c_char) -> bool,
 }
 
 impl Vtable {
@@ -555,6 +682,12 @@ impl Vtable {
         gui_ui_grid,
         gui_ui_end_row,
         gui_ui_colored_label,
+        gui_register_menu_item_icon,
+        gui_register_menu_section_with_icon,
+        android_dex_load,
+        android_dex_unload,
+        android_dex_call_static_noargs,
+        android_dex_call_static_string,
     };
 
     pub fn instantiate() -> Self {

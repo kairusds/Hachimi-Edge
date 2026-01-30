@@ -3,6 +3,7 @@ mod zygisk;
 mod hook;
 mod utils;
 mod plugin_loader;
+pub mod dex_bridge;
 pub mod game_impl;
 pub mod log_impl;
 pub mod hachimi_impl;

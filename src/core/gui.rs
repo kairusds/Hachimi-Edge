@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::RangeInclusive, os::raw::c_void, panic::{self, AssertUnwindSafe}, sync::{atomic::{self, AtomicBool}, Arc, Mutex}, thread, time::Instant};
+use std::{borrow::Cow, collections::HashMap, ops::RangeInclusive, os::raw::c_void, panic::{self, AssertUnwindSafe}, sync::{atomic::{self, AtomicBool}, Arc, Mutex}, thread, time::Instant};
 
 use egui_scale::EguiScale;
 use fnv::FnvHashSet;
@@ -76,6 +76,7 @@ static mut DISABLED_GAME_UIS: once_cell::unsync::Lazy<FnvHashSet<*mut crate::il2
     once_cell::unsync::Lazy::new(|| FnvHashSet::default());
 static PLUGIN_MENU_ITEMS: Lazy<Mutex<Vec<PluginMenuItem>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PLUGIN_MENU_SECTIONS: Lazy<Mutex<Vec<PluginMenuSection>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static PLUGIN_MENU_ICONS: Lazy<Mutex<HashMap<String, PluginMenuIcon>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 static PLUGIN_NOTIFICATIONS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 pub type PluginMenuCallback = extern "C" fn(userdata: *mut c_void);
@@ -89,7 +90,15 @@ struct PluginMenuItem {
 }
 
 #[derive(Clone)]
+struct PluginMenuIcon {
+    uri: String,
+    bytes: Arc<[u8]>,
+}
+
+#[derive(Clone)]
 struct PluginMenuSection {
+    title: Option<String>,
+    icon: Option<PluginMenuIcon>,
     callback: PluginMenuSectionCallback,
     userdata: usize
 }
@@ -104,9 +113,41 @@ pub fn register_plugin_menu_item(label: String, callback: Option<PluginMenuCallb
 
 pub fn register_plugin_menu_section(callback: PluginMenuSectionCallback, userdata: *mut c_void) {
     PLUGIN_MENU_SECTIONS.lock().unwrap().push(PluginMenuSection {
+        title: None,
+        icon: None,
         callback,
         userdata: userdata as usize
     });
+}
+
+pub fn register_plugin_menu_section_with_icon(
+    title: String,
+    uri: String,
+    bytes: Vec<u8>,
+    callback: PluginMenuSectionCallback,
+    userdata: *mut c_void
+) -> bool {
+    if title.is_empty() || uri.is_empty() || bytes.is_empty() {
+        return false;
+    }
+    PLUGIN_MENU_SECTIONS.lock().unwrap().push(PluginMenuSection {
+        title: Some(title),
+        icon: Some(PluginMenuIcon { uri, bytes: bytes.into() }),
+        callback,
+        userdata: userdata as usize
+    });
+    true
+}
+
+pub fn register_plugin_menu_icon(label: String, uri: String, bytes: Vec<u8>) -> bool {
+    if label.is_empty() || uri.is_empty() || bytes.is_empty() {
+        return false;
+    }
+    PLUGIN_MENU_ICONS.lock().unwrap().insert(label, PluginMenuIcon {
+        uri,
+        bytes: bytes.into(),
+    });
+    true
 }
 
 pub fn enqueue_plugin_notification(message: String) {
@@ -119,6 +160,10 @@ fn get_plugin_menu_items() -> Vec<PluginMenuItem> {
 
 fn get_plugin_menu_sections() -> Vec<PluginMenuSection> {
     PLUGIN_MENU_SECTIONS.lock().unwrap().clone()
+}
+
+fn get_plugin_menu_icon(label: &str) -> Option<PluginMenuIcon> {
+    PLUGIN_MENU_ICONS.lock().unwrap().get(label).cloned()
 }
 
 fn drain_plugin_notifications() -> Vec<String> {
@@ -525,7 +570,22 @@ impl Gui {
                         if !plugin_items.is_empty() {
                             ui.heading("Plugins");
                             for item in plugin_items {
-                                if ui.button(&item.label).clicked() {
+                                let icon = get_plugin_menu_icon(&item.label);
+                                let clicked = if let Some(icon) = icon {
+                                    let size = 18.0 * scale;
+                                    ui.horizontal(|ui| {
+                                        ui.add(
+                                            egui::Image::new((icon.uri, icon.bytes))
+                                                .fit_to_exact_size(egui::Vec2::splat(size))
+                                        );
+                                        ui.button(&item.label).clicked()
+                                    })
+                                    .inner
+                                }
+                                else {
+                                    ui.button(&item.label).clicked()
+                                };
+                                if clicked {
                                     if let Some(callback) = item.callback {
                                         let _ = panic::catch_unwind(AssertUnwindSafe(|| {
                                             callback(item.userdata as *mut c_void);
@@ -542,6 +602,19 @@ impl Gui {
                         let plugin_sections = get_plugin_menu_sections();
                         if !plugin_sections.is_empty() {
                             for section in plugin_sections {
+                                if let Some(title) = section.title.clone() {
+                                    let icon = section.icon.clone();
+                                    let size = 18.0 * scale;
+                                    ui.horizontal(|ui| {
+                                        if let Some(icon) = icon {
+                                            ui.add(
+                                                egui::Image::new((icon.uri, icon.bytes))
+                                                    .fit_to_exact_size(egui::Vec2::splat(size))
+                                            );
+                                        }
+                                        ui.heading(title);
+                                    });
+                                }
                                 let _ = panic::catch_unwind(AssertUnwindSafe(|| {
                                     (section.callback)(ui as *mut _ as *mut c_void, section.userdata as *mut c_void);
                                 }))
