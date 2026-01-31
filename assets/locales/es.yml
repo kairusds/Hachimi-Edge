@@ -8,7 +8,7 @@ android:
 
 splash_sub: "\uf015 Pulsa %{open_key_str} para abrir el menú."
 loading_label: "Cargando..."
-search_filter: "Escribe para buscar..."
+search_filter: "Buscar..."
 open: "Abrir"
 cancel: "Cancelar"
 save: "Guardar"
@@ -46,7 +46,7 @@ menu:
   vsync_label: "VSync"
   stay_on_top: "Siempre visible"
   translation_heading: "\uf02d Traducción"
-  reload_localized_data: "\uf021 Recargar datos localizados"
+  reload_localized_data: "\uf021 Recargar localización"
   tl_check_for_updates: "\uf0aa Buscar actualizaciones de traducción"
   tl_check_for_updates_pedantic: "\uf0aa Buscar actualizaciones de traducción (exhaustivo)"
   dump_localize_dict: "Exportar localize dict"
@@ -58,20 +58,20 @@ menu:
   discord_rpc: "Discord RPC"
 
 notification:
-  saved_localize_dump: "Guardado en localize_dump.json"
+  saved_localize_dump: "Exportado en localize_dump.json"
   config_reloaded: "Configuración recargada."
   config_saved: "Configuración guardada."
-  localized_data_reloaded: "Datos localizados recargados."
-  checking_for_tl_updates: "Buscando actualizaciones para traducciones..."
-  no_tl_updates: "No se han encontrado actualizaciones."
+  localized_data_reloaded: "Localización recargada."
+  checking_for_tl_updates: "Buscando actualizaciones de traducción..."
+  no_tl_updates: "No hay actualizaciones."
   update_failed: "Actualización fallida: %{reason}"
   update_completed: "Actualización completada."
-  errors_during_update: "Han ocurrido %{count} errores mientras se actualizaba. Comprueba los registros para más detalles."
+  errors_during_update: "Se produjeron errores al actualizar (%{count}). Comprueba los registros para más detalles."
   checking_for_updates: "Buscando actualizaciones..."
   no_updates: "No hay actualizaciones."
   press_to_set_menu_key: "Pulsa una tecla para establecer la tecla que abre el menú."
   menu_open_key_set: "Tecla para abrir el menú: %{key}"
-  ipc_softreset_exec: "Se ha ejecutado un reinicio suave remoto (IPC)."
+  ipc_softreset_exec: "Reinicio suave remoto (IPC) ejecutado con éxito."
 
 
 first_time_setup:
@@ -123,12 +123,12 @@ config_editor:
     Esta opción desactivará el overlay de Hachimi una vez reinicies el juego.
     Esto se traduce en que NO podrás acceder al Editor de Configuración tras ello.
     Si no es un cambio intencional, cierra este diálogo y DESACTIVA esta opción.
-  meta_index_url: "URL meta de traducciones"
+  meta_index_url: "URL para las\ntraducciones (meta)"
   debug_mode: "Modo depuración"
-  enable_file_logging: "Habilitar registro\nen archivo"
+  enable_file_logging: "Guardar registro\nen un archivo"
   translator_mode: "Modo traductor"
   skip_first_time_setup: "Omitir instalación inicial"
-  disable_auto_update_check: "Desactivar búsquedas\nde actualizaciones"
+  disable_auto_update_check: "Desactivar la búsqueda\nde actualizaciones"
   disable_translations: "Desactivar traducciones"
   enable_ipc: "Habilitar IPC"
   ipc_listen_all: "IPC escuchar todo"
@@ -144,7 +144,7 @@ config_editor:
   target_fps: "FPS objetivo"
   virtual_resolution_multiplier: "Multiplicador de\nresolución virtual"
   ui_scale: "Escala del UI"
-  gui_scale: "Escala de la superposición"
+  gui_scale: "Escala del overlay"
   ui_animation_scale: "Escala de\nanimación del UI"
   graphics_quality: "Calidad gráfica"
   vsync: "VSync"
@@ -175,16 +175,16 @@ config_editor:
   menu_open_key_set: "Establecer"
   render_scale: "Escala de renderizado"
   aniso_level: "Filtrado anisotrópico"
-  live_vocals_swap: "Cambio de voces en vivo"
+  live_vocals_swap: "Cambiar vocalistas"
   live_vocals_swap_character_n: "Personaje %{index}"
-  skill_info_dialog: "Mostrar info. de\nhabilidad en la GUI"
-  homescreen_bgseason: "Temporada de fondo\nde la pantalla principal"
-  shadow_resolution: "Resolución de sombras"
+  skill_info_dialog: "Ver datos de\nhabilidades (GUI)"
+  homescreen_bgseason: "Estación en el\nmenú principal"
+  shadow_resolution: "Resolución de\nlas sombras"
 
 tl_update_dialog:
   title: "Nueva actualización disponible"
-  content: "Existen nuevos datos de traducción (%{size}). ¿Deseas descargarlos ahora?"
-  content_zip_warning: "Existen nuevos datos de traducción (%{changed_size}). Esta actualización descargará el archivo completo (%{download_size})."
+  content: "Existen nuevos datos de traducción (%{size}).\n¿Deseas descargarlos ahora?"
+  content_zip_warning: "Existen nuevos datos de traducción (%{changed_size}).\nEsta actualización descargará el archivo completo (%{download_size})."
 
 update_prompt_dialog:
   title: "Nueva actualización disponible"
