@@ -25,6 +25,8 @@ jobs:
 
           popd
 
+          git update-index --assume-unchanged Cargo.toml
+
           echo 'egui = { path = "../egui/crates/egui" }' >> Cargo.toml
           echo 'egui_extras = { path = "../egui/crates/egui_extras" }' >> Cargo.toml
 
@@ -75,6 +77,8 @@ jobs:
           & $fxc.FullName /nologo /O3 /T ps_4_0 /E ps_egui /Fo shaders/ps_egui.bin shaders/egui.hlsl
 
           popd
+
+          git update-index --assume-unchanged Cargo.toml
 
           $patches = @(
             "egui-directx11 = { path = '../egui-directx11' }",
