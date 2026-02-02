@@ -22,6 +22,7 @@ jobs:
           sed -i 's/ui.set_min_width(ui.available_width());/\/\/ ui.set_min_width(ui.available_width());/' crates/egui/src/containers/combo_box.rs
           popd
 
+          echo "" >> Cargo.toml
           echo 'egui = { path = "../egui/crates/egui" }' >> Cargo.toml
           echo 'egui_extras = { path = "../egui/crates/egui_extras" }' >> Cargo.toml
 
@@ -75,6 +76,7 @@ jobs:
 
           popd
 
+          Add-Content -Path "Cargo.toml" -Value ""
           $patches = @(
             "egui-directx11 = { path = '../egui-directx11' }",
             "egui = { path = '../egui/crates/egui' }",
