@@ -34,7 +34,7 @@ fn setup_version_env() {
         }
 
         if let Some(output) = execute_command(Command::new("git").args(["status", "--porcelain"])) {
-            if !output.stdout.is_empty() {
+            if !output.stdout.is_empty() && std::env::var("HACHIMI_IGNORE_DIRTY").is_err() {
                 version_str.push_str("-dirty");
             }
         }

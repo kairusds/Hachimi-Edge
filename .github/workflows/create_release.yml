@@ -24,8 +24,6 @@ jobs:
 
           echo 'egui = { path = "../egui/crates/egui" }' >> Cargo.toml
           echo 'egui_extras = { path = "../egui/crates/egui_extras" }' >> Cargo.toml
-          git add .
-          git commit -m "."
 
       - name: Grant execute permission to build script
         run: chmod +x tools/android/build.sh
@@ -34,6 +32,8 @@ jobs:
         run: |
           rustup target add aarch64-linux-android
           RELEASE=1 ./tools/android/build.sh
+        env:
+          HACHIMI_IGNORE_DIRTY: "true"
 
       - name: Upload Android binaries
         uses: actions/upload-artifact@v4
@@ -81,14 +81,14 @@ jobs:
             "egui_extras = { path = '../egui/crates/egui_extras' }"
           )
           Add-Content -Path "Cargo.toml" -Value $patches
-          git add .
-          git commit -m "."
 
       - uses: dtolnay/rust-toolchain@stable
       - name: Build Hachimi for Windows
         run: |
           cargo build --target x86_64-pc-windows-msvc --target-dir build --release
           move build\x86_64-pc-windows-msvc\release\hachimi.dll build
+        env:
+          HACHIMI_IGNORE_DIRTY: "true"
 
       - name: Build Cellar
         run: |
