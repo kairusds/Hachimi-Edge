@@ -1,14 +1,14 @@
 hachimi: "Hachimi Edge"
 
 windows:
-  menu_open_key: "Arrow Key - Kanan"
+  menu_open_key: "Panah Kanan"
 
 android:
-  menu_open_key: "Vol Atas+Bawah"
+  menu_open_key: "Vol Atas + Bawah"
 
 splash_sub: "\uf015 Tekan %{open_key_str} untuk buka menu."
 loading_label: "Memuat..."
-search_filter: "Ketik untuk mencari..."
+search_filter: "Ketik untuk cari..."
 open: "Buka"
 cancel: "Batal"
 save: "Simpan"
@@ -22,13 +22,13 @@ retry: "Ulangi"
 default: "Default"
 off: "Mati"
 on: "Nyala"
-enable: "Nyala"
+enable: "Nyalakan"
 info: "Info"
 warning: "Peringatan"
 confirm_dialog_title: "Konfirmasi"
 soft_restart_confirm_content: "Apa kamu yakin ingin memulai ulang ringan game?"
-in_game_browser_confirm_content: "Apa kamu yakin ingin buka peramban web dalam game?"
-browser_dialog_title: "Peramban Web"
+in_game_browser_confirm_content: "Apa kamu yakin ingin buka browser dalam game?"
+browser_dialog_title: "Browser"
 
 menu:
   check_for_updates: "\uf0aa Cek pembaruan"
@@ -38,10 +38,10 @@ menu:
   localize_dict_entries: "entri localize_dict: %{count}"
   hashed_dict_entries: "entri hashed_dict: %{count}"
   config_heading: "\uf0ad Konfigurasi"
-  open_config_editor: "\uf040 Buka editor konfig."
-  reload_config: "\uf021 Muat ulang konfig."
+  open_config_editor: "\uf040 Buka editor konfig"
+  reload_config: "\uf021 Muat ulang konfig"
   open_first_time_setup: "\uf135 Setup pertama kali"
-  graphics_heading: "\uf03e Grafik"
+  graphics_heading: "\uf03e Grafis"
   fps_label: "FPS"
   vsync_label: "VSync"
   stay_on_top: "Sematkan di atas"
@@ -80,14 +80,15 @@ first_time_setup:
     Hachimi telah terpasang! Ini adalah proses pengaturan awal.
     Jika kamu tidak tertarik pada fitur translasi, kamu bisa melewatinya dengan menutup dialog ini.
 
+
     SANGGAHAN (DISCLAIMER):
     Hachimi adalah proyek komunitas. Translasi yang tersedia adalah hasil kontribusi dari beragam komunitas.
     Proyek ini tidak dibuat/didukung oleh Cygames, Inc., dan berpotensi melanggar S&K game ini. Kamu dianggap
     bersedia menerima segala risiko yang ada apabila melanjutkan.
   translation_repo_heading: "Repositori Translasi"
   select_translation_repo: "Mohon pilih repositori translasi:"
-  no_compatible_repo: "Tidak ada repositori yang didukung oleh versi game ini."
-  skip_translation: "Lewati."
+  no_compatible_repo: "Tidak ada repositori yang didukung oleh versi game ini"
+  skip_translation: "Lewati translasi."
   complete_heading: "Selesai!"
   complete_content: >-
     Klik Selesai untuk menyimpan konfigurasi.
@@ -110,8 +111,8 @@ tl_updater:
 config_editor:
   title: "Editor Konfigurasi"
   general_tab: "\uf013 Umum"
-  graphics_tab: "\uf03e Grafik"
-  gameplay_tab: "\uf11b Game"
+  graphics_tab: "\uf03e Grafis"
+  gameplay_tab: "\uf11b Gameplay"
   language: "Bahasa"
   restore_defaults: "Kembalikan semula"
   disable_overlay: "Matikan overlay (GUI)"
@@ -121,60 +122,60 @@ config_editor:
     Jika tidak disengaja dinyalakan, mohon tutup dialog ini dan matikan opsinya!
   meta_index_url: "URL Meta Terjemahan"
   debug_mode: "Mode Debug"
-  enable_file_logging: "Aktifkan pencatatan file"
-  translator_mode: "Mode Translasi"
+  enable_file_logging: "Nyalakan logging file"
+  translator_mode: "Mode Translator"
   skip_first_time_setup: "Lewati setup pertama kali"
   lazy_translation_updates: "Pembaruan terjemahan fleksibel"
   disable_auto_update_check: "Matikan cek pembaruan otomatis"
   disable_translations: "Matikan translasi"
   enable_ipc: "Nyalakan IPC"
-  ipc_listen_all: "Buka port listen-all IPC"
+  ipc_listen_all: "Buka IPC listen-all"
   auto_translate_stories: "Otomatis terjemahkan cerita"
   auto_tl_warning: >-
     Menyalakan opsi ini membutuhkan penyedia translasi yang kompatibel untuk
     dipasang di komputer kamu atau layanan cloud yang menggunakan framework
     py3translationServer. Tanpa penyedia tersebut, proses translasi otomatis
-    tidak akan berjaan dan akan memengaruhi game yang berjalan. Biarkan opsi ini mati
-    jika kamu tidak memilikki penyedia/framework translasi yang terinstal.
-  auto_translate_ui: "Otomatis terjemahkan UI (RAWAN ERROR)"
+    tidak akan berjalan dan akan memengaruhi game yang berjalan. Biarkan opsi ini
+    mati jika kamu tidak memiliki penyedia/framework translasi yang terinstal.
+  auto_translate_ui: "Otomatis terjemahkan UI (BISA MERUSAK UI)"
   target_fps: "Target FPS"
   virtual_resolution_multiplier: "Kelipatan resolusi virtual"
   ui_scale: "Skala UI"
   gui_scale: "Skala overlay"
   ui_animation_scale: "Skala animasi UI"
-  graphics_quality: "Kualitas grafik"
+  graphics_quality: "Kualitas grafis"
   vsync: "VSync"
   auto_full_screen: "Otomatis Layar penuh"
   full_screen_mode: "Mode Layar penuh"
   full_screen_mode_exclusive: "Eksklusif"
   full_screen_mode_borderless: "Tanpa pembatas"
-  block_minimize_in_full_screen: "Matikan minimize saat full screen"
+  block_minimize_in_full_screen: "Matikan minimize saat layar penuh"
   resolution_scaling: "Skala resolusi"
   resolution_scaling_default: "Default (1080p)"
   resolution_scaling_ssize: "Atur ke ukuran layar"
   resolution_scaling_wsize: "Atur ke ukuran jendela"
   window_always_on_top: "Jendela selalu di atas"
-  story_choice_auto_select_delay: "Jeda pilih otomatis pilihan saat cerita"
+  story_choice_auto_select_delay: "Jeda pilihan otomatis saat cerita"
   story_text_speed_multiplier: "Kecepatan teks cerita"
   force_allow_dynamic_camera: "Paksa nyalakan kamera dinamis (POV)"
   live_theater_allow_same_chara: "Izinkan karakter yang sama untuk konser"
-  physics_update_mode: "Mode physics update"
+  physics_update_mode: "Mode update fisik"
   disable_skill_name_translation: "Matikan translasi nama skill"
   hide_ingame_ui_hotkey: "Sembunyikan hotkey UI dalam game"
   hide_ingame_ui_hotkey_info: >-
     Opsi ini mengatur tombol shortcut untuk buka-tutup UI dalam game.
     Untuk Android, kamu perlu menekan 2x tombol atas Volume dalam 0.3 detik.
-    Untuk PC/Android dengan papan tombol, gunakan tombol Insert. Tombol bisa diganti dalam file konfigurasi.
+    Untuk PC/Android dengan keyboard, gunakan tombol Insert. Tombol bisa diganti dalam file konfigurasi.
   discord_rpc: "RPC Discord"
   menu_open_key: "Buka menu hotkey"
-  menu_open_key_set: "Klik untuk atur"
+  menu_open_key_set: "Atur"
   msaa: "MSAA"
   render_scale: "Skala render"
   aniso_level: "Filter Anisotropik"
   live_vocals_swap: "Tukar Vokal Langsung"
   live_vocals_swap_character_n: "Karakter %{index}"
   skill_info_dialog: "Dialog info skill kustom"
-  homescreen_bgseason: "Musim Latar Belakang Layar Beranda"
+  homescreen_bgseason: "Latar Musim Beranda"
   shadow_resolution: "Resolusi Bayangan"
 
 theme_editor:
@@ -193,7 +194,7 @@ tl_update_dialog:
 
 update_prompt_dialog:
   title: "Pembaruan tersedia!"
-  content: "Versi terbaru Hachimi telah tersedia (%{version}). Apa kamu ingin memasangnya?  Game akan dimulai ulang saat proses penerapan pembaruan."
+  content: "Versi terbaru Hachimi telah tersedia (%{version}). Apa kamu ingin memasangnya? Game akan dimulai ulang saat proses penerapan pembaruan."
 
 updating_dialog:
   title: "Memperbarui"
@@ -202,10 +203,10 @@ updating_dialog:
 steam_overlay_conflict_dialog:
   title: "Peringatan"
   content: >-
-    Pembelian mungkin gagal dengan overlay Hachimi yang menyala. Jika overlay Steam muncul saat melakukan 
-    transaksi, mohon abaikan pesan ini dan klik tombol Tidak. Jika tidak berfungsi, mohon tekan tombol Ya
-    untuk mulai ulang dan overlay Hachimi akan dimatikan dan kamu bisa melakukan pembelian. Setelah itu kamu 
-    bisa menyalakan ulang game kembali setelahnya untuk mengaktifkan Hachimi.
+    Pembelian mungkin tidak bekerja saat overlay Hachimi menyala. Jika overlay Steam muncul saat melakukan 
+    transaksi, mohon abaikan pesan ini dan klik tombol Tidak. Jika tidak berfungsi, klik tombol Ya untuk 
+    mematikan sementara overlay Hachimi. Game akan dimulai ulang kemudian overlay Hachimi akan mati dan kamu
+    bisa melakukan pembelian lagi, setelah itu mulai ulang game untuk menyalakan kembali overlay Hachimi.
 key_names:
   left: "Panah Kiri"
   right: "Panah Kanan"
