@@ -1773,9 +1773,22 @@ impl ConfigEditor {
                 ui.end_row();
 
                 ui.label(t!("config_editor.meta_index_url"));
-                let _res = ui.add(egui::TextEdit::singleline(&mut config.meta_index_url).lock_focus(true));
+                let res = ui.add(egui::TextEdit::singleline(&mut config.meta_index_url).lock_focus(true));
                 #[cfg(target_os = "android")]
-                handle_android_keyboard(&_res, &mut config.meta_index_url);
+                handle_android_keyboard(&res, &mut config.meta_index_url);
+                #[cfg(target_os = "windows")]
+                if res.has_focus() {
+                    ui.memory_mut(|mem| mem.set_focus_lock_filter(
+                        res.id,
+                        egui::EventFilter {
+                            tab: true,
+                            horizontal_arrows: true,
+                            vertical_arrows: true,
+                            escape: true,
+                            ..Default::default()
+                        }
+                    ));
+                }
                 ui.end_row();
 
                 ui.label(t!("config_editor.gui_scale"));
@@ -2257,7 +2270,7 @@ impl Window for FirstTimeSetupWindow {
                                         tab: true,
                                         horizontal_arrows: true,
                                         vertical_arrows: true,
-                                        escape: false,
+                                        escape: true,
                                         ..Default::default()
                                     }
                                 ));

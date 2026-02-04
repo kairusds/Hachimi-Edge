@@ -69,7 +69,7 @@ impl RepoFile {
     fn verify_integrity(&self, full_path: &Path) -> bool {
         let Ok(mut file) = fs::File::open(full_path) else { return false };
         let mut hasher = blake3::Hasher::new();
-        let mut buffer = [0u8; 8192];
+        let mut buffer = vec![0u8; 8192];
         
         while let Ok(n) = file.read(&mut buffer) {
             if n == 0 { break; }
@@ -144,7 +144,7 @@ const MIN_CHUNK_SIZE: u64 = 1024 * 1024 * 5;
 struct DownloadJob {
     agent: ureq::Agent,
     hasher: blake3::Hasher,
-    buffer: [u8; CHUNK_SIZE]
+    buffer: Vec<u8>
 }
 
 impl DownloadJob {
@@ -152,7 +152,7 @@ impl DownloadJob {
         DownloadJob {
             agent: agent1,
             hasher: blake3::Hasher::new(),
-            buffer: [0u8; CHUNK_SIZE]
+            buffer: vec![0u8; CHUNK_SIZE]
         }
     }
 }
@@ -365,15 +365,19 @@ impl Updater {
     }
 
     pub fn run(self: Arc<Self>) {
-        std::thread::spawn(move || {
-            if let Err(e) = self.clone().run_internal() {
-                error!("{}", e);
-                self.progress.store(Arc::new(None));
-                if let Some(mutex) = Gui::instance() {
-                    mutex.lock().unwrap().show_notification(&t!("notification.update_failed", reason = e.to_string()));
+        std::thread::Builder::new()
+            .name("tl_repo_updater".into())
+            .stack_size(8 * 1024 * 1024) // increase stack size to 8MB to prevent 0xc0000409 (Stack Buffer Overrun) during single-threaded downloads
+            .spawn(move || {
+                if let Err(e) = self.clone().run_internal() {
+                    error!("{}", e);
+                    self.progress.store(Arc::new(None));
+                    if let Some(mutex) = Gui::instance() {
+                        mutex.lock().unwrap().show_notification(&t!("notification.update_failed", reason = e.to_string()));
+                    }
                 }
-            }
-        });
+            })
+            .expect("Failed to spawn updater thread");
     }
 
     fn run_internal(self: Arc<Self>) -> Result<(), Error> {
@@ -477,6 +481,7 @@ impl Updater {
 
             let handle = thread::Builder::new()
                 .name("incremental_downloader".into())
+                .stack_size(8 * 1024 * 1024)
                 .spawn_with_priority(ThreadPriority::Min, move |result| {
                     if result.is_err() {
                         warn!("Failed to set background thread priority for incremental downloader.");
@@ -626,6 +631,7 @@ impl Updater {
 
                 let handle = thread::Builder::new()
                     .name("zip_extractor".into())
+                    .stack_size(8 * 1024 * 1024)
                     .spawn_with_priority(ThreadPriority::Min, move |result| {
                         if result.is_err() {
                             warn!("Failed to set background thread priority for zip extractor.");
