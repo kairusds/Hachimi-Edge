@@ -1,6 +1,7 @@
-use std::{fs, path::{Path, PathBuf}, process, sync::{atomic::{self, AtomicBool, AtomicI32}, Arc, Mutex, OnceLock}};
+use std::{fs, path::{Path, PathBuf}, process, sync::{atomic::{self, AtomicBool, AtomicI32}, Arc, Mutex}};
 use arc_swap::ArcSwap;
 use fnv::{FnvHashMap, FnvHashSet};
+use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use textwrap::wrap_algorithms::Penalties;
 
@@ -52,7 +53,7 @@ pub struct Hachimi {
     pub updater: Arc<updater::Updater>
 }
 
-static INSTANCE: OnceLock<Arc<Hachimi>> = OnceLock::new();
+static INSTANCE: OnceCell<Arc<Hachimi>> = OnceCell::new();
 
 impl Hachimi {
     pub fn init() -> bool {

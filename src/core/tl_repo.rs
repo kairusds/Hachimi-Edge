@@ -9,7 +9,7 @@ use thread_priority::{ThreadBuilderExt, ThreadPriority};
 
 use crate::core::game::Region;
 use super::{gui::SimpleYesNoDialog, hachimi::LocalizedData, http::{self, AsyncRequest}, utils, Error, Gui, Hachimi};
-use std::sync::LazyLock;
+use once_cell::sync::Lazy;
 
 #[derive(Deserialize)]
 pub struct RepoInfo {
@@ -129,7 +129,7 @@ pub struct Updater {
 
 const LOCALIZED_DATA_DIR: &str = "localized_data";
 const CHUNK_SIZE: usize = 8192; // 8KiB
-static NUM_THREADS: LazyLock<usize> = LazyLock::new(|| {
+static NUM_THREADS: Lazy<usize> = Lazy::new(|| {
     let parallelism = thread::available_parallelism().unwrap().get();
     max(1, parallelism / 2)
 });

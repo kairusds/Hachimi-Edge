@@ -1,6 +1,7 @@
-use std::sync::{LazyLock, Mutex};
+use std::sync::Mutex;
 
 use fnv::FnvHashMap;
+use once_cell::sync::Lazy;
 use widestring::Utf16Str;
 
 use crate::{core::{ext::Utf16StringExt, hachimi::AssetMetadata}, il2cpp::{
@@ -22,9 +23,9 @@ impl RequestInfo {
         self.name_handle.target() as _
     }
 }
-pub static REQUEST_INFOS: LazyLock<Mutex<FnvHashMap<usize, RequestInfo>>> = LazyLock::new(|| Mutex::default());
+pub static REQUEST_INFOS: Lazy<Mutex<FnvHashMap<usize, RequestInfo>>> = Lazy::new(|| Mutex::default());
 
-static BUNDLE_PATHS: LazyLock<Mutex<FnvHashMap<usize, GCHandle>>> = LazyLock::new(|| Mutex::default());
+static BUNDLE_PATHS: Lazy<Mutex<FnvHashMap<usize, GCHandle>>> = Lazy::new(|| Mutex::default());
 pub fn get_bundle_path(this: *mut Il2CppObject) -> Option<*mut Il2CppString> {
     Some(BUNDLE_PATHS.lock().unwrap().get(&(this as usize))?.target() as _)
 }

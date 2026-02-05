@@ -4,9 +4,10 @@ use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::os::raw::c_void;
-use std::sync::{LazyLock, Mutex};
+use std::sync::Mutex;
 
 use fnv::FnvHashMap;
+use once_cell::sync::Lazy;
 
 use crate::core::Hachimi;
 use crate::symbols_impl;
@@ -124,9 +125,9 @@ pub fn get_method_overload_addr(class: *mut Il2CppClass, name: &str, params: &[I
     }
 }
 
-pub static METHOD_CACHE: LazyLock<
+pub static METHOD_CACHE: Lazy<
     Mutex<FnvHashMap<usize, FnvHashMap<(Cow<'_, CStr>, i32), usize>>>
-> = LazyLock::new(|| Mutex::default());
+> = Lazy::new(|| Mutex::default());
 
 pub fn get_method_cached(class: *mut Il2CppClass, name: &CStr, args_count: i32) -> Result<*const MethodInfo, Error> {
     let mut cache = METHOD_CACHE.lock().unwrap();

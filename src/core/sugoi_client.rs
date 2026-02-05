@@ -1,5 +1,6 @@
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
+use once_cell::sync::Lazy;
 use serde::Serialize;
 
 use super::{Error, Hachimi};
@@ -9,7 +10,7 @@ pub struct SugoiClient {
     url: String
 }
 
-static INSTANCE: LazyLock<Arc<SugoiClient>> = LazyLock::new(|| {
+static INSTANCE: Lazy<Arc<SugoiClient>> = Lazy::new(|| {
     Arc::new(SugoiClient {
         agent: ureq::Agent::new(),
         url: Hachimi::instance().config.load().sugoi_url.as_ref()

@@ -691,6 +691,7 @@ dependencies = [
  "log",
  "memmap2",
  "minhook",
+ "once_cell",
  "pelite",
  "png 0.17.16",
  "procfs",

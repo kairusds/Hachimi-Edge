@@ -1,12 +1,13 @@
-use std::{ffi::{c_char, c_void, CStr}, sync::OnceLock};
+use std::ffi::{c_char, c_void, CStr};
 
+use once_cell::sync::OnceCell;
 use egui::Align;
 
 use crate::{core::{gui, Hachimi, Interceptor}, il2cpp::{self, types::{il2cpp_array_size_t, FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo}}};
 
 const VERSION: i32 = 2;
 
-static PLUGIN_VTABLE: OnceLock<Vtable> = OnceLock::new();
+static PLUGIN_VTABLE: OnceCell<Vtable> = OnceCell::new();
 
 pub type HachimiInitFn = extern "C" fn(vtable: *const Vtable, version: i32) -> InitResult;
 pub type GuiMenuCallback = extern "C" fn(userdata: *mut c_void);

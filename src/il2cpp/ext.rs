@@ -1,7 +1,7 @@
 use std::{hash::Hasher, sync::Mutex};
 
 use fnv::FnvHasher;
-use std::sync::LazyLock;
+use once_cell::sync::Lazy;
 use widestring::{Utf16Str, Utf16String};
 
 use crate::core::hachimi::LocalizedData;
@@ -40,9 +40,9 @@ pub trait LocalizedDataExt {
     fn load_tmp_replacement_font(&self) -> *mut Il2CppObject;
 }
 
-static EXTRA_ASSET_BUNDLE_HANDLE: LazyLock<Mutex<Option<GCHandle>>> = LazyLock::new(|| Mutex::default());
-static REPLACEMENT_FONT_HANDLE: LazyLock<Mutex<Option<GCHandle>>> = LazyLock::new(|| Mutex::default());
-static TMP_REPLACEMENT_FONT_HANDLE: LazyLock<Mutex<Option<GCHandle>>> = LazyLock::new(|| Mutex::default());
+static EXTRA_ASSET_BUNDLE_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
+static REPLACEMENT_FONT_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
+static TMP_REPLACEMENT_FONT_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
 
 impl LocalizedDataExt for LocalizedData {
     fn load_extra_asset_bundle(&self) -> *mut Il2CppObject {

@@ -1,13 +1,14 @@
-use std::{collections::hash_map, sync::{LazyLock, Mutex}};
+use std::{collections::hash_map, sync::Mutex};
 
 use fnv::FnvHashMap;
+use once_cell::sync::Lazy;
 
 use crate::{core::Hachimi, il2cpp::{hook::UnityEngine_UI::Text, symbols::{get_method_addr, GCHandle}, types::*}};
 
 static mut GET_TEXTLABEL_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_TextLabel, GET_TEXTLABEL_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
 
-pub static PROCESSED: LazyLock<Mutex<FnvHashMap<usize, GCHandle>>> = LazyLock::new(|| Mutex::default());
+pub static PROCESSED: Lazy<Mutex<FnvHashMap<usize, GCHandle>>> = Lazy::new(|| Mutex::default());
 
 type InitializeFn = extern "C" fn(this: *mut Il2CppObject);
 extern "C" fn Initialize(this: *mut Il2CppObject) {

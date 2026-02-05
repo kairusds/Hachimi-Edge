@@ -8,7 +8,7 @@ use jni::{
     objects::{GlobalRef, JClass, JObject, JValue},
     JNIEnv,
 };
-use std::sync::LazyLock;
+use once_cell::sync::Lazy;
 
 use crate::android::main::java_vm;
 
@@ -28,7 +28,7 @@ struct DexEntry {
 }
 
 static NEXT_HANDLE: AtomicU64 = AtomicU64::new(1);
-static DEX_REGISTRY: LazyLock<Mutex<HashMap<u64, DexEntry>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static DEX_REGISTRY: Lazy<Mutex<HashMap<u64, DexEntry>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn get_activity<'a>(env: &mut JNIEnv<'a>) -> Option<JObject<'a>> {
     let activity_thread_class = env.find_class("android/app/ActivityThread").ok()?;
