@@ -1,11 +1,11 @@
 /* generated for 2022.3.20f1 */
 #![allow(non_upper_case_globals)]
 use super::{symbols, types::*};
-use std::sync::LazyLock;
+use once_cell::sync::Lazy;
 
 macro_rules! lazy_fnptr {
     ($name:tt, $ret:ty, $($v:ident: $t:ty),*) => {
-        pub static $name: LazyLock<extern "C" fn($($v: $t),*) -> $ret> = LazyLock::new(||
+        pub static $name: Lazy<extern "C" fn($($v: $t),*) -> $ret> = Lazy::new(||
             unsafe { std::mem::transmute(symbols::dlsym(stringify!($name))) }
         );
     }

@@ -1,9 +1,10 @@
-use std::{borrow::Cow, fs::File, io::Write, sync::{LazyLock, Mutex}, path::Path, time::SystemTime};
+use std::{borrow::Cow, fs::File, io::Write, sync::Mutex, path::Path, time::SystemTime};
 
 use serde::Serialize;
 use textwrap::{core::Word, wrap_algorithms, WordSeparator::UnicodeBreakProperties};
 use unicode_width::UnicodeWidthChar;
 use fnv::FnvHashMap;
+use once_cell::sync::Lazy;
 
 use crate::{core::Gui, il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::umamusume::{Localize, TextId}, types::{Il2CppObject, Il2CppString}, symbols::Thread}};
 
@@ -16,8 +17,8 @@ pub struct SendPtr(pub *mut Il2CppObject);
 unsafe impl Send for SendPtr {}
 unsafe impl Sync for SendPtr {}
 
-static LOCALIZE_ID_CACHE: LazyLock<Mutex<FnvHashMap<String, i32>>> = 
-    LazyLock::new(|| Mutex::new(FnvHashMap::default()));
+static LOCALIZE_ID_CACHE: Lazy<Mutex<FnvHashMap<String, i32>>> = 
+    Lazy::new(|| Mutex::new(FnvHashMap::default()));
 
 pub fn get_localized_string(id_name: &str) -> String {
     let check_cache = |name: &str| -> Option<String> {

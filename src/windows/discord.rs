@@ -1,11 +1,12 @@
 use std::{
-    sync::{LazyLock, Mutex},
+    sync::Mutex,
     time::{SystemTime, UNIX_EPOCH}
 };
+use once_cell::sync::Lazy;
 use discord_rich_presence::{activity::{Activity, ActivityType, Assets, Timestamps}, DiscordIpc, DiscordIpcClient};
 use crate::core::Error;
 
-static DISCORD_CLIENT: LazyLock<Mutex<Option<DiscordIpcClient>>> = LazyLock::new(|| {
+static DISCORD_CLIENT: Lazy<Mutex<Option<DiscordIpcClient>>> = Lazy::new(|| {
     Mutex::new(None)
 });
 

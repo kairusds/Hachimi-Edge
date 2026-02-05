@@ -1,7 +1,7 @@
 use crate::android::utils::get_activity;
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
 
 use egui::Vec2;
@@ -34,8 +34,8 @@ const DOUBLE_TAP_WINDOW: Duration = Duration::from_millis(300);
 
 static VOLUME_UP_PRESSED: AtomicBool = AtomicBool::new(false);
 static VOLUME_DOWN_PRESSED: AtomicBool = AtomicBool::new(false);
-static VOLUME_UP_LAST_TAP: LazyLock<Arc<Mutex<Option<Instant>>>> = 
-    LazyLock::new(|| Arc::new(Mutex::new(None)));
+static VOLUME_UP_LAST_TAP: once_cell::sync::Lazy<Arc<Mutex<Option<Instant>>>> = 
+    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(None)));
 
 static SCROLL_AXIS_SCALE: f32 = 10.0;
 

@@ -4,13 +4,14 @@ use std::{
     ops::RangeInclusive,
     os::raw::c_void,
     panic::{self, AssertUnwindSafe},
-    sync::{atomic::{self, AtomicBool}, Arc, LazyLock, Mutex, OnceLock},
+    sync::{atomic::{self, AtomicBool}, Arc, Mutex},
     thread,
     time::Instant
 };
 
 use egui_scale::EguiScale;
 use fnv::FnvHashSet;
+use once_cell::sync::{Lazy, OnceCell};
 use rust_i18n::t;
 use chrono::{Utc, Datelike};
 
@@ -100,14 +101,14 @@ pub struct Gui {
 
 const PIXELS_PER_POINT_RATIO: f32 = 3.0/1080.0;
 
-static INSTANCE: OnceLock<Mutex<Gui>> = OnceLock::new();
+static INSTANCE: OnceCell<Mutex<Gui>> = OnceCell::new();
 static IS_CONSUMING_INPUT: AtomicBool = AtomicBool::new(false);
-static DISABLED_GAME_UIS: LazyLock<Mutex<FnvHashSet<SendPtr>>> =
-    LazyLock::new(|| Mutex::new(FnvHashSet::default()));
-static PLUGIN_MENU_ITEMS: LazyLock<Mutex<Vec<PluginMenuItem>>> = LazyLock::new(|| Mutex::new(Vec::new()));
-static PLUGIN_MENU_SECTIONS: LazyLock<Mutex<Vec<PluginMenuSection>>> = LazyLock::new(|| Mutex::new(Vec::new()));
-static PLUGIN_MENU_ICONS: LazyLock<Mutex<HashMap<String, PluginMenuIcon>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
-static PLUGIN_NOTIFICATIONS: LazyLock<Mutex<Vec<String>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+static DISABLED_GAME_UIS: Lazy<Mutex<FnvHashSet<SendPtr>>> =
+    Lazy::new(|| Mutex::new(FnvHashSet::default()));
+static PLUGIN_MENU_ITEMS: Lazy<Mutex<Vec<PluginMenuItem>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static PLUGIN_MENU_SECTIONS: Lazy<Mutex<Vec<PluginMenuSection>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static PLUGIN_MENU_ICONS: Lazy<Mutex<HashMap<String, PluginMenuIcon>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static PLUGIN_NOTIFICATIONS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 pub type PluginMenuCallback = extern "C" fn(userdata: *mut c_void);
 pub type PluginMenuSectionCallback = extern "C" fn(ui: *mut c_void, userdata: *mut c_void);
@@ -212,14 +213,14 @@ static PENDING_KEYBOARD_TEXT: AtomicPtr<Il2CppString> = AtomicPtr::new(std::ptr:
 #[cfg(target_os = "android")]
 static ACTIVE_KEYBOARD: AtomicPtr<Il2CppObject> = AtomicPtr::new(std::ptr::null_mut());
 #[cfg(target_os = "android")]
-pub static KEYBOARD_GC_HANDLE: LazyLock<Mutex<Option<GCHandle>>> = LazyLock::new(|| Mutex::default());
+pub static KEYBOARD_GC_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
 #[cfg(target_os = "android")]
-static KEYBOARD_SELECTION: LazyLock<Mutex<RangeInt>> = LazyLock::new(|| {
+static KEYBOARD_SELECTION: Lazy<Mutex<RangeInt>> = Lazy::new(|| {
     Mutex::new(RangeInt::new(0, 1))
 });
 #[cfg(target_os = "android")]
-pub static KEYBOARD_OWNER: LazyLock<Mutex<Option<KeyboardOwner>>> = 
-    LazyLock::new(|| Mutex::new(None));
+pub static KEYBOARD_OWNER: Lazy<Mutex<Option<KeyboardOwner>>> = 
+    Lazy::new(|| Mutex::new(None));
 #[cfg(target_os = "android")]
 #[derive(PartialEq)]
 pub enum KeyboardOwner {
