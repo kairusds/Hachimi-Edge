@@ -39,7 +39,14 @@ impl RepoInfo {
 
 pub fn new_meta_index_request() -> AsyncRequest<Vec<RepoInfo>> {
     let meta_index_url = &Hachimi::instance().config.load().meta_index_url;
-    AsyncRequest::with_json_response(ureq::get(meta_index_url))
+
+    let req = ureq::http::Request::builder()
+        .uri(meta_index_url)
+        .method("GET")
+        .body(ureq::Body::builder().reader(std::io::empty()))
+        .expect("Failed to build meta index request");
+
+    AsyncRequest::with_json_response(req)
 }
 
 #[derive(Deserialize)]
@@ -460,7 +467,10 @@ impl Updater {
         let fatal_error = Arc::new(Mutex::new(None::<Error>));
         let stop_signal = Arc::new(AtomicBool::new(false));
 
-        let shared_agent = ureq::Agent::new();
+        let config = ureq::Agent::config_builder()
+        .ip_family(ureq::config::IpFamily::Ipv4Only)
+        .build();
+        let shared_agent: ureq::Agent = ureq::Agent::new_with_config(config);
 
         let (sender, receiver) = mpsc::channel::<RepoFile>();
         let receiver = Arc::new(Mutex::new(receiver));
@@ -566,7 +576,12 @@ impl Updater {
         {
             let total_size_header = ureq::agent().head(&update_info.zip_url).call()
                 .ok()
-                .and_then(|res| res.header("Content-Length").and_then(|s| s.parse::<usize>().ok()));
+                .and_then(|res| {
+                    res.headers()
+                       .get("Content-Length")
+                       .and_then(|v| v.to_str().ok())
+                       .and_then(|s| s.parse::<usize>().ok())
+                });
 
             let progress_total = match total_size_header {
                 Some(size) if size > 0 => {

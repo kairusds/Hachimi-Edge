@@ -36,7 +36,8 @@ sqlparser = "0.43"
 textwrap = "0.16"
 atomic_float = "0.1"
 blake3 = "1.5"
-ureq = { version = "2.10", features = ["json"] }
+ureq = { version = "3.2.0", features = ["json"] }
+http = "1.4.0"
 size = "0.4"
 memmap2 = "0.9.9"
 thread-priority = "3.0.0"

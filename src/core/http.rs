@@ -1,6 +1,7 @@
 use std::{
     fs,
     io::{
+        Read,
         Write,
         Seek,
         SeekFrom
@@ -22,16 +23,16 @@ use serde::de::DeserializeOwned;
 use super::Error;
 
 pub struct AsyncRequest<T: Send + Sync> {
-    request: ureq::Request,
-    map_fn: fn(ureq::Response) -> Result<T, Error>,
+    request: Mutex<Option<http::Request<ureq::Body>>>,
+    map_fn: fn(http::Response<ureq::Body>) -> Result<T, Error>,
     running: AtomicBool,
     pub result: ArcSwap<Option<Result<T, Error>>>
 }
 
 impl<T: Send + Sync + 'static> AsyncRequest<T> {
-    pub fn new(request: ureq::Request, map_fn: fn(ureq::Response) -> Result<T, Error>) -> Self {
+    pub fn new(request: http::Request<ureq::Body>, map_fn: fn(http::Response<ureq::Body>) -> Result<T, Error>) -> Self {
         AsyncRequest {
-            request,
+            request: Mutex::new(Some(request)),
             map_fn,
             running: AtomicBool::new(false),
             result: ArcSwap::default()
@@ -41,8 +42,14 @@ impl<T: Send + Sync + 'static> AsyncRequest<T> {
     pub fn call(self: Arc<Self>) {
         self.result.store(Arc::new(None));
         self.running.store(true, atomic::Ordering::Release);
+        let req = self.request.lock().unwrap().take().expect("Request run twice");
         std::thread::spawn(move || {
-            let res = match self.request.clone().call() {
+            let config = ureq::config::Config::builder()
+                .ip_family(ureq::config::IpFamily::Ipv4Only)
+                .build();
+            let agent = ureq::Agent::new_with_config(config);
+
+            let res = match agent.run(req) {
                 Ok(v) => (self.map_fn)(v),
                 Err(e) => Err(Error::from(e))
             };
@@ -57,34 +64,44 @@ impl<T: Send + Sync + 'static> AsyncRequest<T> {
 }
 
 impl<T: Send + Sync + 'static + DeserializeOwned> AsyncRequest<T> {
-    pub fn with_json_response(request: ureq::Request) -> AsyncRequest<T> {
+    pub fn with_json_response(request: http::Request<ureq::Body>) -> AsyncRequest<T> {
         AsyncRequest::new(request, |res|
-            Ok(serde_json::from_str(&res.into_string()?)?)
+            Ok(serde_json::from_str(&res.into_body().read_to_string()?)?)
         )
     }
 }
 
 pub fn get_json<T: DeserializeOwned>(url: &str) -> Result<T, Error> {
-    let res = ureq::get(url).call()?;
-    Ok(serde_json::from_str(&res.into_string()?)?)
+    let config = ureq::Agent::config_builder()
+        .ip_family(ureq::config::IpFamily::Ipv4Only)
+        .build();
+    let agent: ureq::Agent = ureq::Agent::new_with_config(config);
+    let res = agent.get(url).call()?;
+    Ok(serde_json::from_str(&res.into_body().read_to_string()?)?)
 }
 
 pub fn get_github_json<T: DeserializeOwned>(url: &str) -> Result<T, Error> {
     let res = ureq::get(url)
-        .set("Accept", "application/vnd.github+json")
-        .set("X-GitHub-Api-Version", "2022-11-28")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
         .call()?;
-    Ok(serde_json::from_str(&res.into_string()?)?)
+    Ok(serde_json::from_str(&res.into_body().read_to_string()?)?)
 }
 
 pub fn download_file_parallel(url: &str, file_path: &Path, num_threads: usize,
     min_chunk_size: u64, chunk_size: usize, progress_callback: Arc<dyn Fn(usize) + Send + Sync>
 ) -> Result<(), Error> {
-    let agent = ureq::Agent::new();
+    let config = ureq::Agent::config_builder()
+        .ip_family(ureq::config::IpFamily::Ipv4Only)
+        .build();
+    let agent: ureq::Agent = ureq::Agent::new_with_config(config);
     let res = agent.head(url).call()?;
 
-    let content_length = res.header("Content-Length").and_then(|s| s.parse::<u64>().ok());
-    let accepts_ranges = res.header("Accept-Ranges").map_or(false, |v| v == "bytes");
+    let content_length = res.headers()
+        .get("Content-Length")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.parse::<u64>().ok());
+    let accepts_ranges = res.headers().get("Accept-Ranges").map_or(false, |v| v == "bytes");
 
     let mut actual_length = 0u64;
     let use_parallel = if let Some(length) = content_length {
@@ -130,8 +147,9 @@ pub fn download_file_parallel(url: &str, file_path: &Path, num_threads: usize,
                         if stop_signal_clone.load(atomic::Ordering::Relaxed) { break; }
                         let range_header = format!("bytes={}-{}", start, end);
                         let result = (|| -> Result<(), Error> {
-                            let res = agent_clone.get(&url_clone).set("Range", &range_header).call()?;
-                            let mut reader = res.into_reader();
+                            let res = agent_clone.get(&url_clone).header("Range", &range_header).call()?;
+                            let mut binding = res.into_body();
+                            let mut reader = binding.as_reader();
                             file.seek(SeekFrom::Start(start))?;
                             loop {
                                 let bytes_read = reader.read(&mut buffer)?;
@@ -182,8 +200,9 @@ pub fn download_file_parallel(url: &str, file_path: &Path, num_threads: usize,
     Ok(())
 }
 
-pub fn download_file_buffered(res: ureq::Response, file: &mut std::fs::File, buffer: &mut [u8], mut add_bytes: impl FnMut(&[u8])) -> Result<(), Error> {
-    let mut reader = res.into_reader();
+pub fn download_file_buffered(res: http::Response<ureq::Body>, file: &mut std::fs::File, buffer: &mut [u8], mut add_bytes: impl FnMut(&[u8])) -> Result<(), Error> {
+    let mut body = res.into_body();
+    let mut reader = body.as_reader();
     let mut buffer_pos = 0usize;
     loop {
         let read_bytes = reader.read(&mut buffer[buffer_pos..])?;
