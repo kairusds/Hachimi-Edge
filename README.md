@@ -4,7 +4,7 @@
 
 English | [简体中文](README-zh_cn.md) | [繁體中文](README-zh_tw.md)
 
-[![Discord server](https://dcbadge.limes.pink/api/server/https://discord.gg/BVEt5FcxEn)](https://discord.gg/BVEt5FcxEn)
+[![Discord server](https://dcbadge.limes.pink/api/server/https://discord.gg/YjBgmuqqYr)](https://discord.gg/YjBgmuqqYr)
 
 Game enhancement and translation mod for UM:PD.
 

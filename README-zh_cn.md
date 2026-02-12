@@ -4,7 +4,7 @@
 
 [English](README.md) | 简体中文 | [繁體中文](README-zh_tw.md)
 
-[![Discord 服务器](https://dcbadge.limes.pink/api/server/https://discord.gg/BVEt5FcxEn)](https://discord.gg/BVEt5FcxEn)
+[![Discord 服务器](https://dcbadge.limes.pink/api/server/https://discord.gg/YjBgmuqqYr)](https://discord.gg/YjBgmuqqYr)
 
 某赛马拟人化游戏的游戏增强与翻译插件。
 
