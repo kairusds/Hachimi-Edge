@@ -188,13 +188,30 @@ pub fn download_file_parallel(url: &str, file_path: &Path, num_threads: usize,
     } else {
         debug!("Using single-threaded download for: {}", url);
         let res = agent.get(url).call()?;
+
+        let fallback_length = res.headers()
+            .get("Content-Length")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.parse::<u64>().ok());
+
         let mut file = fs::File::create(file_path)?;
         let mut buffer = vec![0u8; chunk_size];
+        let mut total_downloaded = 0u64;
 
         download_file_buffered(res, &mut file, &mut buffer, |bytes_slice| {
+            total_downloaded += bytes_slice.len() as u64;
             progress_callback(bytes_slice.len());
         })?;
         file.sync_data()?;
+
+        if let Some(expected) = fallback_length {
+            if total_downloaded != expected {
+                return Err(Error::RuntimeError(format!(
+                    "Download incomplete: expected {} bytes, got {} bytes",
+                    expected, total_downloaded
+                )));
+            }
+        }
     }
     Ok(())
 }
@@ -211,11 +228,11 @@ pub fn download_file_buffered(res: http::Response<ureq::Body>, file: &mut std::f
         add_bytes(&buffer[prev_buffer_pos..buffer_pos]);
 
         if buffer_pos == buffer.len() {
-            buffer_pos = 0;
             let written = file.write(&buffer)?;
             if written != buffer.len() {
                 return Err(Error::OutOfDiskSpace);
             }
+            buffer_pos = 0;
         }
 
         if read_bytes == 0 {
