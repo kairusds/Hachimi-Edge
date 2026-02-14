@@ -103,12 +103,18 @@ pub fn download_file_parallel(url: &str, file_path: &Path, num_threads: usize,
     let accepts_ranges = res.headers().get("Accept-Ranges").map_or(false, |v| v == "bytes");
 
     let mut actual_length = 0u64;
-    let use_parallel = if let Some(length) = content_length {
+    let mut use_parallel = false;
+
+    if let Some(length) = content_length {
         actual_length = length;
-        accepts_ranges && length > min_chunk_size
-    } else {
-        false
-    };
+        if accepts_ranges && length > min_chunk_size {
+            if let Ok(test_res) = agent.get(url).header("Range", "bytes=0-0").call() {
+                if test_res.status() == 206 {
+                    use_parallel = true;
+                }
+            }
+        }
+    }
 
     if use_parallel {
         let downloaded_file = fs::File::create(file_path)?;
@@ -144,20 +150,35 @@ pub fn download_file_parallel(url: &str, file_path: &Path, num_threads: usize,
                     let mut buffer = vec![0u8; chunk_size];
                     while let Ok((start, end)) = receiver_clone.lock().unwrap().recv() {
                         if stop_signal_clone.load(atomic::Ordering::Relaxed) { break; }
+
+                        let expected_bytes = end - start + 1;
                         let range_header = format!("bytes={}-{}", start, end);
                         let result = (|| -> Result<(), Error> {
                             let res = agent_clone.get(&url_clone).header("Range", &range_header).call()?;
+
+                            if res.status() != 206 {
+                                return Err(Error::RuntimeError(format!("Parallel chunk failed: Expected 206 Partial Content, got {}", res.status())));
+                            }
+
                             let mut binding = res.into_body();
                             let mut reader = binding.as_reader();
                             file.seek(SeekFrom::Start(start))?;
+
+                            let mut remaining = expected_bytes;
+
                             loop {
-                                let bytes_read = reader.read(&mut buffer)?;
+                                let to_read = (buffer.len() as u64).min(remaining) as usize;
+                                let bytes_read = reader.read(&mut buffer[..to_read])?;
                                 if bytes_read == 0 { break; }
                                 file.write_all(&buffer[..bytes_read])?;
                                 progress_callback_clone(bytes_read);
-                                if stop_signal_clone.load(atomic::Ordering::Relaxed) {
-                                    return Err(Error::RuntimeError("Download cancelled".into()));
-                                }
+
+                                remaining -= bytes_read as u64;
+                                if remaining == 0 { break; }
+                            }
+
+                            if remaining > 0 {
+                                return Err(Error::RuntimeError(format!("Parallel chunk truncated. Missing {} bytes", remaining)));
                             }
                             Ok(())
                         })();
