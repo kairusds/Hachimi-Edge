@@ -342,7 +342,7 @@ static KEYBOARD_SELECTION: Lazy<Mutex<RangeInt>> = Lazy::new(|| {
     Mutex::new(RangeInt::new(0, 1))
 });
 #[cfg(target_os = "android")]
-pub static KEYBOARD_OWNER: Lazy<Mutex<Option<KeyboardOwner>>> = 
+pub static KEYBOARD_OWNER: Lazy<Mutex<Option<KeyboardOwner>>> =
     Lazy::new(|| Mutex::new(None));
 #[cfg(target_os = "android")]
 #[derive(PartialEq)]
@@ -423,9 +423,9 @@ pub fn handle_android_keyboard<T: 'static>(res: &egui::Response, val: &mut T) {
         PENDING_KB_TYPE.store(TouchScreenKeyboardType::KeyboardType::NumberPad as i32, atomic::Ordering::Release);
         i.to_string()
     } else {
-        String::new() 
+        String::new()
     };
-    
+
     if res.gained_focus() {
         {
             let mut owner_lock = KEYBOARD_OWNER.lock().unwrap();
@@ -492,12 +492,12 @@ pub fn handle_android_keyboard<T: 'static>(res: &egui::Response, val: &mut T) {
                         }
                     }
                 } else if let Some(i) = val_any_mut.downcast_mut::<i32>() {
-                    if let Ok(parsed) = kb_txt_str.parse::<i32>() { 
+                    if let Ok(parsed) = kb_txt_str.parse::<i32>() {
                         if *i != parsed { *i = parsed; }
                     }
                 }
 
-                let kb_txt_clone = kb_txt_str.clone(); 
+                let kb_txt_clone = kb_txt_str.clone();
                 res.ctx.data_mut(|data| {
                     if let Some(mut state) = data.get_temp::<TextEditState>(res.id) {
                         let start_char = utf16_to_char_index(&kb_txt_clone, unity_range.start as usize);
@@ -793,7 +793,7 @@ impl Gui {
         self.context.set_style(style);
 
         self.context.begin_pass(input);
-        
+
         if self.menu_visible { self.run_menu(); }
         if self.update_progress_visible { self.run_update_progress(); }
 
@@ -1054,7 +1054,7 @@ impl Gui {
                             });
                             ui.horizontal(|ui| {
                                 let mut value = hachimi.discord_rpc.load(atomic::Ordering::Relaxed);
-                                
+
                                 ui.label(t!("menu.discord_rpc"));
                                 if ui.checkbox(&mut value, "").changed() {
                                     hachimi.discord_rpc.store(value, atomic::Ordering::Relaxed);
@@ -1075,10 +1075,12 @@ impl Gui {
                             show_notification = Some(t!("notification.localized_data_reloaded"));
                         }
                         if ui.button(t!("menu.tl_check_for_updates")).clicked() {
-                            hachimi.tl_updater.clone().check_for_updates(false);
+                            hachimi.tl_updater.skip_update(None);
+                            hachimi.tl_updater.clone().check_for_updates(false, false);
                         }
                         if ui.button(t!("menu.tl_check_for_updates_pedantic")).clicked() {
-                            hachimi.tl_updater.clone().check_for_updates(true);
+                            hachimi.tl_updater.skip_update(None);
+                            hachimi.tl_updater.clone().check_for_updates(true, false);
                         }
                         if hachimi.config.load().translator_mode {
                             if ui.button(t!("menu.dump_localize_dict")).clicked() {
@@ -1343,7 +1345,7 @@ impl Gui {
                 egui::epaint::StrokeKind::Inside
             );
 
-            let icon_size = 12.0 * scale; 
+            let icon_size = 12.0 * scale;
             let icon_rect = egui::Rect::from_center_size(
                 egui::pos2(rect.right() - padding.x - icon_size / 2.0, rect.center().y),
                 egui::vec2(icon_size, icon_size)
@@ -1397,7 +1399,7 @@ impl Gui {
                         if !search_term.is_empty() && !label.to_lowercase().contains(&search_term.to_lowercase()) {
                             continue;
                         }
-    
+
                         let is_selected = value == choice_val;
                         if ui.add(egui::Button::selectable(is_selected, *label)).clicked() {
                             *value = *choice_val;
@@ -1697,7 +1699,7 @@ fn simple_window_layout(ui: &mut egui::Ui, id: egui::Id, add_contents: impl FnOn
     ui.scope_builder(builder, |ui| {
         ui.with_layout(egui::Layout::top_down(egui::Align::Min), add_contents);
 
-        ui.separator(); 
+        ui.separator();
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), add_buttons);
     });
@@ -1915,16 +1917,16 @@ fn tl_repo_list_ui(
 pub struct SimpleYesNoDialog {
     title: String,
     content: String,
-    callback: fn(bool),
+    callback: Option<Box<dyn FnOnce(bool) + Send + Sync>>,
     id: egui::Id
 }
 
 impl SimpleYesNoDialog {
-    pub fn new(title: &str, content: &str, callback: fn(bool)) -> SimpleYesNoDialog {
+    pub fn new(title: &str, content: &str, callback: impl FnOnce(bool) + Send + Sync + 'static) -> SimpleYesNoDialog {
         SimpleYesNoDialog {
             title: title.to_owned(),
             content: content.to_owned(),
-            callback,
+            callback: Some(Box::new(callback)),
             id: random_id()
         }
     }
@@ -1963,7 +1965,9 @@ impl Window for SimpleYesNoDialog {
             true
         }
         else {
-            (self.callback)(result);
+            if let Some(cb) = self.callback.take() {
+                cb(result);
+            }
             false
         }
     }
@@ -1973,17 +1977,17 @@ pub struct SimpleOkDialog {
     title: String,
     content: String,
     scrollable: bool,
-    callback: fn(),
+    callback: Option<Box<dyn FnOnce() + Send + Sync>>,
     id: egui::Id
 }
 
 impl SimpleOkDialog {
-    pub fn new(title: &str, content: &str, scrollable: bool, callback: fn()) -> SimpleOkDialog {
+    pub fn new(title: &str, content: &str, scrollable: bool, callback: impl FnOnce() + Send + Sync + 'static) -> SimpleOkDialog {
         SimpleOkDialog {
             title: title.to_owned(),
             content: content.to_owned(),
             scrollable: scrollable.to_owned(),
-            callback,
+            callback: Some(Box::new(callback)),
             id: random_id()
         }
     }
@@ -2024,7 +2028,9 @@ impl Window for SimpleOkDialog {
             true
         }
         else {
-            (self.callback)();
+            if let Some(cb) = self.callback.take() {
+                cb();
+            }
             false
         }
     }
@@ -2268,6 +2274,29 @@ impl ConfigEditor {
                 ui.label(t!("config_editor.disable_auto_update_check"));
                 ui.checkbox(&mut config.disable_auto_update_check, "");
                 ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.tl_update_mode")) {
+                ui.label(t!("config_editor.tl_update_mode"));
+                Gui::run_combo(ui, "tl_update_mode", &mut config.tl_update_mode, &[
+                    (hachimi::TlUpdateMode::Disabled, &t!("disabled")),
+                    (hachimi::TlUpdateMode::Periodic, &t!("config_editor.tl_update_periodic")),
+                    (hachimi::TlUpdateMode::Silent, &t!("config_editor.tl_update_silent"))
+                ]);
+                ui.end_row();
+            }
+
+            if config.tl_update_mode != hachimi::TlUpdateMode::Disabled {
+                if should_show_option(search, &t!("config_editor.tl_update_interval")) {
+                    ui.label(t!("config_editor.tl_update_interval"));
+                    let mut minutes = (config.tl_update_interval_sec / 60) as i32;
+                    ui.horizontal(|ui| {
+                        ui.add(egui::DragValue::new(&mut minutes).speed(1.0).range(1..=10080));
+                        ui.label(t!("minutes"));
+                    });
+                    config.tl_update_interval_sec = (minutes as u64) * 60;
+                    ui.end_row();
+                }
             }
 
             if should_show_option(search, &t!("config_editor.disable_translations")) {
@@ -2947,7 +2976,7 @@ impl Window for FirstTimeSetupWindow {
             save_and_reload_config(self.config.clone());
 
             if !page_open {
-                Hachimi::instance().tl_updater.clone().check_for_updates(false);
+                Hachimi::instance().tl_updater.clone().check_for_updates(false, false);
             }
         }
 
@@ -3930,7 +3959,7 @@ impl ChangeTranslationRepoWindow {
         new_config.translation_repo_index = Some(index.to_string());
         drop(config);
         save_and_reload_config(new_config);
-        hachimi.tl_updater.clone().check_for_updates(false);
+        hachimi.tl_updater.clone().check_for_updates(false, false);
     }
 
     fn remove_repo(repo_id: u32) {
@@ -4050,7 +4079,7 @@ impl Window for AddTranslationRepoWindow {
                     drop(config);
                     drop(manager);
                     save_and_reload_config(new_config);
-                    hachimi.tl_updater.clone().check_for_updates(false);
+                    hachimi.tl_updater.clone().check_for_updates(false, false);
                 }
             }
         }
@@ -4261,14 +4290,14 @@ pub struct TranslationRepoUpdateWindow {
     title: String,
     content: String,
     changelog_is_markdown: bool,
-    callback: fn(bool),
+    callback: Option<Box<dyn FnOnce(bool) + Send + Sync>>,
     id: egui::Id,
     changelog_fetch_result: Arc<Mutex<Option<Result<String, String>>>>,
     changelog_cached: Option<Result<String, String>>,
 }
 
 impl TranslationRepoUpdateWindow {
-    pub fn new(title: &str, content: &str, changelog_url: &str, changelog_is_markdown: bool, callback: fn(bool)) -> TranslationRepoUpdateWindow {
+    pub fn new(title: &str, content: &str, changelog_url: &str, changelog_is_markdown: bool, callback: impl FnOnce(bool) + Send + Sync + 'static) -> TranslationRepoUpdateWindow {
         let fetch_result = Arc::new(Mutex::new(None));
         let fetch_result_clone = fetch_result.clone();
         let url = changelog_url.to_owned();
@@ -4298,7 +4327,7 @@ impl TranslationRepoUpdateWindow {
             title: title.to_owned(),
             content: content.to_owned(),
             changelog_is_markdown,
-            callback,
+            callback: Some(Box::new(callback)),
             id: random_id(),
             changelog_fetch_result: fetch_result,
             changelog_cached: None,
@@ -4397,7 +4426,9 @@ impl Window for TranslationRepoUpdateWindow {
             true
         }
         else {
-            (self.callback)(result);
+            if let Some(cb) = self.callback.take() {
+                cb(result);
+            }
             false
         }
     }

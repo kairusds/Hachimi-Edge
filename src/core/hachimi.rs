@@ -28,6 +28,7 @@ pub struct Hachimi {
     // Localized data
     pub localized_data: ArcSwap<LocalizedData>,
     pub tl_updater: Arc<tl_repo::Updater>,
+    pub tl_update_thread_running: AtomicBool,
 
     // Character data
     pub chara_data: ArcSwap<CharacterData>,
@@ -123,6 +124,7 @@ impl Hachimi {
             // Don't load localized data initially since it might fail, logging the error is not possible here
             localized_data: ArcSwap::default(),
             tl_updater: Arc::default(),
+            tl_update_thread_running: AtomicBool::new(false),
 
             // Same with these
             chara_data: ArcSwap::default(),
@@ -177,6 +179,10 @@ impl Hachimi {
 
         new_config.language.set_locale();
         self.config.store(Arc::new(new_config));
+
+        if Hachimi::is_initialized() && self.hooking_finished.load(atomic::Ordering::Relaxed) {
+            Hachimi::instance().start_translation_updater_thread();
+        }
     }
 
     pub fn save_config(&self, config: &Config) -> Result<(), Error> {
@@ -198,6 +204,10 @@ impl Hachimi {
         if new_config.selected_tl_repo_id != old_id {
             self.load_localized_data();
             gui::request_notification(gui::NotificationRequest::TLRepoChanged);
+        }
+
+        if Hachimi::is_initialized() && self.hooking_finished.load(atomic::Ordering::Relaxed) {
+            Hachimi::instance().start_translation_updater_thread();
         }
 
         Ok(())
@@ -283,6 +293,8 @@ impl Hachimi {
         }
 
         hachimi_impl::on_hooking_finished(self);
+
+        Hachimi::instance().start_translation_updater_thread();
 
         for plugin in self.plugins.lock().unwrap().iter() {
             info!("Initializing plugin: {}", plugin.name);
@@ -419,10 +431,46 @@ impl Hachimi {
             self.updater.clone().check_for_updates(|new_update| {
                 let hachimi = Hachimi::instance();
                 if !new_update && !hachimi.config.load().translator_mode {
-                    hachimi.tl_updater.clone().check_for_updates(false);
+                    hachimi.tl_updater.clone().check_for_updates(false, false);
                 }
             });
         }
+    }
+
+    pub fn start_translation_updater_thread(self: Arc<Self>) {
+        let config = self.config.load();
+        if config.tl_update_mode == TlUpdateMode::Disabled || config.tl_update_interval_sec == 0 || config.translator_mode {
+            return;
+        }
+
+        if self.tl_update_thread_running.swap(true, atomic::Ordering::Relaxed) {
+            return;
+        }
+
+        std::thread::Builder::new()
+            .name("translation_updater_thread".into())
+            .spawn(move || {
+                let mut elapsed: u64 = 0;
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+
+                    let config = self.config.load();
+                    if config.tl_update_mode == TlUpdateMode::Disabled || config.tl_update_interval_sec == 0 || config.translator_mode {
+                        self.tl_update_thread_running.store(false, atomic::Ordering::Relaxed);
+                        break;
+                    }
+
+                    elapsed += 5;
+
+                    if elapsed >= config.tl_update_interval_sec {
+                        elapsed = 0;
+                        let silent = config.tl_update_mode == TlUpdateMode::Silent;
+                        info!("Running translation updater check (Silent: {})...", silent);
+                        self.tl_updater.clone().check_for_updates(false, silent);
+                    }
+                }
+            })
+            .expect("Failed to spawn translation updater thread");
     }
 }
 
@@ -430,6 +478,16 @@ fn default_serde_instance<'a, T: Deserialize<'a>>() -> Option<T> {
     let empty_data = std::iter::empty::<((), ())>();
     let empty_deserializer = serde::de::value::MapDeserializer::<_, serde::de::value::Error>::new(empty_data);
     T::deserialize(empty_deserializer).ok()
+}
+
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+pub enum TlUpdateMode {
+    Disabled,
+    Periodic,
+    Silent
+}
+impl Default for TlUpdateMode {
+    fn default() -> Self { Self::Disabled }
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -463,6 +521,12 @@ pub struct Config {
     pub lazy_translation_updates: bool,
     #[serde(default)]
     pub disable_auto_update_check: bool,
+
+    #[serde(default)]
+    pub tl_update_mode: TlUpdateMode,
+    #[serde(default = "Config::default_tl_update_interval_sec")]
+    pub tl_update_interval_sec: u64,
+
     #[serde(default)]
     pub disable_translations: bool,
     #[serde(default = "Config::default_gui_scale")]
@@ -558,6 +622,7 @@ impl Config {
     pub fn default_extreme_bg() -> egui::Color32 { egui::Color32::from_rgb(15, 15, 15) }
     pub fn default_text_color() -> egui::Color32 { egui::Color32::from_gray(170) }
     pub fn default_window_rounding() -> f32 { 10.0 }
+    fn default_tl_update_interval_sec() -> u64 { 3600 }
 }
 
 impl Default for Config {
