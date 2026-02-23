@@ -20,13 +20,21 @@ use thread_priority::{ThreadBuilderExt, ThreadPriority};
 use arc_swap::ArcSwap;
 use serde::de::DeserializeOwned;
 
-use super::Error;
+use super::{Error, Hachimi};
 
 pub struct AsyncRequest<T: Send + Sync> {
     request: Mutex<Option<http::Request<ureq::Body>>>,
     map_fn: fn(http::Response<ureq::Body>) -> Result<T, Error>,
     running: AtomicBool,
     pub result: ArcSwap<Option<Result<T, Error>>>
+}
+
+pub fn ureq_config() -> ureq::config::Config {
+    use ureq::config::IpFamily::*;
+
+    ureq::config::Config::builder()
+        .ip_family(if Hachimi::instance().config.load().ipv4_only { Ipv4Only } else { Any })
+        .build()
 }
 
 impl<T: Send + Sync + 'static> AsyncRequest<T> {
@@ -44,10 +52,7 @@ impl<T: Send + Sync + 'static> AsyncRequest<T> {
         self.running.store(true, atomic::Ordering::Release);
         let req = self.request.lock().unwrap().take().expect("Request run twice");
         std::thread::spawn(move || {
-            let config = ureq::config::Config::builder()
-                .ip_family(ureq::config::IpFamily::Ipv4Only)
-                .build();
-            let agent = ureq::Agent::new_with_config(config);
+            let agent = ureq::Agent::new_with_config(ureq_config());
 
             let res = match agent.run(req) {
                 Ok(v) => (self.map_fn)(v),
@@ -72,10 +77,7 @@ impl<T: Send + Sync + 'static + DeserializeOwned> AsyncRequest<T> {
 }
 
 pub fn get_json<T: DeserializeOwned>(url: &str) -> Result<T, Error> {
-    let config = ureq::Agent::config_builder()
-        .ip_family(ureq::config::IpFamily::Ipv4Only)
-        .build();
-    let agent: ureq::Agent = ureq::Agent::new_with_config(config);
+    let agent: ureq::Agent = ureq::Agent::new_with_config(ureq_config());
     let res = agent.get(url).call()?;
     Ok(serde_json::from_str(&res.into_body().read_to_string()?)?)
 }
@@ -91,10 +93,7 @@ pub fn get_github_json<T: DeserializeOwned>(url: &str) -> Result<T, Error> {
 pub fn download_file_parallel(url: &str, file_path: &Path, num_threads: usize,
     min_chunk_size: u64, chunk_size: usize, progress_callback: Arc<dyn Fn(usize) + Send + Sync>
 ) -> Result<(), Error> {
-    let config = ureq::Agent::config_builder()
-        .ip_family(ureq::config::IpFamily::Ipv4Only)
-        .build();
-    let agent: ureq::Agent = ureq::Agent::new_with_config(config);
+    let agent: ureq::Agent = ureq::Agent::new_with_config(ureq_config());
     let res = agent.head(url).call()?;
 
     let content_length = res.headers()

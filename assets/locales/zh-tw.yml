@@ -4,7 +4,7 @@ windows:
   menu_open_key: "右方向鍵"
 
 android:
-  menu_open_key: "提高音量鍵 + 降低音量鍵"
+  menu_open_key: "提高音量鍵 + 降低音量鍵\n\uf25a 或 三擊左上角"
 
 splash_sub: "\uf015 按下 %{open_key_str} 來打開選單。"
 loading_label: "載入中"
@@ -112,6 +112,7 @@ config_editor:
     此選項會在您重新啟動遊戲後停用 Hachimi 覆蓋層，
     這意味著您將無法訪問設置編輯器。
     如果是不小心誤觸此選項，請關閉此對話框並禁用該選項。
+  ipv4_only: "僅限 IPv4 ureq"
   meta_index_url: "翻譯 Meta URL"
   debug_mode: "除錯模式"
   enable_file_logging: "啟用檔案記錄"
@@ -149,9 +150,9 @@ config_editor:
   disable_skill_name_translation: "停用技能名稱翻譯"
   hide_ingame_ui_hotkey: "隱藏遊戲內 UI 快捷鍵"
   hide_ingame_ui_hotkey_info: >-
-    此選項允許使用一個快捷鍵來切換遊戲內的用戶介面（UI）。
-    對於 Android 裝置，操作是在 0.3 秒內連按兩次「音量調高」鍵。
-    對於 PC/安卓（帶鍵盤） 而言，它是 Insert 鍵（插入鍵）。此按鍵也可以在 設定檔（config file） 中更改。
+    此選項允許使用快捷鍵切換遊戲內介面（UI）的顯示。
+    Android 端，您需要雙擊「音量上鍵」，或連續三次點擊螢幕右上角。
+    對於配備鍵盤的 PC/Android 裝置，預設按鍵為 Insert，並可在 GUI 或設定檔中進行更改。
   menu_open_key: "選單開啟熱鍵"
   menu_open_key_set: "按下按鍵進行設定"
   render_scale: "渲染比例"

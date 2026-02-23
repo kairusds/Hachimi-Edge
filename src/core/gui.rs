@@ -813,7 +813,7 @@ impl Gui {
                         ui.heading(t!("menu.graphics_heading"));
                         ui.horizontal(|ui| {
                             ui.label(t!("menu.fps_label"));
-                            let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=240));
+                            let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=1000));
                             if res.lost_focus() || res.drag_stopped() {
                                 hachimi.target_fps.store(self.menu_fps_value, atomic::Ordering::Relaxed);
                                 Thread::main_thread().schedule(|| {
@@ -1773,6 +1773,10 @@ impl ConfigEditor {
                 }
                 ui.end_row();
 
+                ui.label(t!("config_editor.ipv4_only"));
+                ui.checkbox(&mut config.ipv4_only, "");
+                ui.end_row();
+
                 ui.label(t!("config_editor.meta_index_url"));
                 let res = ui.add(egui::TextEdit::singleline(&mut config.meta_index_url).lock_focus(true));
                 #[cfg(target_os = "android")]
@@ -1899,7 +1903,7 @@ impl ConfigEditor {
             },
 
             ConfigEditorTab::Graphics => {
-                Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=240);
+                Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=1000);
 
                 ui.label(t!("config_editor.virtual_resolution_multiplier"));
                 ui.add(egui::Slider::new(&mut config.virtual_res_mult, 1.0..=4.0).step_by(0.1));

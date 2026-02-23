@@ -362,6 +362,8 @@ pub struct Config {
     pub language: Language,
     #[serde(default = "Config::default_meta_index_url")]
     pub meta_index_url: String,
+    #[serde(default)]
+    pub ipv4_only: bool,
     pub physics_update_mode: Option<SpringUpdateMode>,
     #[serde(default = "Config::default_ui_animation_scale")]
     pub ui_animation_scale: f32,

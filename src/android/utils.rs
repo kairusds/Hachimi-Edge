@@ -214,6 +214,25 @@ pub fn get_device_api_level(env: *mut jni::sys::JNIEnv) -> i32 {
         .unwrap()
 }
 
+pub fn get_screen_dimensions(mut env: JNIEnv) -> (i32, i32) {
+    let Some(activity) = get_activity(unsafe { env.unsafe_clone() }) else { return (0, 0) };
+
+    let wm = env.call_method(activity, "getWindowManager", "()Landroid/view/WindowManager;", &[])
+        .ok().and_then(|v| v.l().ok()).unwrap();
+    let display = env.call_method(wm, "getDefaultDisplay", "()Landroid/view/Display;", &[])
+        .ok().and_then(|v| v.l().ok()).unwrap();
+
+    let dm_class = env.find_class("android/util/DisplayMetrics").unwrap();
+    let dm = env.new_object(dm_class, "()V", &[]).unwrap();
+
+    env.call_method(display, "getRealMetrics", "(Landroid/util/DisplayMetrics;)V", &[(&dm).into()]).unwrap();
+
+    let width = env.get_field(&dm, "widthPixels", "I").unwrap().i().unwrap();
+    let height = env.get_field(&dm, "heightPixels", "I").unwrap().i().unwrap();
+
+    (width, height)
+}
+
 pub fn get_game_dir() -> PathBuf {
     let package_name = game_impl::get_package_name();
     game_impl::get_data_dir(&package_name)

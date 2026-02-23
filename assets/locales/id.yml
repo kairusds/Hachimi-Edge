@@ -4,7 +4,7 @@ windows:
   menu_open_key: "Panah Kanan"
 
 android:
-  menu_open_key: "Vol Atas + Bawah"
+  menu_open_key: "Vol Atas + Bawah\n\uf25a atau Ketuk tiga kali kiri atas"
 
 splash_sub: "\uf015 Tekan %{open_key_str} untuk buka menu."
 loading_label: "Memuat..."
@@ -120,6 +120,7 @@ config_editor:
     Opsi ini akan mematikan overlay (GUI) Hachimi.
     Kamu tidak bisa mengakses editor konfigurasi setelah kamu memulai ulang game.
     Jika tidak disengaja dinyalakan, mohon tutup dialog ini dan matikan opsinya!
+  ipv4_only: "Khusus IPv4 ureq"
   meta_index_url: "URL Meta Terjemahan"
   debug_mode: "Mode Debug"
   enable_file_logging: "Nyalakan logging file"
@@ -163,9 +164,9 @@ config_editor:
   disable_skill_name_translation: "Matikan translasi nama skill"
   hide_ingame_ui_hotkey: "Sembunyikan hotkey UI dalam game"
   hide_ingame_ui_hotkey_info: >-
-    Opsi ini mengatur tombol shortcut untuk buka-tutup UI dalam game.
-    Untuk Android, kamu perlu menekan 2x tombol atas Volume dalam 0.3 detik.
-    Untuk PC/Android dengan keyboard, gunakan tombol Insert. Tombol bisa diganti dalam file konfigurasi.
+    Opsi ini memungkinkan tombol pintas untuk mengaktifkan/menonaktifkan UI di dalam game.
+    Untuk Android, Anda perlu mengetuk dua kali tombol Volume Atas, atau mengetuk tiga kali di bagian kanan atas layar.
+    Untuk PC/Android dengan keyboard, tombolnya adalah Insert dan dapat dikonfigurasi di GUI atau config.
   discord_rpc: "RPC Discord"
   menu_open_key: "Buka menu hotkey"
   menu_open_key_set: "Atur"

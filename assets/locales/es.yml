@@ -4,7 +4,7 @@ windows:
   menu_open_key: "Flecha Derecha"
 
 android:
-  menu_open_key: "Volumen + y Volumen -"
+  menu_open_key: "Volumen + y Volumen -\n\uf25a o Triple toque arriba a la izquierda"
 
 splash_sub: "\uf015 Pulsa %{open_key_str} para abrir el menú."
 loading_label: "Cargando..."
@@ -123,6 +123,7 @@ config_editor:
     Esta opción desactivará el overlay de Hachimi una vez reinicies el juego.
     Esto se traduce en que NO podrás acceder al Editor de Configuración tras ello.
     Si no es un cambio intencional, cierra este diálogo y DESACTIVA esta opción.
+  ipv4_only: "Usar IPv4 (sólo en ureq)"
   meta_index_url: "URL para las traducciones (meta)"
   debug_mode: "Modo depuración"
   enable_file_logging: "Guardar registro en un archivo"
@@ -167,10 +168,9 @@ config_editor:
   disable_skill_name_translation: "No traducir habilidades"
   hide_ingame_ui_hotkey: "Atajo para ocultar UI del juego"
   hide_ingame_ui_hotkey_info: >-
-    Esta opción permitirá usar un atajo para alternar el UI del juego.
-    En Android, pulsa dos veces el botón de Volumen + con un margen de 0.3 segundos.
-    En PC/Android con teclado, será la tecla Insertar. Es posible cambiar esta tecla en el archivo de
-    configuración.
+    Esta opción te permite asignar una tecla para alternar el UI del juego.
+    En Android, tendrás que pulsar dos veces el botón de Volumen +, ó tocando tres veces la parte superior derecha de la pantalla.
+    En PC/Android con teclado será la tecla Insertar y podrá ser cambiada desde el GUI o en la configuración.
   discord_rpc: "Discord RPC"
   menu_open_key: "Tecla para abrir menú"
   menu_open_key_set: "Establecer"

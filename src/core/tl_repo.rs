@@ -8,7 +8,7 @@ use size::Size;
 use thread_priority::{ThreadBuilderExt, ThreadPriority};
 
 use crate::core::game::Region;
-use super::{gui::SimpleYesNoDialog, hachimi::LocalizedData, http::{self, AsyncRequest}, utils, Error, Gui, Hachimi};
+use super::{gui::SimpleYesNoDialog, hachimi::LocalizedData, http::{self, ureq_config, AsyncRequest}, utils, Error, Gui, Hachimi};
 use once_cell::sync::Lazy;
 
 #[derive(Deserialize)]
@@ -467,10 +467,7 @@ impl Updater {
         let fatal_error = Arc::new(Mutex::new(None::<Error>));
         let stop_signal = Arc::new(AtomicBool::new(false));
 
-        let config = ureq::Agent::config_builder()
-        .ip_family(ureq::config::IpFamily::Ipv4Only)
-        .build();
-        let shared_agent: ureq::Agent = ureq::Agent::new_with_config(config);
+        let shared_agent: ureq::Agent = ureq::Agent::new_with_config(ureq_config());
 
         let (sender, receiver) = mpsc::channel::<RepoFile>();
         let receiver = Arc::new(Mutex::new(receiver));

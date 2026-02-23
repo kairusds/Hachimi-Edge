@@ -4,7 +4,7 @@ windows:
   menu_open_key: "Mũi tên phải"
 
 android:
-  menu_open_key: "Vol Up + Vol Down"
+  menu_open_key: "Vol Up + Vol Down\n\uf25a hoặc chạm 3 lần phía trên bên trái"
 
 splash_sub: "\uf015 Nhấn nút %{open_key_str} để mở menu."
 loading_label: "Đang tải..."
@@ -109,6 +109,7 @@ config_editor:
     Tùy chọn này sẽ tắt GUI của Hachimi sau khi bạn khởi động lại game,
     nghĩa là bạn sẽ KHÔNG thể truy cập trình chỉnh sửa cài đặt nữa.
     Nếu như bạn không có ý định này, hãy đóng hộp thoại và TẮT tùy chọn.
+  ipv4_only: "Chỉ IPv4 ureq"
   meta_index_url: "URL Meta bản dịch"
   debug_mode: "Chế độ gỡ lỗi"
   enable_file_logging: "Bật ghi nhật ký tệp"
@@ -144,9 +145,9 @@ config_editor:
   physics_update_mode: "Chế độ vật lý"
   hide_ingame_ui_hotkey: "Phím tắt ẩn giao diện trong game"
   hide_ingame_ui_hotkey_info: >-
-    Tùy chọn này cho phép phím tắt để bật/tắt giao diện người dùng (UI) trong trò chơi.
-    Đối với Android, đó là nhấn hai lần phím Tăng âm lượng (Volume Up) trong vòng 0,3 giây.
-    Đối với PC/Android có bàn phím, đó là phím Insert (Phím Chèn). Phím này cũng có thể được thay đổi trong tệp cấu hình (config file).
+    Tùy chọn này cho phép sử dụng phím tắt để ẩn/hiện giao diện (UI) trong trò chơi.
+    Đối với Android, bạn cần nhấn đúp phím Tăng âm lượng, hoặc nhấn ba lần vào góc trên bên phải màn hình.
+    Đối với PC/Android có bàn phím, đó là phím Insert và có thể được cấu hình trong GUI hoặc tệp config.
   menu_open_key: "Phím tắt mở menu"
   menu_open_key_set: "Nhấn để thiết lập"
   render_scale: "Tỷ lệ kết xuất"
