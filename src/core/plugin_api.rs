@@ -559,6 +559,14 @@ unsafe extern "C" fn android_dex_call_static_string(_handle: u64, _method: *cons
     false
 }
 
+unsafe extern "C" fn gui_save_menu_width() {
+    crate::core::gui::save_menu_width();
+}
+
+unsafe extern "C" fn gui_restore_menu_width() {
+    crate::core::gui::restore_menu_width();
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Vtable {
@@ -705,6 +713,9 @@ pub struct Vtable {
     pub android_dex_unload: unsafe extern "C" fn(handle: u64) -> bool,
     pub android_dex_call_static_noargs: unsafe extern "C" fn(handle: u64, method: *const c_char, sig: *const c_char) -> bool,
     pub android_dex_call_static_string: unsafe extern "C" fn(handle: u64, method: *const c_char, sig: *const c_char, arg: *const c_char) -> bool,
+
+    pub gui_save_menu_width: unsafe extern "C" fn(),
+    pub gui_restore_menu_width: unsafe extern "C" fn(),
 }
 
 impl Vtable {
@@ -764,6 +775,8 @@ impl Vtable {
         android_dex_unload,
         android_dex_call_static_noargs,
         android_dex_call_static_string,
+        gui_save_menu_width,
+        gui_restore_menu_width,
     };
 
     pub fn instantiate() -> Self {

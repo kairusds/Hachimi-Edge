@@ -78,6 +78,19 @@ pub fn request_notification(request: NotificationRequest) {
     }
 }
 
+static PREV_MENU_WIDTH: Mutex<Option<f32>> = Mutex::new(None);
+static SAVED_MENU_WIDTH_STACK: Mutex<Vec<f32>> = Mutex::new(Vec::new());
+static SAVE_MENU_WIDTH: AtomicBool = AtomicBool::new(false);
+static RESTORE_MENU_WIDTH: AtomicBool = AtomicBool::new(false);
+
+pub fn save_menu_width() {
+    SAVE_MENU_WIDTH.store(true, atomic::Ordering::Relaxed);
+}
+
+pub fn restore_menu_width() {
+    RESTORE_MENU_WIDTH.store(true, atomic::Ordering::Relaxed);
+}
+
 type BoxedWindow = Box<dyn Window + Send + Sync>;
 pub struct Gui {
     pub context: egui::Context,
@@ -949,8 +962,22 @@ impl Gui {
             let ctx = &self.context;
             let scale = get_scale(ctx);
             let salt = self.finalized_scale;
-            egui::SidePanel::left(egui::Id::new("hachimi_menu").with(salt.to_bits()))
-                .min_width(96.0 * scale)
+
+            let mut min_w = 96.0 * scale;
+            let mut max_w = f32::INFINITY;
+
+            if RESTORE_MENU_WIDTH.swap(false, atomic::Ordering::Relaxed) {
+                if let Ok(mut stack) = SAVED_MENU_WIDTH_STACK.lock() {
+                    if let Some(w) = stack.pop() {
+                        min_w = w;
+                        max_w = w;
+                    }
+                }
+            }
+
+            let panel_res = egui::SidePanel::left(egui::Id::new("hachimi_menu").with(salt.to_bits()))
+                .min_width(min_w)
+                .max_width(max_w)
                 .default_width(200.0 * scale)
                 .show_animated(ctx, self.show_menu, |ui| {
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
@@ -1196,6 +1223,23 @@ impl Gui {
                     });
                 });
             });
+
+            if let Some(inner) = &panel_res {
+                let current_width = inner.response.rect.width();
+
+                if SAVE_MENU_WIDTH.swap(false, atomic::Ordering::Relaxed) {
+                    if let Ok(mut stack) = SAVED_MENU_WIDTH_STACK.lock() {
+                        if let Ok(prev_lock) = PREV_MENU_WIDTH.lock() {
+                            let w_to_save = prev_lock.unwrap_or(current_width);
+                            stack.push(w_to_save);
+                        }
+                    }
+                }
+
+                if let Ok(mut prev_lock) = PREV_MENU_WIDTH.lock() {
+                    *prev_lock = Some(current_width);
+                }
+            }
         }
 
         for message in drain_plugin_notifications() {
