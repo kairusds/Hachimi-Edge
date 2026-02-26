@@ -1815,15 +1815,7 @@ fn paginated_window_layout(
     open
 }
 
-fn tl_repo_list_ui(
-    ui: &mut egui::Ui,
-    request: &Arc<AsyncRequest<Vec<RepoInfo>>>,
-    current_tl_repo: &mut Option<String>,
-    has_auto_selected: &mut bool,
-    current_lang_str: &str,
-    show_skip: bool,
-    check_already_downloaded: bool,
-) {
+fn async_request_ui_content<T: Send + Sync + 'static>(ui: &mut egui::Ui, request: Arc<AsyncRequest<T>>, on_retry: impl FnOnce(), add_contents: impl FnOnce(&mut egui::Ui, &T)) {
     let Some(result) = &**request.result.load() else {
         if !request.running() {
             request.clone().call();
@@ -1834,8 +1826,8 @@ fn tl_repo_list_ui(
         return;
     };
 
-    let repo_list = match result {
-        Ok(v) => v,
+    match result {
+        Ok(v) => add_contents(ui, v),
         Err(e) => {
             let rect = ui.available_rect_before_wrap();
             let text_style = egui::TextStyle::Body;
@@ -1865,96 +1857,108 @@ fn tl_repo_list_ui(
                 ui.vertical_centered(|ui| {
                     ui.label(text_job);
                     if ui.button(btn_text).clicked() {
-                        request.clone().call();
+                        on_retry();
                     }
                 });
             });
-            return;
         }
-    };
-
-    let hachimi = Hachimi::instance();
-
-    let mut filtered_repos: Vec<_> = repo_list.iter()
-        .filter(|repo| repo.region == hachimi.game.region)
-        .collect();
-
-    if !*has_auto_selected && current_tl_repo.is_none() {
-        if let Some(matched) = filtered_repos.iter().find(|r| r.is_recommended(current_lang_str)) {
-            *current_tl_repo = Some(matched.index.clone());
-        }
-        *has_auto_selected = true;
     }
+}
 
-    filtered_repos.sort_by_key(|repo| !repo.is_recommended(current_lang_str));
+fn tl_repo_list_ui(
+    ui: &mut egui::Ui,
+    request: Arc<AsyncRequest<Vec<RepoInfo>>>,
+    on_retry: impl FnOnce(),
+    current_tl_repo: &mut Option<String>,
+    has_auto_selected: &mut bool,
+    current_lang_str: &str,
+    show_skip: bool,
+    check_already_downloaded: bool,
+) {
+    async_request_ui_content(ui, request, on_retry, |ui, repo_list| {
+        let hachimi = Hachimi::instance();
 
-    egui::ScrollArea::vertical().show(ui, |ui| {
-        egui::Frame::NONE
-            .inner_margin(egui::Margin::symmetric(8, 0))
-            .show(ui, |ui| {
-                if filtered_repos.is_empty() {
-                    ui.label(t!("first_time_setup.no_compatible_repo"));
-                    return;
-                }
+        let mut filtered_repos: Vec<_> = repo_list.iter()
+            .filter(|repo| repo.region == hachimi.game.region)
+            .collect();
 
-                if show_skip {
-                    ui.radio_value(current_tl_repo, None, t!("first_time_setup.skip_translation"));
-                }
+        if !*has_auto_selected && current_tl_repo.is_none() {
+            if let Some(matched) = filtered_repos.iter().find(|r| r.is_recommended(current_lang_str)) {
+                *current_tl_repo = Some(matched.index.clone());
+            }
+            *has_auto_selected = true;
+        }
 
-                let mut last_section: Option<bool> = None;
+        filtered_repos.sort_by_key(|repo| !repo.is_recommended(current_lang_str));
 
-                for repo in filtered_repos.iter() {
-                    let is_matched = repo.is_recommended(current_lang_str);
-                    let is_selected = current_tl_repo.as_ref() == Some(&repo.index);
-
-                    if let Some(prev_matched) = last_section {
-                        if prev_matched != is_matched {
-                            ui.separator();
-                        }
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            egui::Frame::NONE
+                .inner_margin(egui::Margin::symmetric(8, 0))
+                .show(ui, |ui| {
+                    if filtered_repos.is_empty() {
+                        ui.label(t!("first_time_setup.no_compatible_repo"));
+                        return;
                     }
 
-                    let repo_label = if check_already_downloaded {
-                        let manager = hachimi.tl_repo_manager.lock().unwrap();
-                        let already_downloaded = manager.find_by_index(&repo.index).is_some();
-                        drop(manager);
+                    if show_skip {
+                        ui.radio_value(current_tl_repo, None, t!("first_time_setup.skip_translation"));
+                    }
 
-                        if already_downloaded {
-                            format!("{} {}",
-                                if is_matched && is_selected {
-                                    format!("★ {}", repo.name)
-                                } else {
-                                    repo.name.clone()
-                                },
-                                t!("add_translation_repo.already_downloaded")
-                            )
+                    let mut last_section: Option<bool> = None;
+
+                    for repo in filtered_repos.iter() {
+                        let is_matched = repo.is_recommended(current_lang_str);
+                        let is_selected = current_tl_repo.as_ref() == Some(&repo.index);
+
+                        if let Some(prev_matched) = last_section {
+                            if prev_matched != is_matched {
+                                ui.separator();
+                            }
+                        }
+
+                        let repo_label = if check_already_downloaded {
+                            let manager = hachimi.tl_repo_manager.lock().unwrap();
+                            let already_downloaded = manager.find_by_index(&repo.index).is_some();
+                            drop(manager);
+
+                            if already_downloaded {
+                                format!("{} {}",
+                                    if is_matched && is_selected {
+                                        format!("★ {}", repo.name)
+                                    } else {
+                                        repo.name.clone()
+                                    },
+                                    t!("add_translation_repo.already_downloaded")
+                                )
+                            } else if is_matched && is_selected {
+                                format!("★ {}", repo.name)
+                            } else {
+                                repo.name.clone()
+                            }
                         } else if is_matched && is_selected {
                             format!("★ {}", repo.name)
                         } else {
                             repo.name.clone()
+                        };
+
+                        ui.radio_value(current_tl_repo, Some(repo.index.clone()), &repo_label);
+
+                        if let Some(short_desc) = &repo.short_desc {
+                            ui.label(egui::RichText::new(short_desc).small());
                         }
-                    } else if is_matched && is_selected {
-                        format!("★ {}", repo.name)
-                    } else {
-                        repo.name.clone()
-                    };
 
-                    ui.radio_value(current_tl_repo, Some(repo.index.clone()), &repo_label);
-
-                    if let Some(short_desc) = &repo.short_desc {
-                        ui.label(egui::RichText::new(short_desc).small());
+                        last_section = Some(is_matched);
                     }
+                });
 
-                    last_section = Some(is_matched);
+            #[cfg(target_os = "android")]
+            {
+                let padding = ime_scroll_padding(ui.ctx());
+                if padding > 0.0 {
+                    ui.add_space(padding);
                 }
-            });
-
-        #[cfg(target_os = "android")]
-        {
-            let padding = ime_scroll_padding(ui.ctx());
-            if padding > 0.0 {
-                ui.add_space(padding);
             }
-        }
+        });
     });
 }
 
@@ -2205,6 +2209,10 @@ impl ConfigEditor {
                             ..Default::default()
                         }
                     ));
+                }
+
+                if res.lost_focus() && config.meta_index_url.trim().is_empty() {
+                    config.meta_index_url = hachimi::Config::default().meta_index_url;
                 }
                 ui.end_row();
             }
@@ -2893,6 +2901,10 @@ impl Window for FirstTimeSetupWindow {
                             }
 
                             if res.lost_focus() {
+                                if self.meta_index_url.trim().is_empty() {
+                                    self.meta_index_url = hachimi::Config::default().meta_index_url;
+                                }
+
                                 if self.meta_index_url != self.config.meta_index_url {
                                     self.config.meta_index_url = self.meta_index_url.clone();
                                     save_and_reload_config(self.config.clone());
@@ -2909,15 +2921,21 @@ impl Window for FirstTimeSetupWindow {
                         ui.label(t!("first_time_setup.select_translation_repo"));
                         ui.add_space(4.0);
 
+                        let mut retry_clicked = false;
                         tl_repo_list_ui(
                             ui,
-                            &self.index_request,
+                            self.index_request.clone(),
+                            || retry_clicked = true,
                             &mut self.current_tl_repo,
                             &mut self.has_auto_selected,
                             self.config.language.locale_str(),
                             true,
                             false
                         );
+
+                        if retry_clicked {
+                            self.index_request = Arc::new(tl_repo::new_meta_index_request());
+                        }
                     }
                     2 => {
                         ui.heading(t!("first_time_setup.common_settings_heading"));
@@ -4073,15 +4091,21 @@ impl Window for AddTranslationRepoWindow {
             ui.heading(t!("add_translation_repo.select_translation_repo"));
             ui.add_space(4.0);
 
+            let mut retry_clicked = false;
             tl_repo_list_ui(
                 ui,
-                &self.index_request,
+                self.index_request.clone(),
+                || retry_clicked = true,
                 &mut self.current_tl_repo,
                 &mut self.has_auto_selected,
                 self.config.language.locale_str(),
                 false,
                 true
             );
+
+            if retry_clicked {
+                self.index_request = Arc::new(tl_repo::new_meta_index_request());
+            }
 
             ui.separator();
 
