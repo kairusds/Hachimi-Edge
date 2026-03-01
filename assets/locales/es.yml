@@ -137,12 +137,11 @@ config_editor:
   auto_translate_stories: "Auto-traducir historias"
   auto_tl_warning: >-
     Nota: Esta función no funciona por sí sola; requiere configuración externa.
-    Esta opción requiere que tengas instalado un servidor compatible y que sea
-    capaz de enviar el contenido traducido al cliente tanto localmente como en
-    la nube mediante py3translationServer o similar. Si no tienes ningún
-    proveedor instalado, tu juego se verá negativamente afectado y tampoco
-    obtendrás contenido traducido desde el servidor. Mantén esta opción
-    desactivada si no tienes ningún sistema de traducción local/nube disponible.
+    Active esta opción solo si tiene instalado un servidor de traducción compatible
+    instalado en tu ordenador o un servicio en la nube que exponga una API como
+    py3translationServer o Sugoi Toolkit. Sin un servidor activo, no obtendrás
+    traducciones adicionales y el rendimiento del juego podría verse afectado.
+    Por favor, déjela desactivada si no dispone de un servidor de traducción.
   auto_translate_ui: "Auto-traducir UI\n(PUEDE ROMPER EL UI)"
   target_fps: "FPS objetivo"
   virtual_resolution_multiplier: "Multiplicador de resolución virtual"
