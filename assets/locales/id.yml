@@ -133,11 +133,12 @@ config_editor:
   ipc_listen_all: "Buka IPC listen-all"
   auto_translate_stories: "Otomatis terjemahkan cerita"
   auto_tl_warning: >-
-    Menyalakan opsi ini membutuhkan penyedia translasi yang kompatibel untuk
-    dipasang di komputer kamu atau layanan cloud yang menggunakan framework
-    py3translationServer. Tanpa penyedia tersebut, proses translasi otomatis
-    tidak akan berjalan dan akan memengaruhi game yang berjalan. Biarkan opsi ini
-    mati jika kamu tidak memiliki penyedia/framework translasi yang terinstal.
+    Catatan: Fitur ini tidak dapat berjalan sendiri; memerlukan pengaturan eksternal.
+    Mengaktifkan opsi ini memerlukan server terjemahan yang kompatibel terpasang di
+    komputer Anda atau layanan cloud dengan API seperti py3translationServer atau
+    Sugoi Toolkit. Tanpa server yang berjalan, tidak akan ada terjemahan tambahan
+    dan permainan mungkin terganggu. Harap biarkan opsi ini dinonaktifkan jika Anda
+    tidak memiliki server terjemahan.
   auto_translate_ui: "Otomatis terjemahkan UI (BISA MERUSAK UI)"
   target_fps: "Target FPS"
   virtual_resolution_multiplier: "Kelipatan resolusi virtual"

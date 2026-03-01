@@ -124,6 +124,12 @@ config_editor:
   enable_ipc: "啟用 IPC"
   ipc_listen_all: "監聽所有 IPC 地址"
   auto_translate_stories: "自動翻譯劇情"
+  auto_tl_warning: >-
+    注意：此功能無法獨立運行，需要外部設置。
+    啟用此選項需要您的電腦上安裝相容的翻譯伺服器，
+    或使用提供 API 的雲服務（如 py3translationServer 或 Sugoi Toolkit）。
+    若未運行伺服器，將無法進行額外翻譯，且可能影響遊戲運行。
+    如果您沒有可用的翻譯伺服器，請保持此選項關閉。
   auto_translate_ui: "自動翻譯 UI\n(可能會導致UI錯誤)"
   target_fps: "目標 FPS"
   virtual_resolution_multiplier: "虛擬解析度倍率"
