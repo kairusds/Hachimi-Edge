@@ -621,11 +621,32 @@ pub fn get_data_path() -> String {
 
     #[cfg(target_os = "windows")]
     {
-        unsafe { (*crate::il2cpp::hook::UnityEngine_CoreModule::Application::get_persistentDataPath()).as_utf16str() }.to_string()
+        use crate::{
+            core::game::Region,
+            il2cpp::hook::UnityEngine_CoreModule::Application,
+            windows::utils::get_game_dir
+        };
+
+        let game = &Hachimi::instance().game;
+        let jp_steam_data_path = get_game_dir()
+            .join("UmamusumePrettyDerby_Jpn_Data")
+            .join("Persistent");
+        let new_jp_dmm_data_path = get_game_dir()
+            .join("umamusume_Data")
+            .join("Persistent");
+
+        if game.region == Region::Japan && game.is_steam_release && jp_steam_data_path.exists() {
+            jp_steam_data_path.to_string_lossy().to_string()
+        } else if game.region == Region::Japan && !game.is_steam_release && new_jp_dmm_data_path.exists() {
+            new_jp_dmm_data_path.to_string_lossy().to_string()
+        } else {
+            unsafe { (*Application::get_persistentDataPath()).as_utf16str() }.to_string()
+        }
     }
 }
 
 pub fn get_masterdb_path() -> String {
+    info!("get_masterdb_path base: {}", get_data_path());
     format!("{}/master/master.mdb", get_data_path())
 }
 

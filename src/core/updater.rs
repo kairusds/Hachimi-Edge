@@ -70,7 +70,7 @@ impl Updater {
                 if let Some(mutex) = Gui::instance() {
                     mutex.lock().unwrap().show_window(Box::new(SimpleYesNoDialog::new(
                         &t!("update_prompt_dialog.title"),
-                        &t!("update_prompt_dialog.content", version = latest.tag_name),
+                        &t!("update_prompt_dialog.android_content", version = latest.tag_name),
                         |ok| {
                             if !ok { return; }
                             Hachimi::instance().updater.clone().run();

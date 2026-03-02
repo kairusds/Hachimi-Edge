@@ -123,6 +123,7 @@ config_editor:
   meta_index_url: "翻译 Meta URL"
   debug_mode: "调试模式"
   enable_file_logging: "启用文件日志记录"
+  apply_atlas_workaround: "应用 TL Atlas 修复"
   translator_mode: "翻译者模式"
   skip_first_time_setup: "跳过初始化设置"
   lazy_translation_updates: "宽松翻译更新检查"
@@ -196,6 +197,11 @@ update_prompt_dialog:
   content: |
     发现新的Hachimi更新 (%{version})，是否立即安装？
     安装完成后游戏将自动重启。
+  android_content: |
+    检测到 Hachimi Edge 的新版本 (%{version})。是否更新？
+
+    点击“是”将跳转至 UmaPatcher Edge，在其中重新为当前游戏补丁以更新 Hachimi。
+    (无需重新下载完整游戏文件或 APK，重新为当前游戏版本的 APK 补丁并安装即可，UmaPatcher Edge 将自动下载最新版本的 Hachimi Edge。)
 
 updating_dialog:
   title: "更新中"

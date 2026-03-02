@@ -132,6 +132,7 @@ config_editor:
   meta_index_url: "Translations Meta URL"
   debug_mode: "Debug mode"
   enable_file_logging: "Enable file logging"
+  apply_atlas_workaround: "Apply TL Atlas Workaround"
   translator_mode: "Translator mode"
   skip_first_time_setup: "Skip first time setup"
   lazy_translation_updates: "Lazy translation updates"
@@ -208,6 +209,11 @@ update_prompt_dialog:
   content: |
     A new Hachimi update is available (%{version}). Do you want to install it?
     The game will be restarted in order to apply the update.
+  android_content: |
+    A new Hachimi Edge update is available (%{version}). Do you want to install it?
+
+    Tap "Yes" to open UmaPatcher Edge and re-patch your current game.
+    (No full game or APK re-download required, you only need to patch again like you normally would as UmaPatcher Edge always downloads the latest Hachimi Edge version.)
 
 updating_dialog:
   title: "Updating"

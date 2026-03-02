@@ -297,6 +297,8 @@ pub struct Config {
     #[serde(default)]
     pub enable_file_logging: bool,
     #[serde(default)]
+    pub apply_atlas_workaround: bool,
+    #[serde(default)]
     pub translator_mode: bool,
     #[serde(default)]
     pub disable_gui: bool,

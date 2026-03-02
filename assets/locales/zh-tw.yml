@@ -116,6 +116,7 @@ config_editor:
   meta_index_url: "翻譯 Meta URL"
   debug_mode: "除錯模式"
   enable_file_logging: "啟用檔案記錄"
+  apply_atlas_workaround: "套用 TL Atlas 修復"
   translator_mode: "翻譯者模式"
   skip_first_time_setup: "跳過設定精靈"
   lazy_translation_updates: "寬鬆翻譯更新檢查"
@@ -188,6 +189,11 @@ update_prompt_dialog:
   content: |
     目前有可用的更新 (%{version})，是否要安裝？
     遊戲將重新啟動以套用更新內容。
+  android_content: |
+    檢測到 Hachimi Edge 的新版本 (%{version})。是否更新？
+
+    點擊「是」將跳轉至 UmaPatcher Edge，在其中重新為當前遊戲補丁以更新 Hachimi。
+    (無需重新下載完整遊戲文件或 APK，重新為當前遊戲版本的 APK 補丁並安裝即可，UmaPatcher Edge 將自動下載最新版本的 Hachimi Edge。)
 
 updating_dialog:
   title: "更新中"

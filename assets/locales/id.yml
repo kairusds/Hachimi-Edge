@@ -124,6 +124,7 @@ config_editor:
   meta_index_url: "URL Meta Terjemahan"
   debug_mode: "Mode Debug"
   enable_file_logging: "Nyalakan logging file"
+  apply_atlas_workaround: "\uf013 Terapkan Perbaikan Atlas TL"
   translator_mode: "Mode Translator"
   skip_first_time_setup: "Lewati setup pertama kali"
   lazy_translation_updates: "Pembaruan terjemahan fleksibel"
@@ -197,6 +198,11 @@ tl_update_dialog:
 update_prompt_dialog:
   title: "Pembaruan tersedia!"
   content: "Versi terbaru Hachimi telah tersedia (%{version}). Apa kamu ingin memasangnya? Game akan dimulai ulang saat proses penerapan pembaruan."
+  android_content: |
+    Update Hachimi Edge baru tersedia (%{version}). Apakah Anda ingin menginstalnya?
+
+    Ketuk "Ya" untuk membuka UmaPatcher Edge dan re-patch game Anda.
+    (Tidak perlu download ulang full game atau APK, Anda hanya perlu patch lagi seperti biasanya karena UmaPatcher Edge selalu mendownload versi Hachimi Edge terbaru.)
 
 updating_dialog:
   title: "Memperbarui"
