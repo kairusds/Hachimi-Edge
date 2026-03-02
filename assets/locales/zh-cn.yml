@@ -132,10 +132,11 @@ config_editor:
   ipc_listen_all: "IPC 监听所有地址"
   auto_translate_stories: "自动翻译剧情"
   auto_tl_warning: >-
-    此选项需要搭配兼容的翻译服务提供程序，
-    或使用与 py3translationServer 相同框架的云服务才能正常工作。如果未安装这些提供程序，
-    则不会进行任何额外的翻译，并且很可能会影响游戏体验。
-    如果您没有安装翻译框架，请保持此选项为禁用状态。
+    注意：此功能无法独立运行，需要外部设置。
+    启用此选项需要您的电脑上安装兼容的翻译服务器
+    或使用提供 API 的云服务（如 py3translationServer 或 Sugoi Toolkit）。
+    若未运行服务器，将无法进行额外翻译，且可能影响游戏运行。
+    如果您没有可用的翻译服务器，请保持此选项关闭。
   ipv4_only: "仅限 IPv4 ureq"
   auto_translate_ui: "自动翻译游戏界面 (可能导致游戏界面异常)"
   target_fps: "目标帧率"

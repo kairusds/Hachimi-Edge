@@ -121,6 +121,13 @@ config_editor:
   enable_ipc: "Bật IPC"
   ipc_listen_all: "IPC listen all"
   auto_translate_stories: "Tự động dịch truyện"
+  auto_tl_warning: >-
+    Lưu ý: Tính năng này không tự hoạt động; yêu cầu thiết lập bên ngoài.
+    Việc bật tùy chọn này yêu cầu cài đặt máy chủ dịch thuật tương thích trên
+    máy tính hoặc dịch vụ đám mây có API như py3translationServer hoặc
+    Sugoi Toolkit. Nếu không có máy chủ chạy, sẽ không có bản dịch bổ sung và
+    trải nghiệm chơi game có thể bị ảnh hưởng. Vui lòng để tùy chọn này bị tắt
+    nếu bạn không có sẵn máy chủ dịch thuật.
   auto_translate_ui: "Tự động dịch UI (KHÔNG ỔN ĐỊNH)"
   target_fps: "Đặt FPS"
   virtual_resolution_multiplier: "Số nhân độ phân giải ảo"
