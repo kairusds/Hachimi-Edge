@@ -9,6 +9,7 @@ const VERSION: i32 = 3;
 
 static PLUGIN_VTABLE: OnceCell<Vtable> = OnceCell::new();
 static DATA_DIR_CSTR: once_cell::sync::OnceCell<CString> = once_cell::sync::OnceCell::new();
+static DATA_PATH_CSTR: once_cell::sync::OnceCell<CString> = once_cell::sync::OnceCell::new();
 
 pub type HachimiInitFn = extern "C" fn(vtable: *const Vtable, version: i32) -> InitResult;
 pub type GuiMenuCallback = extern "C" fn(userdata: *mut c_void);
@@ -576,6 +577,14 @@ unsafe extern "C" fn hachimi_get_base_dir() -> *const c_char {
     s.as_ptr()
 }
 
+unsafe extern "C" fn hachimi_get_data_path() -> *const c_char {
+    let s = DATA_PATH_CSTR.get_or_init(|| {
+        let path = crate::core::utils::get_data_path();
+        CString::new(path).unwrap()
+    });
+    s.as_ptr()
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Vtable {
@@ -726,6 +735,7 @@ pub struct Vtable {
     pub gui_save_menu_width: unsafe extern "C" fn(),
     pub gui_restore_menu_width: unsafe extern "C" fn(),
     pub hachimi_get_base_dir: unsafe extern "C" fn() -> *const c_char,
+    pub hachimi_get_data_path: unsafe extern "C" fn() -> *const c_char,
 }
 
 impl Vtable {
@@ -788,6 +798,7 @@ impl Vtable {
         gui_save_menu_width,
         gui_restore_menu_width,
         hachimi_get_base_dir,
+        hachimi_get_data_path,
     };
 
     pub fn instantiate() -> Self {
