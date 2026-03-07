@@ -1,3 +1,0 @@
-[submodule "external/libmem"]
-	path = external/libmem
-	url = https://github.com/rdbo/libmem.git
