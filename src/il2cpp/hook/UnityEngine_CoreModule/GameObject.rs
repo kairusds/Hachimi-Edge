@@ -6,7 +6,12 @@ use crate::{
         api::il2cpp_resolve_icall,
         ext::Il2CppObjectExt,
         hook::{
-            umamusume::{CameraData::{self, ShadowResolution}, FlashActionPlayer}, Plugins::AnimateToUnity::AnRoot,
+            umamusume::{
+                CameraData::{self, ShadowResolution},
+                FlashActionPlayer,
+                TweenAnimationTimelineComponent
+            },
+            Plugins::AnimateToUnity::AnRoot,
             UnityEngine_AssetBundleModule::AssetBundle
         },
         symbols::{get_method_addr, Array},
@@ -79,10 +84,16 @@ pub fn on_LoadAsset(bundle: *mut Il2CppObject, this: *mut Il2CppObject, name: &U
             AnRoot::on_LoadAsset(bundle, root, name);
         }
     }
-    else if path.starts_with("uianimation/flashcombine/") {
+    else if path.starts_with("uianimation/flashcombine/action") {
         let player = GetComponentInChildren(this, FlashActionPlayer::type_object(), false);
         if !player.is_null() {
             FlashActionPlayer::on_LoadAsset(bundle, player, name);
+        }
+    }
+    else if path.starts_with("uianimation/flashcombine/timeline") {
+        let component = GetComponentInChildren(this, TweenAnimationTimelineComponent::type_object(), false);
+        if !component.is_null() {
+            TweenAnimationTimelineComponent::on_LoadAsset(bundle, component, name);
         }
     }
 }
