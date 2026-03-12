@@ -67,6 +67,9 @@ pub mod SceneManager;
 #[cfg(target_os = "windows")]
 mod PaymentUtility;
 mod LowResolutionCamera;
+pub mod TweenAnimationTimelineComponent;
+pub mod TweenAnimationTimelineData;
+pub mod TweenAnimationTimelineSheetData;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -139,4 +142,7 @@ pub fn init() {
     }
     LowResolutionCamera::init(image);
     CameraData::init(image);
+    TweenAnimationTimelineComponent::init(image);
+    TweenAnimationTimelineData::init(image);
+    TweenAnimationTimelineSheetData::init(image);
 }
