@@ -545,7 +545,7 @@ impl Gui {
         let orientation_scale = 1.0;
         
         #[cfg(target_os = "windows")]
-        let orientation_scale = if is_landscape { orientation_ratio * Hachimi::instance().config.load().gui_landscape_ratio } else { 1.0 };
+        let orientation_scale = if is_landscape { orientation_ratio * Hachimi::instance().config.load().windows.gui_landscape_ratio } else { 1.0 };
 
         let pixels_per_point = main_axis_size as f32 * PIXELS_PER_POINT_RATIO * orientation_scale;
         self.context.set_pixels_per_point(pixels_per_point);
@@ -1813,7 +1813,7 @@ impl ConfigEditor {
                 #[cfg(target_os = "windows")]
                 {
                     ui.label(t!("config_editor.gui_landscape_ratio"));
-                    ui.add(egui::Slider::new(&mut config.gui_landscape_ratio, 0.25..=1.0).step_by(0.05).fixed_decimals(2));
+                    ui.add(egui::Slider::new(&mut config.windows.gui_landscape_ratio, 0.25..=1.0).step_by(0.05).fixed_decimals(2));
                     ui.end_row();
                 }
 

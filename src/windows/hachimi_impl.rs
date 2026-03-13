@@ -74,7 +74,9 @@ pub struct Config {
     #[serde(default)]
     pub window_always_on_top: bool,
     #[serde(default = "Config::default_true")]
-    pub discord_rpc: bool
+    pub discord_rpc: bool,
+    #[serde(default = "Config::default_gui_landscape_ratio")]
+    pub gui_landscape_ratio: f32
 }
 
 impl Config {
@@ -82,6 +84,7 @@ impl Config {
     fn default_menu_open_key() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_RIGHT.0 }
     fn default_hide_ingame_ui_hotkey_bind() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_INSERT.0 }
     fn default_true() -> bool { true }
+    fn default_gui_landscape_ratio() -> f32 { 1.0 }
 }
 
 #[derive(Deserialize, Serialize, Copy, Clone, Default, Eq, PartialEq)]
