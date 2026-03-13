@@ -26,12 +26,26 @@ extern "C" fn SetFontSize(this: *mut Il2CppObject, font_size: i32) {
     }
 }
 
+type SetLineSpacingFn = extern "C" fn(this: *mut Il2CppObject, fontSize: i32);
+extern "C" fn SetLineSpacing(this: *mut Il2CppObject, fontSize: i32) {
+    get_orig_fn!(SetLineSpacing, SetLineSpacingFn)(this, fontSize);
+
+    if let Some(mult) = Hachimi::instance().localized_data.load().config.text_frame_line_spacing_multiplier {
+        let text_frame = get__textFrame(this);
+        let text_label = TextFrame::get_TextLabel(text_frame);
+        let line_spacing = Text::get_lineSpacing(text_label);
+        Text::set_lineSpacing(text_label, line_spacing * mult);
+    }
+}
+
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, StoryViewTextControllerLandscape);
 
     let SetFontSize_addr = get_method_addr(StoryViewTextControllerLandscape, c"SetFontSize", 1);
+    let SetLineSpacing_addr = get_method_addr(StoryViewTextControllerLandscape, c"SetLineSpacing", 1);
 
     new_hook!(SetFontSize_addr, SetFontSize);
+    new_hook!(SetLineSpacing_addr, SetLineSpacing);
 
     unsafe {
         _TEXTFRAME_FIELD = get_field_from_name(StoryViewTextControllerLandscape, c"_textFrame");
