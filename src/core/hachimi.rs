@@ -321,6 +321,8 @@ pub struct Config {
     pub disable_translations: bool,
     #[serde(default = "Config::default_gui_scale")]
     pub gui_scale: f32,
+    #[serde(default = "Config::default_gui_landscape_ratio")]
+    pub gui_landscape_ratio: f32,
     #[serde(default = "Config::default_ui_scale")]
     pub ui_scale: f32,
     #[serde(default = "Config::default_render_scale")]
@@ -401,6 +403,7 @@ impl Config {
     fn default_ui_scale() -> f32 { 1.0 }
     fn default_render_scale() -> f32 { 1.0 }
     fn default_gui_scale() -> f32 { 1.0 }
+    fn default_gui_landscape_ratio() -> f32 { 0.9 }
     fn default_story_choice_auto_select_delay() -> f32 { 1.2 }
     fn default_story_tcps_multiplier() -> f32 { 3.0 }
     fn default_meta_index_url() -> String { "https://gitlab.com/umatl/hachimi-meta/-/raw/main/meta.json".to_owned() }

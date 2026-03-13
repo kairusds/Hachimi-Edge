@@ -148,6 +148,7 @@ config_editor:
   virtual_resolution_multiplier: "Multiplicador de resolución virtual"
   ui_scale: "Escala del UI"
   gui_scale: "Escala del overlay"
+  gui_landscape_ratio: "Relación de escala del overlay (apaisado)"
   ui_animation_scale: "Escala de animación del UI"
   graphics_quality: "Calidad gráfica"
   vsync: "VSync"
