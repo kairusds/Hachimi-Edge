@@ -321,6 +321,7 @@ pub struct Config {
     pub disable_translations: bool,
     #[serde(default = "Config::default_gui_scale")]
     pub gui_scale: f32,
+    #[cfg(target_os = "windows")]
     #[serde(default = "Config::default_gui_landscape_ratio")]
     pub gui_landscape_ratio: f32,
     #[serde(default = "Config::default_ui_scale")]

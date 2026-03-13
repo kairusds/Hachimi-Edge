@@ -1810,9 +1810,12 @@ impl ConfigEditor {
                 ui.add(egui::Slider::new(&mut config.gui_scale, 0.25..=2.0).step_by(0.05));
                 ui.end_row();
                 
-                ui.label(t!("config_editor.gui_landscape_ratio"));
-                ui.add(egui::Slider::new(&mut config.gui_landscape_ratio, 0.25..=1.0).step_by(0.05).fixed_decimals(2));
-                ui.end_row();
+                #[cfg(target_os = "windows")]
+                {
+                    ui.label(t!("config_editor.gui_landscape_ratio"));
+                    ui.add(egui::Slider::new(&mut config.gui_landscape_ratio, 0.25..=1.0).step_by(0.05).fixed_decimals(2));
+                    ui.end_row();
+                }
 
                 ui.label(t!("theme_editor.title"));
                 ui.horizontal(|ui| {
