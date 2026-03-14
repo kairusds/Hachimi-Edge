@@ -30,7 +30,7 @@ jobs:
           pushd ..
           git clone --revision 44cdd653e2317d300fb8a6c9c36b03f23991e803 https://github.com/emilk/egui.git
           cd egui
-          sed -i '' 's/ui.set_min_width(ui.available_width());\/\/ ui.set_min_width(ui.available_width());/' crates/egui/src/containers/combo_box.rs
+          sed -i '' 's/ui.set_min_width(ui.available_width());/\/\/ ui.set_min_width(ui.available_width());/' crates/egui/src/containers/combo_box.rs
           popd
 
           echo -e "\negui = { path = '../egui/crates/egui' }" >> Cargo.toml
