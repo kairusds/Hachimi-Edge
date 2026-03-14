@@ -43,8 +43,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ldid
-          cargo install --locked cargo-lipo 2>/dev/null || true
+          brew install ldid cmake
 
       - name: Build Hachimi for iOS (aarch64)
         run: |
@@ -54,11 +53,13 @@ jobs:
             --target-dir build
         env:
           HACHIMI_IGNORE_DIRTY: "true"
-          # Needed for dobby-rs to compile on iOS
           IPHONEOS_DEPLOYMENT_TARGET: "14.0"
-          # Allow JIT / unsigned executable memory entitlement
-          # (embedded in the dylib metadata for tooling reference)
-          RUSTFLAGS: >
+          # Tell dobby-rs cmake to build for iOS device (not macOS simulator)
+          CMAKE_SYSTEM_NAME: iOS
+          CMAKE_OSX_ARCHITECTURES: arm64
+          CMAKE_OSX_SYSROOT: /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
+          SDKROOT: /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
+          RUSTFLAGS: >-
             -C link-arg=-Wl,-install_name,@rpath/libhachimi.dylib
 
       - name: Fake-sign the dylib (for sideload / LiveContainer)
