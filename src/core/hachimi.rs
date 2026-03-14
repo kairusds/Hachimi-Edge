@@ -392,7 +392,12 @@ pub struct Config {
 
     #[cfg(target_os = "android")]
     #[serde(flatten)]
-    pub android: hachimi_impl::Config
+    pub android: hachimi_impl::Config,
+
+    #[cfg(target_os = "ios")]
+    #[serde(flatten)]
+    pub ios: hachimi_impl::Config
+
 }
 
 impl Config {

@@ -7,6 +7,7 @@ android:
   menu_open_key: "「音量+」键 + 「音量-」键\n\uf25a 或 三击左上角"
 
 splash_sub: "\uf015 按 %{open_key_str} 打开菜单"
+splash_sub_ios: "\uf015 点击悬浮按钮 (\uf111) 以打开菜单。"
 loading_label: "加载中..."
 search_filter: "输入以搜索..."
 open: "打开"

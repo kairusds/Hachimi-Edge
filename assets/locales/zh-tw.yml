@@ -7,6 +7,7 @@ android:
   menu_open_key: "提高音量鍵 + 降低音量鍵\n\uf25a 或 三擊左上角"
 
 splash_sub: "\uf015 按下 %{open_key_str} 來打開選單。"
+splash_sub_ios: "\uf015 點擊浮動按鈕 (\uf111) 以開啟選單。"
 loading_label: "載入中"
 search_filter: "輸入以搜尋..."
 open: "開啟"

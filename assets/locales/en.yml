@@ -7,6 +7,8 @@ android:
   menu_open_key: "Vol Up + Vol Down\n\uf25a or Triple-tap top left"
 
 splash_sub: "\uf015 Press %{open_key_str} to open menu."
+splash_sub_ios: "\uf015 Tap the floating button (\uf111) to open the menu."
+
 loading_label: "Loading..."
 search_filter: "Type to search..."
 open: "Open"

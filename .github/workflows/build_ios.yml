@@ -1,0 +1,87 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/build_ios.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          key: aarch64-apple-ios
+
+      - name: Setup and Patch Dependencies
+        run: |
+          pushd ..
+          git clone --revision 44cdd653e2317d300fb8a6c9c36b03f23991e803 https://github.com/emilk/egui.git
+          cd egui
+          sed -i '' 's/ui.set_min_width(ui.available_width());\/\/ ui.set_min_width(ui.available_width());/' crates/egui/src/containers/combo_box.rs
+          popd
+
+          echo -e "\negui = { path = '../egui/crates/egui' }" >> Cargo.toml
+          echo "egui_extras = { path = '../egui/crates/egui_extras' }" >> Cargo.toml
+
+      - name: Install Rust toolchain + iOS target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - name: Install build tools
+        run: |
+          brew install ldid
+          cargo install --locked cargo-lipo 2>/dev/null || true
+
+      - name: Build Hachimi for iOS (aarch64)
+        run: |
+          cargo build \
+            --target aarch64-apple-ios \
+            --release \
+            --target-dir build
+        env:
+          HACHIMI_IGNORE_DIRTY: "true"
+          # Needed for dobby-rs to compile on iOS
+          IPHONEOS_DEPLOYMENT_TARGET: "14.0"
+          # Allow JIT / unsigned executable memory entitlement
+          # (embedded in the dylib metadata for tooling reference)
+          RUSTFLAGS: >
+            -C link-arg=-Wl,-install_name,@rpath/libhachimi.dylib
+
+      - name: Fake-sign the dylib (for sideload / LiveContainer)
+        run: |
+          DYLIB="build/aarch64-apple-ios/release/libhachimi.dylib"
+          ldid -S "${DYLIB}"
+          echo "Signed: $(ls -lh ${DYLIB})"
+
+      - name: Upload iOS dylib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-dylib
+          path: build/aarch64-apple-ios/release/libhachimi.dylib
+          if-no-files-found: error
+
+      - name: Compute BLAKE3 checksum
+        run: |
+          DYLIB="build/aarch64-apple-ios/release/libhachimi.dylib"
+          brew install b3sum 2>/dev/null || true
+          HASH=$(b3sum "${DYLIB}" | awk '{print $1}')
+          cat <<EOF > build/ios_sha256.json
+          {
+            "libhachimi.dylib": "${HASH}"
+          }
+          EOF
+          cat build/ios_sha256.json

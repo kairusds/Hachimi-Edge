@@ -7,6 +7,7 @@ android:
   menu_open_key: "Vol Up + Vol Down\n\uf25a hoặc chạm 3 lần phía trên bên trái"
 
 splash_sub: "\uf015 Nhấn nút %{open_key_str} để mở menu."
+splash_sub_ios: "\uf015 Nhấn nút nổi (\uf111) để mở menu."
 loading_label: "Đang tải..."
 search_filter: "Nhập để tìm kiếm..."
 open: "Mở"

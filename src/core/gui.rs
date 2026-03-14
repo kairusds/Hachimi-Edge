@@ -82,6 +82,12 @@ pub struct Gui {
 
     show_menu: bool,
 
+    // iOS-only: Floating Action Button state
+    #[cfg(target_os = "ios")]
+    fab_pos: egui::Pos2,
+    #[cfg(target_os = "ios")]
+    fab_dragging: bool,
+
     splash_visible: bool,
     splash_tween: TweenInOutWithDelay,
     splash_sub_str: String,
@@ -483,6 +489,14 @@ impl Gui {
 
             show_menu: false,
 
+            #[cfg(target_os = "ios")]
+            fab_pos: egui::Pos2::new(
+                config.ios.fab_x,
+                config.ios.fab_y,
+            ),
+            #[cfg(target_os = "ios")]
+            fab_dragging: false,
+
             splash_visible: true,
             splash_tween: TweenInOutWithDelay::new(0.8, 3.0, Easing::OutQuad),
             splash_sub_str: {
@@ -491,7 +505,11 @@ impl Gui {
                     let key_label = crate::windows::utils::vk_to_display_label(hachimi.config.load().windows.menu_open_key);
                     t!("splash_sub", open_key_str = key_label).into_owned()
                 }
-                #[cfg(not(target_os = "windows"))]
+                #[cfg(target_os = "ios")]
+                {
+                    t!("splash_sub_ios").into_owned()
+                }
+                #[cfg(not(any(target_os = "windows", target_os = "ios")))]
                 {
                     t!("splash_sub", open_key_str = t!(open_key_id)).into_owned()
                 }
@@ -623,6 +641,10 @@ impl Gui {
         self.context.begin_pass(input);
         
         if self.menu_visible { self.run_menu(); }
+
+        // iOS: render the floating action button (always on top, hides when menu is open)
+        #[cfg(target_os = "ios")]
+        self.run_fab();
         if self.update_progress_visible { self.run_update_progress(); }
 
         self.run_windows();
@@ -780,6 +802,24 @@ impl Gui {
                     }
                     // did this because android phones have a notch
                     #[cfg(target_os = "android")]
+                    {
+                        ui.horizontal(|ui| {
+                            ui.add(Self::icon(ctx));
+                            ui.heading(t!("hachimi"));
+                        });
+                        ui.label(env!("HACHIMI_DISPLAY_VERSION"));
+                        ui.horizontal(|ui| {
+                            if ui.button(t!("menu.close_menu")).clicked() {
+                                self.show_menu = false;
+                                self.menu_anim_time = None;
+                            }
+                            if ui.button(" \u{f29c} ").clicked() {
+                                show_window = Some(Box::new(AboutWindow::new()));
+                            }
+                        });
+                    }
+                    // iOS: same layout as Android (notch-safe header)
+                    #[cfg(target_os = "ios")]
                     {
                         ui.horizontal(|ui| {
                             ui.add(Self::icon(ctx));
@@ -1304,6 +1344,83 @@ impl Gui {
         }
         else {
             self.menu_anim_time = None;
+        }
+    }
+
+    /// iOS-only: render a draggable Floating Action Button that opens the menu.
+    ///
+    /// The FAB is hidden while the menu is open so it doesn't overlap.
+    /// It respects the Apple HIG minimum touch target of 44 pt.
+    #[cfg(target_os = "ios")]
+    fn run_fab(&mut self) {
+        if self.show_menu {
+            return; // FAB hidden while menu is open
+        }
+
+        let ctx = &self.context;
+        let scale = get_scale(ctx);
+        let fab_size = egui::Vec2::splat(48.0 * scale); // 44–48 pt — Apple HIG minimum
+
+        let id = egui::Id::new("hachimi_fab");
+
+        let inner = egui::Area::new(id)
+            .fixed_pos(self.fab_pos)
+            .order(egui::Order::Foreground)
+            .interactable(true)
+            .show(ctx, |ui| {
+                let (rect, response) =
+                    ui.allocate_exact_size(fab_size, egui::Sense::click_and_drag());
+
+                // Tint: slightly more opaque when pressed/hovered
+                let alpha = if response.is_pointer_button_down_on() {
+                    1.0_f32
+                } else if response.hovered() {
+                    0.85
+                } else {
+                    0.65
+                };
+
+                let fill = self.config.ui_accent_color.gamma_multiply(alpha);
+                let radius = fab_size.x / 2.0;
+                ui.painter().circle_filled(rect.center(), radius, fill);
+
+                // Drop shadow for depth
+                ui.painter().circle_stroke(
+                    rect.center(),
+                    radius,
+                    egui::Stroke::new(1.5 * scale, egui::Color32::from_black_alpha(60)),
+                );
+
+                // Hachimi icon centred inside the circle
+                let icon_rect = egui::Rect::from_center_size(
+                    rect.center(),
+                    egui::Vec2::splat(24.0 * scale),
+                );
+                ui.put(icon_rect, Self::icon(ctx));
+
+                response
+            });
+
+        let response = inner.inner;
+
+        // Handle drag: move the FAB and clamp to screen bounds
+        if response.dragged() {
+            self.fab_pos += response.drag_delta();
+            self.fab_dragging = true;
+
+            let screen = ctx.input(|i| i.screen_rect);
+            self.fab_pos.x = self.fab_pos.x.clamp(0.0, screen.width() - fab_size.x);
+            self.fab_pos.y = self.fab_pos.y.clamp(0.0, screen.height() - fab_size.y);
+        }
+
+        // Handle click (only if we weren't dragging)
+        if response.clicked() && !self.fab_dragging {
+            self.toggle_menu();
+        }
+
+        // Reset drag flag when the pointer is released
+        if response.drag_stopped() {
+            self.fab_dragging = false;
         }
     }
 

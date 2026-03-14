@@ -7,6 +7,7 @@ android:
   menu_open_key: "Volumen + y Volumen -\n\uf25a o Triple toque arriba a la izquierda"
 
 splash_sub: "\uf015 Pulsa %{open_key_str} para abrir el menú."
+splash_sub_ios: "\uf015 Toca el botón flotante (\uf111) para abrir el menú."
 loading_label: "Cargando..."
 search_filter: "Buscar..."
 open: "Abrir"

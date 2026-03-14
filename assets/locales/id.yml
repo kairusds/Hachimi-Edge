@@ -7,6 +7,7 @@ android:
   menu_open_key: "Vol Atas + Bawah\n\uf25a atau Ketuk tiga kali kiri atas"
 
 splash_sub: "\uf015 Tekan %{open_key_str} untuk buka menu."
+splash_sub_ios: "\uf015 Ketuk tombol mengambang (\uf111) untuk membuka menu."
 loading_label: "Memuat..."
 search_filter: "Ketik untuk cari..."
 open: "Buka"
