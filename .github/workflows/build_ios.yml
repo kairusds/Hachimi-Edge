@@ -42,8 +42,61 @@ jobs:
           targets: aarch64-apple-ios
 
       - name: Install build tools
+        run: brew install ldid cmake
+
+      # The LeadRDRK/dobby-sys fork only ships prebuilt android/* libs.
+      # For iOS we must build libdobby.a from the Dobby C++ source and inject
+      # it into the cargo git checkout so build.rs can find it at its expected path:
+      #   dobby_static/darwin/arm64/libdobby.a
+      - name: Build libdobby.a for iOS (arm64)
         run: |
-          brew install ldid cmake
+          git clone --depth 1 https://github.com/jmpews/Dobby.git /tmp/dobby
+
+          IOS_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+
+          cmake -S /tmp/dobby -B /tmp/dobby-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_SYSROOT="${IOS_SDK}" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="14.0" \
+            -DCMAKE_C_COMPILER="$(xcrun --find clang)" \
+            -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)" \
+            -DPlugin.Darwin.HideLibrary=OFF \
+            -DPlugin.Darwin.MachOReWrite=OFF
+
+          cmake --build /tmp/dobby-build --config Release -- -j$(sysctl -n hw.ncpu)
+
+          LIB=$(find /tmp/dobby-build -name "libdobby.a" | head -1)
+          if [ -z "$LIB" ]; then
+            echo "ERROR: libdobby.a not found after build"
+            find /tmp/dobby-build -name "*.a"
+            exit 1
+          fi
+          echo "Built: $LIB"
+
+          # Fetch crates so cargo populates the git checkout cache
+          cargo fetch --target aarch64-apple-ios 2>/dev/null || true
+
+          # Inject into dobby-sys git checkout (where build.rs looks for it)
+          DOBBY_SYS_DIR=$(find ~/.cargo/git/checkouts -path "*/dobby-sys*/dobby_static" 2>/dev/null | head -1)
+          if [ -n "$DOBBY_SYS_DIR" ]; then
+            mkdir -p "${DOBBY_SYS_DIR}/darwin/arm64"
+            cp "$LIB" "${DOBBY_SYS_DIR}/darwin/arm64/libdobby.a"
+            echo "Injected into: ${DOBBY_SYS_DIR}/darwin/arm64/"
+          else
+            echo "WARNING: dobby-sys checkout not found in git cache, trying registry"
+            DOBBY_SYS_DIR=$(find ~/.cargo/registry/src -path "*/dobby-sys*/dobby_static" 2>/dev/null | head -1)
+            if [ -n "$DOBBY_SYS_DIR" ]; then
+              mkdir -p "${DOBBY_SYS_DIR}/darwin/arm64"
+              cp "$LIB" "${DOBBY_SYS_DIR}/darwin/arm64/libdobby.a"
+              echo "Injected into registry: ${DOBBY_SYS_DIR}/darwin/arm64/"
+            else
+              echo "ERROR: could not find dobby-sys source directory"
+              find ~/.cargo -name "dobby_static" 2>/dev/null
+              exit 1
+            fi
+          fi
 
       - name: Build Hachimi for iOS (aarch64)
         run: |
@@ -54,11 +107,8 @@ jobs:
         env:
           HACHIMI_IGNORE_DIRTY: "true"
           IPHONEOS_DEPLOYMENT_TARGET: "14.0"
-          # Tell dobby-rs cmake to build for iOS device (not macOS simulator)
-          CMAKE_SYSTEM_NAME: iOS
-          CMAKE_OSX_ARCHITECTURES: arm64
-          CMAKE_OSX_SYSROOT: /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
-          SDKROOT: /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
+          # Apple platforms use libc++ (not GNU stdc++)
+          CXXSTDLIB: "c++"
           RUSTFLAGS: >-
             -C link-arg=-Wl,-install_name,@rpath/libhachimi.dylib
 
