@@ -136,6 +136,7 @@ config_editor:
   virtual_resolution_multiplier: "虛擬解析度倍率"
   ui_scale: "UI 比例"
   gui_scale: "疊加層縮放"
+  gui_landscape_ratio: "橫屏覆蓋層縮放比例"
   ui_animation_scale: "UI 動畫速度"
   graphics_quality: "圖像品質"
   vsync: "VSync"

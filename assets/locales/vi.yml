@@ -134,6 +134,7 @@ config_editor:
   virtual_resolution_multiplier: "Số nhân độ phân giải ảo"
   ui_scale: "Tỷ lệ UI"
   gui_scale: "Tỷ lệ lớp phủ"
+  gui_landscape_ratio: "Tỷ lệ thu phóng lớp phủ ngang"
   graphics_quality: "Chất lượng đồ họa"
   vsync: "VSync"
   auto_full_screen: "Tự động toàn màn hình"
