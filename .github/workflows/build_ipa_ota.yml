@@ -82,13 +82,42 @@ jobs:
       - name: Install build tools
         run: |
           brew install ldid
-          # Build optool (preferred over insert_dylib for stripping __RESTRICT)
-          git clone --depth 1 https://github.com/alexzielenski/optool.git /tmp/optool
-          xcodebuild -project /tmp/optool/optool.xcodeproj \
-            -scheme optool -configuration Release \
-            SYMROOT=/tmp/optool-build build 2>/dev/null | tail -3
-          sudo cp /tmp/optool-build/Release/optool /usr/local/bin/optool
-          optool --version || true
+
+          # Try pre-built optool binary from GitHub release first (fastest)
+          OPTOOL_OK=false
+          if curl -fsSL --max-time 30 -o /tmp/optool.zip \
+              "https://github.com/alexzielenski/optool/releases/download/0.1/optool.zip" 2>/dev/null; then
+            unzip -qo /tmp/optool.zip -d /tmp/optool-prebuilt 2>/dev/null || true
+            BINARY=$(find /tmp/optool-prebuilt -name "optool" -type f | head -1)
+            if [[ -n "$BINARY" ]]; then
+              sudo install -m 755 "$BINARY" /usr/local/bin/optool
+              OPTOOL_OK=true
+              echo "optool installed from pre-built release"
+            fi
+          fi
+
+          # Fallback: build from source (use find to locate binary)
+          if ! $OPTOOL_OK; then
+            echo "Pre-built optool failed, building from source..."
+            git clone --depth 1 https://github.com/alexzielenski/optool.git /tmp/optool
+            xcodebuild -project /tmp/optool/optool.xcodeproj \
+              -scheme optool -configuration Release \
+              -derivedDataPath /tmp/optool-dd 2>&1 | tail -5
+            BINARY=$(find /tmp/optool-dd -name "optool" -type f | head -1)
+            if [[ -n "$BINARY" ]]; then
+              sudo install -m 755 "$BINARY" /usr/local/bin/optool
+              OPTOOL_OK=true
+              echo "optool installed from source build"
+            fi
+          fi
+
+          # Fallback: insert_dylib (no __RESTRICT strip, but works for injection)
+          if ! $OPTOOL_OK; then
+            echo "WARNING: optool unavailable, falling back to insert_dylib"
+            brew install insert_dylib || true
+          fi
+
+          optool --version 2>/dev/null || insert_dylib --version 2>/dev/null || echo "Tool ready"
 
       # ── 5. Inject dylib into IPA ──────────────────────────────────
       - name: Inject libhachimi.dylib into IPA
