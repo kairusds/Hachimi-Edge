@@ -1,0 +1,271 @@
+name: Build IPA (Patch + Sign + OTA)
+
+# ──────────────────────────────────────────────────────────────────
+# Trigger: manual workflow dispatch only.
+# No GitHub Releases created — IPA and manifest are hosted on
+# transfer.sh (public HTTPS, 14-day expiry). Link output appears
+# in the Job Summary immediately after the run finishes.
+# ──────────────────────────────────────────────────────────────────
+#
+# Required GitHub Secrets (Settings → Secrets → Actions):
+#   IOS_P12_BASE64          base64 -w0 YourCert.p12
+#   IOS_P12_PASSWORD        P12 export password
+#   IOS_PROVISION_BASE64    base64 -w0 YourProfile.mobileprovision
+#   IOS_TEAM_ID             Apple Team ID  (e.g. ABCDE12345)
+#   IOS_BUNDLE_ID           Bundle ID      (e.g. jp.co.cygames.umamusume)
+#   IOS_CODE_SIGN_IDENTITY  Signing identity CN
+#                           e.g. "iPhone Distribution: Your Name (ABCDE12345)"
+#
+# Inputs (on each run):
+#   ipa_url      — temporary URL to the original game IPA (not stored)
+#   app_version  — version string written into OTA manifest
+# ──────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      ipa_url:
+        description: 'Temporary IPA download URL (Google Drive / WeTransfer / Dropbox)'
+        required: true
+        type: string
+      app_version:
+        description: 'App version for OTA manifest (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
+        type: string
+
+permissions:
+  contents: read   # read-only — no releases, no writes to repo
+
+jobs:
+  patch-sign-ota:
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── 1. Checkout (for inject_ipa.sh) ──────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── 2. Download latest libhachimi.dylib from Build iOS ────────
+      - name: Download iOS dylib artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: build_ios.yml
+          workflow_conclusion: success
+          name: ios-dylib
+          path: artifacts/
+
+      - name: Verify dylib
+        run: |
+          DYLIB="artifacts/libhachimi.dylib"
+          [[ -f "$DYLIB" ]] || { echo "ERROR: dylib not found"; ls artifacts/; exit 1; }
+          echo "dylib: $(du -sh $DYLIB | cut -f1)"
+          file "$DYLIB"
+
+      # ── 3. Download IPA (URL passed as input, never logged) ───────
+      - name: Download original IPA
+        env:
+          IPA_URL: ${{ inputs.ipa_url }}
+        run: |
+          echo "Downloading IPA..."
+          curl -fsSL --max-time 300 -L -o original.ipa "$IPA_URL"
+          echo "Downloaded: $(du -sh original.ipa | cut -f1)"
+          unzip -t original.ipa > /dev/null 2>&1 || { echo "ERROR: Not a valid IPA"; exit 1; }
+
+      # ── 4. Install tools ──────────────────────────────────────────
+      - name: Install build tools
+        run: |
+          brew install ldid
+          # Build optool (preferred over insert_dylib for stripping __RESTRICT)
+          git clone --depth 1 https://github.com/alexzielenski/optool.git /tmp/optool
+          xcodebuild -project /tmp/optool/optool.xcodeproj \
+            -scheme optool -configuration Release \
+            SYMROOT=/tmp/optool-build build 2>/dev/null | tail -3
+          sudo cp /tmp/optool-build/Release/optool /usr/local/bin/optool
+          optool --version || true
+
+      # ── 5. Inject dylib into IPA ──────────────────────────────────
+      - name: Inject libhachimi.dylib into IPA
+        run: |
+          chmod +x tools/ios/inject_ipa.sh
+          tools/ios/inject_ipa.sh \
+            original.ipa \
+            artifacts/libhachimi.dylib \
+            patched_unsigned.ipa
+          echo "Patched: $(du -sh patched_unsigned.ipa | cut -f1)"
+
+      # ── 6. Import certificate & provisioning profile ─────────────
+      - name: Import certificate & provisioning profile
+        env:
+          P12_BASE64:       ${{ secrets.IOS_P12_BASE64 }}
+          P12_PASSWORD:     ${{ secrets.IOS_P12_PASSWORD }}
+          PROVISION_BASE64: ${{ secrets.IOS_PROVISION_BASE64 }}
+        run: |
+          # Decode from secrets (values never visible in logs)
+          echo "$P12_BASE64"       | base64 --decode > /tmp/cert.p12
+          echo "$PROVISION_BASE64" | base64 --decode > /tmp/profile.mobileprovision
+
+          # Temporary keychain (random password, auto-deleted at end)
+          KC_PASS=$(openssl rand -hex 20)
+          security create-keychain -p "$KC_PASS" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain  -p "$KC_PASS" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+
+          security import /tmp/cert.p12 \
+            -k build.keychain -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign -A
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KC_PASS" build.keychain
+
+          # Install provisioning profile under its UUID
+          PROFILE_UUID=$(
+            /usr/libexec/PlistBuddy -c 'Print :UUID' \
+              /dev/stdin <<< "$(security cms -D -i /tmp/profile.mobileprovision)"
+          )
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp /tmp/profile.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/"${PROFILE_UUID}.mobileprovision"
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+          echo "KC_PASS=$KC_PASS"           >> $GITHUB_ENV
+
+          # Shred temp files immediately
+          rm -f /tmp/cert.p12 /tmp/profile.mobileprovision
+
+      # ── 7. Re-sign IPA with paid certificate ─────────────────────
+      - name: Sign IPA with paid certificate
+        env:
+          IDENTITY:  ${{ secrets.IOS_CODE_SIGN_IDENTITY }}
+          BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
+          TEAM_ID:   ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          WORK=$(mktemp -d /tmp/sign.XXXXXX)
+          unzip -q patched_unsigned.ipa -d "$WORK"
+          APP=$(find "$WORK/Payload" -maxdepth 1 -name "*.app" | head -1)
+          APPNAME=$(basename "$APP" .app)
+          echo "Signing: $APP"
+
+          # Entitlements: JIT + skip-library-validation (needed for Dobby)
+          cat > /tmp/ent.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>application-identifier</key><string>${TEAM_ID}.${BUNDLE_ID}</string>
+            <key>com.apple.developer.team-identifier</key><string>${TEAM_ID}</string>
+            <key>get-task-allow</key><false/>
+            <key>com.apple.security.cs.allow-jit</key><true/>
+            <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+            <key>com.apple.private.skip-library-validation</key><true/>
+          </dict></plist>
+          PLIST
+
+          # Embed provisioning profile
+          cp ~/Library/MobileDevice/Provisioning\ Profiles/"${PROFILE_UUID}.mobileprovision" \
+            "$APP/embedded.mobileprovision"
+
+          # Sign dylib first (inner → outer)
+          codesign --force --sign "$IDENTITY" \
+            "$APP/Frameworks/libhachimi.dylib"
+
+          # Sign main bundle
+          codesign --force --sign "$IDENTITY" \
+            --entitlements /tmp/ent.plist \
+            --timestamp=none \
+            "$APP"
+
+          # Verify
+          codesign --verify --deep --strict "$APP" && echo "✅ Signature valid"
+
+          # Repack
+          (cd "$WORK" && zip -qr "$GITHUB_WORKSPACE/signed.ipa" Payload)
+          rm -rf "$WORK" /tmp/ent.plist
+          echo "Signed IPA: $(du -sh signed.ipa | cut -f1)"
+
+      # ── 8. Upload to transfer.sh ──────────────────────────────────
+      - name: Upload IPA to transfer.sh (14-day link)
+        run: |
+          RUN_ID="${{ github.run_id }}"
+
+          # Upload IPA
+          IPA_URL=$(curl -fsSL \
+            --upload-file signed.ipa \
+            "https://transfer.sh/hachimi-${RUN_ID}.ipa")
+          echo "IPA_URL=$IPA_URL" >> $GITHUB_ENV
+          echo "IPA_URL: $IPA_URL"
+
+          # Generate OTA manifest pointing to IPA
+          cat > manifest.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>items</key>
+            <array>
+              <dict>
+                <key>assets</key>
+                <array>
+                  <dict>
+                    <key>kind</key><string>software-package</string>
+                    <key>url</key><string>${IPA_URL}</string>
+                  </dict>
+                </array>
+                <key>metadata</key>
+                <dict>
+                  <key>bundle-identifier</key>
+                  <string>${{ secrets.IOS_BUNDLE_ID }}</string>
+                  <key>bundle-version</key>
+                  <string>${{ inputs.app_version }}</string>
+                  <key>kind</key><string>software</string>
+                  <key>title</key><string>Uma Musume + Hachimi</string>
+                </dict>
+              </dict>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+
+          # Upload manifest
+          MANIFEST_URL=$(curl -fsSL \
+            --upload-file manifest.plist \
+            "https://transfer.sh/hachimi-manifest-${RUN_ID}.plist")
+          echo "MANIFEST_URL=$MANIFEST_URL" >> $GITHUB_ENV
+          echo "MANIFEST_URL: $MANIFEST_URL"
+
+      # ── 9. Save as Actions artifact (for manual download backup) ──
+      - name: Upload signed IPA as artifact (90 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hachimi-signed-ipa-${{ github.run_id }}
+          path: signed.ipa
+          retention-days: 90
+          if-no-files-found: error
+
+      # ── 10. Print OTA link in Job Summary ─────────────────────────
+      - name: Output OTA install link
+        run: |
+          OTA_LINK="itms-services://?action=download-manifest&url=${MANIFEST_URL}"
+
+          echo "## 📲 Hachimi — OTA Install Link" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ⚠️ **Links expire in 14 days** (hosted on transfer.sh)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Open on iPhone with Safari:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$OTA_LINK" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 IPA | ${IPA_URL} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📋 Manifest | ${MANIFEST_URL} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🕐 Built | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---"
+          echo "OTA LINK → $OTA_LINK"
+
+      # ── 11. Cleanup keychain ───────────────────────────────────────
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain build.keychain 2>/dev/null || true
