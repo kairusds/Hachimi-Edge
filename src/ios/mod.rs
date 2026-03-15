@@ -1,5 +1,5 @@
 mod main;
-mod hook;
+pub mod hook;
 pub mod utils;
 pub mod game_impl;
 pub mod log_impl;

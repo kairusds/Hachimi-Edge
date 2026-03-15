@@ -1015,7 +1015,7 @@ impl Gui {
                                 });
                             })));
                         }
-                        #[cfg(not(target_os = "windows"))]
+                        #[cfg(target_os = "android")]
                         if ui.button(t!("menu.open_in_game_browser")).clicked() {
                             show_window = Some(Box::new(SimpleYesNoDialog::new(&t!("confirm_dialog_title"), &t!("in_game_browser_confirm_content"), |ok| {
                                 if !ok { return; }
