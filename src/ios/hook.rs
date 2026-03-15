@@ -1,45 +1,49 @@
-use crate::core::{Error, Hachimi};
+use crate::core::Hachimi;
 
-/// Called from the dyld image-add callback each time a new
-/// image is loaded into the process address space.
-///
-/// When GameAssembly is detected, notify Hachimi core and
-/// start IL2CPP hooking exactly like Android does after dlopen.
-unsafe extern "C" fn on_image_added(
-    mh: *const libc::mach_header,
-    _slide: libc::intptr_t,
-) {
-    // Walk the currently-loaded images to find out which name
-    // corresponds to the just-added mach_header pointer.
-    let count = libc::_dyld_image_count();
+// dyld internals — not exposed by the libc crate for iOS targets.
+// These are part of Apple's libSystem and are safe to link against.
+#[repr(C)]
+struct MachHeader {
+    _opaque: [u8; 0],
+}
+
+extern "C" {
+    fn _dyld_image_count() -> u32;
+    fn _dyld_get_image_header(image_index: u32) -> *const MachHeader;
+    fn _dyld_get_image_name(image_index: u32) -> *const libc::c_char;
+    fn _dyld_register_func_for_add_image(
+        func: Option<unsafe extern "C" fn(*const MachHeader, libc::intptr_t)>,
+    );
+}
+
+/// Called from the dyld image-add callback each time a new image
+/// is loaded into the process address space.
+unsafe extern "C" fn on_image_added(mh: *const MachHeader, _slide: libc::intptr_t) {
+    let count = _dyld_image_count();
     for i in 0..count {
-        let img_mh = libc::_dyld_get_image_header(i);
-        if img_mh == mh as *const _ {
-            if let Some(raw_name) = libc::_dyld_get_image_name(i).as_ref() {
-                let name = std::ffi::CStr::from_ptr(raw_name)
-                    .to_str()
-                    .unwrap_or("");
-
-                if crate::ios::hachimi_impl::is_il2cpp_lib(name) {
-                    info!("iOS: GameAssembly loaded at {:p}, slide={}", mh, _slide);
-                    Hachimi::instance().on_dlopen(name, mh as usize);
-                }
+        let img_mh = _dyld_get_image_header(i);
+        if img_mh == mh {
+            let raw = _dyld_get_image_name(i);
+            if raw.is_null() { break; }
+            let name = std::ffi::CStr::from_ptr(raw)
+                .to_str()
+                .unwrap_or("");
+            if crate::ios::hachimi_impl::is_il2cpp_lib(name) {
+                info!("iOS: GameAssembly loaded at {:p}, slide={}", mh, _slide);
+                Hachimi::instance().on_dlopen(name, mh as usize);
             }
             break;
         }
     }
 }
 
-fn init_internal() -> Result<(), Error> {
+fn init_internal() {
     unsafe {
-        libc::_dyld_register_func_for_add_image(Some(on_image_added));
+        _dyld_register_func_for_add_image(Some(on_image_added));
     }
     info!("iOS: dyld image callback registered");
-    Ok(())
 }
 
 pub fn init() {
-    init_internal().unwrap_or_else(|e| {
-        error!("iOS hook init failed: {}", e);
-    });
+    init_internal();
 }
