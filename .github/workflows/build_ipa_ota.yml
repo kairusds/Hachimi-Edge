@@ -38,6 +38,30 @@ on:
         required: false
         default: true
         type: boolean
+      p12_url:
+        description: 'URL to custom P12 certificate (optional)'
+        required: false
+        type: string
+      p12_password:
+        description: 'Password for custom P12 (optional)'
+        required: false
+        type: string
+      provision_url:
+        description: 'URL to custom mobileprovision (optional)'
+        required: false
+        type: string
+      bundle_id:
+        description: 'Custom Bundle ID (optional, e.g. jp.co.cygames.umamusume)'
+        required: false
+        type: string
+      team_id:
+        description: 'Apple Team ID (optional, e.g. ABCDE12345)'
+        required: false
+        type: string
+      codesign_identity:
+        description: 'Signing identity CN (optional)'
+        required: false
+        type: string
 
 permissions:
   contents: read   # read-only — no releases, no writes to repo
@@ -183,21 +207,63 @@ jobs:
 
       - name: Import certificate & provisioning profile
         env:
+          P12_URL:          ${{ inputs.p12_url }}
+          P12_PASSWORD_IN:  ${{ inputs.p12_password }}
+          PROVISION_URL:    ${{ inputs.provision_url }}
           P12_BASE64:       ${{ secrets.IOS_P12_BASE64 }}
-          P12_PASSWORD:     ${{ secrets.IOS_P12_PASSWORD }}
+          P12_PASSWORD_SEC: ${{ secrets.IOS_P12_PASSWORD }}
           PROVISION_BASE64: ${{ secrets.IOS_PROVISION_BASE64 }}
+          BUNDLE_ID_IN:     ${{ inputs.bundle_id }}
+          TEAM_ID_IN:       ${{ inputs.team_id }}
+          IDENTITY_IN:      ${{ inputs.codesign_identity }}
+          BUNDLE_ID_SEC:    ${{ secrets.IOS_BUNDLE_ID }}
+          TEAM_ID_SEC:      ${{ secrets.IOS_TEAM_ID }}
+          IDENTITY_SEC:     ${{ secrets.IOS_CODE_SIGN_IDENTITY }}
         run: |
-          # Decode from secrets (values never visible in logs)
-          # Use printf to avoid echo adding newline corruption to base64
-          printf '%s' "$P12_BASE64"       | base64 --decode > /tmp/cert.p12
-          printf '%s' "$PROVISION_BASE64" | base64 --decode > /tmp/profile.mobileprovision
+          # 1. Handle P12 certificate
+          if [[ -n "$P12_URL" ]]; then
+            echo "Downloading P12 from URL..."
+            curl -fsSL --max-time 30 -L "$P12_URL" -o /tmp/cert.p12 || { echo "❌ P12 download failed"; exit 1; }
+          else
+            echo "Using P12 from secrets..."
+            printf '%s' "$P12_BASE64" | base64 --decode > /tmp/cert.p12
+          fi
 
-          # Validate decoded files are non-empty
+          # 2. Handle Provisioning Profile
+          if [[ -n "$PROVISION_URL" ]]; then
+            echo "Downloading profile from URL..."
+            curl -fsSL --max-time 30 -L "$PROVISION_URL" -o /tmp/profile.mobileprovision || { echo "❌ Profile download failed"; exit 1; }
+          else
+            echo "Using profile from secrets..."
+            printf '%s' "$PROVISION_BASE64" | base64 --decode > /tmp/profile.mobileprovision
+          fi
+
+          # 3. Handle P12 Password
+          P12_PASSWORD="${P12_PASSWORD_IN:-$P12_PASSWORD_SEC}"
+          echo "::add-mask::$P12_PASSWORD"
+          echo "P12_PASSWORD=$P12_PASSWORD" >> $GITHUB_ENV
+
+          # 4. Handle signing identities for later steps
+          echo "BUNDLE_ID=${BUNDLE_ID_IN:-$BUNDLE_ID_SEC}" >> $GITHUB_ENV
+          echo "TEAM_ID=${TEAM_ID_IN:-$TEAM_ID_SEC}"       >> $GITHUB_ENV
+          echo "IDENTITY=${IDENTITY_IN:-$IDENTITY_SEC}"   >> $GITHUB_ENV
+
+          # 5. Diagnostics & Validation
           P12_SIZE=$(stat -f%z /tmp/cert.p12 2>/dev/null || echo 0)
           PROV_SIZE=$(stat -f%z /tmp/profile.mobileprovision 2>/dev/null || echo 0)
           echo "P12 size: $P12_SIZE bytes | Profile size: $PROV_SIZE bytes"
-          [[ "$P12_SIZE"   -gt 100 ]] || { echo "❌ IOS_P12_BASE64 is empty or invalid"; exit 1; }
-          [[ "$PROV_SIZE"  -gt 100 ]] || { echo "❌ IOS_PROVISION_BASE64 is empty or invalid"; exit 1; }
+          file /tmp/cert.p12
+          file /tmp/profile.mobileprovision
+
+          # Check if cert.p12 is actually an HTML page (happens with bad download links)
+          if head -c 500 /tmp/cert.p12 | grep -iq "<!DOCTYPE html\|<html"; then
+            echo "❌ ERROR: Downloaded P12 appears to be an HTML page, not a binary certificate."
+            echo "This often happens if the URL is a preview page instead of a direct download link."
+            exit 1
+          fi
+
+          [[ "$P12_SIZE"   -gt 100 ]] || { echo "❌ P12 file is too small or empty"; exit 1; }
+          [[ "$PROV_SIZE"  -gt 100 ]] || { echo "❌ Provisioning profile is too small or empty"; exit 1; }
 
           # Temporary keychain (random password, auto-deleted at end)
           KC_PASS=$(openssl rand -hex 20)
@@ -234,9 +300,9 @@ jobs:
       # ── 7. Re-sign IPA with paid certificate ─────────────────────
       - name: Sign IPA with paid certificate
         env:
-          IDENTITY:  ${{ secrets.IOS_CODE_SIGN_IDENTITY }}
-          BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
-          TEAM_ID:   ${{ secrets.IOS_TEAM_ID }}
+          IDENTITY:  ${{ env.IDENTITY }}
+          BUNDLE_ID: ${{ env.BUNDLE_ID }}
+          TEAM_ID:   ${{ env.TEAM_ID }}
         run: |
           WORK=$(mktemp -d /tmp/sign.XXXXXX)
           unzip -q patched_unsigned.ipa -d "$WORK"
@@ -311,7 +377,7 @@ jobs:
                 <key>metadata</key>
                 <dict>
                   <key>bundle-identifier</key>
-                  <string>${{ secrets.IOS_BUNDLE_ID }}</string>
+                  <string>${BUNDLE_ID}</string>
                   <key>bundle-version</key>
                   <string>${APP_VERSION}</string>
                   <key>kind</key><string>software</string>
