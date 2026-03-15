@@ -57,13 +57,16 @@ jobs:
           cmake -S /tmp/dobby -B /tmp/dobby-build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_SYSTEM_PROCESSOR=arm64 \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_SYSROOT="${IOS_SDK}" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="14.0" \
             -DCMAKE_C_COMPILER="$(xcrun --find clang)" \
             -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)" \
             -DPlugin.Darwin.HideLibrary=OFF \
-            -DPlugin.Darwin.MachOReWrite=OFF
+            -DPlugin.Darwin.MachOReWrite=OFF \
+            -DDOBBY_GENERATE_SHARED=OFF \
+            -DDOBBY_DEBUG=OFF
 
           cmake --build /tmp/dobby-build --config Release -- -j$(sysctl -n hw.ncpu)
 
