@@ -33,6 +33,16 @@ on:
         required: false
         default: '1.0.0'
         type: string
+      app_display_name:
+        description: 'Custom app name shown on iOS home screen (e.g. "Uma + Hachimi")'
+        required: false
+        default: ''
+        type: string
+      enable_files_sharing:
+        description: 'Expose game data folder in Files app (UIFileSharingEnabled)'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read   # read-only — no releases, no writes to repo
@@ -95,7 +105,42 @@ jobs:
             patched_unsigned.ipa
           echo "Patched: $(du -sh patched_unsigned.ipa | cut -f1)"
 
-      # ── 6. Import certificate & provisioning profile ─────────────
+      # ── 6. Patch Info.plist (display name + Files sharing) ────────
+      - name: Patch Info.plist
+        env:
+          DISPLAY_NAME:  ${{ inputs.app_display_name }}
+          FILES_SHARING: ${{ inputs.enable_files_sharing }}
+        run: |
+          # Unpack to a temp dir just for plist editing
+          PLIST_WORK=$(mktemp -d /tmp/plist.XXXXXX)
+          unzip -q patched_unsigned.ipa -d "$PLIST_WORK"
+          PLIST=$(find "$PLIST_WORK/Payload" -maxdepth 2 -name "Info.plist" | head -1)
+          echo "Info.plist: $PLIST"
+
+          # Convert to XML if binary
+          plutil -convert xml1 "$PLIST"
+
+          # 1. Custom display name (only if provided)
+          if [[ -n "$DISPLAY_NAME" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $DISPLAY_NAME" "$PLIST" 2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string $DISPLAY_NAME" "$PLIST"
+            echo "CFBundleDisplayName → $DISPLAY_NAME"
+          fi
+
+          # 2. Files app sharing (expose Documents/ in iOS Files)
+          if [[ "$FILES_SHARING" == "true" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :UIFileSharingEnabled true" "$PLIST" 2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Add :UIFileSharingEnabled bool true" "$PLIST"
+            /usr/libexec/PlistBuddy -c "Set :LSSupportsOpeningDocumentsInPlace true" "$PLIST" 2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" "$PLIST"
+            echo "Files sharing → enabled"
+          fi
+
+          # Repack
+          (cd "$PLIST_WORK" && zip -qr "$GITHUB_WORKSPACE/patched_unsigned.ipa" Payload)
+          rm -rf "$PLIST_WORK"
+          echo "Info.plist patched OK"
+
       - name: Import certificate & provisioning profile
         env:
           P12_BASE64:       ${{ secrets.IOS_P12_BASE64 }}

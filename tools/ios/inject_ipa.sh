@@ -3,7 +3,11 @@
 # Inject libhachimi.dylib into an IPA for sideloading (TrollStore / Sideloadly)
 #
 # Usage:
-#   ./tools/ios/inject_ipa.sh <input.ipa> <libhachimi.dylib> [output.ipa]
+#   ./tools/ios/inject_ipa.sh <input.ipa> <libhachimi.dylib> [output.ipa] [options]
+#
+# Options:
+#   --display-name "My App"   Custom name shown on iOS home screen
+#   --files-sharing            Enable Files app access to Documents/
 #
 # Requirements (install via brew):
 #   brew install ldid
@@ -12,9 +16,21 @@
 # On Windows: run this via GitHub Actions macOS runner or WSL with Homebrew.
 set -e
 
-INPUT_IPA="${1:?Usage: $0 <input.ipa> <libhachimi.dylib> [output.ipa]}"
+INPUT_IPA="${1:?Usage: $0 <input.ipa> <libhachimi.dylib> [output.ipa] [--display-name NAME] [--files-sharing]}"
 DYLIB="${2:?Usage: $0 <input.ipa> <libhachimi.dylib> [output.ipa]}"
 OUTPUT_IPA="${3:-$(dirname "$INPUT_IPA")/$(basename "${INPUT_IPA%.ipa}")_hachimi.ipa}"
+
+# ── Parse extra options ──────────────────────────────────────────
+DISPLAY_NAME=""
+FILES_SHARING=false
+shift 3 2>/dev/null || shift $# 2>/dev/null || true
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --display-name) DISPLAY_NAME="$2"; shift 2 ;;
+        --files-sharing) FILES_SHARING=true; shift ;;
+        *) shift ;;
+    esac
+done
 
 # ── Entitlements for re-signing ───────────────────────────────────
 ENTITLEMENTS_PLIST="$(mktemp /tmp/hachimi_entitlements.XXXXXX.plist)"
@@ -115,6 +131,25 @@ ldid -S"$ENTITLEMENTS_PLIST" "$APP_EXEC"
 
 # ── Repack IPA ────────────────────────────────────────────────────
 echo "[inject] Repacking IPA..."
+
+# ── Patch Info.plist (display name + Files sharing) ───────────────
+PLIST="$APP_BUNDLE/Info.plist"
+plutil -convert xml1 "$PLIST" 2>/dev/null || true
+
+if [[ -n "$DISPLAY_NAME" ]]; then
+    /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $DISPLAY_NAME" "$PLIST" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string $DISPLAY_NAME" "$PLIST"
+    echo "[inject] CFBundleDisplayName → $DISPLAY_NAME"
+fi
+
+if $FILES_SHARING; then
+    /usr/libexec/PlistBuddy -c "Set :UIFileSharingEnabled true" "$PLIST" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Add :UIFileSharingEnabled bool true" "$PLIST"
+    /usr/libexec/PlistBuddy -c "Set :LSSupportsOpeningDocumentsInPlace true" "$PLIST" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" "$PLIST"
+    echo "[inject] Files app sharing → enabled"
+fi
+
 pushd "$WORK_DIR" > /dev/null
 zip -qr "$OUTPUT_IPA" Payload
 popd > /dev/null
