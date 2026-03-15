@@ -262,8 +262,24 @@ jobs:
             exit 1
           fi
 
+          # Handle Base64-encoded P12 files (some providers deliver it as text)
+          if file /tmp/cert.p12 | grep -q "ASCII text"; then
+            echo "Detected Base64-encoded P12 text file. Decoding..."
+            mv /tmp/cert.p12 /tmp/cert.p12.b64
+            base64 --decode < /tmp/cert.p12.b64 > /tmp/cert.p12
+            echo "Decoded P12 size: $(stat -f%z /tmp/cert.p12) bytes"
+          fi
+
           [[ "$P12_SIZE"   -gt 100 ]] || { echo "❌ P12 file is too small or empty"; exit 1; }
           [[ "$PROV_SIZE"  -gt 100 ]] || { echo "❌ Provisioning profile is too small or empty"; exit 1; }
+
+          # 6. Verify P12 Password with OpenSSL before keychain import
+          echo "Verifying P12 password..."
+          if ! openssl pkcs12 -info -nokeys -passin "pass:$P12_PASSWORD" -in /tmp/cert.p12 > /dev/null 2>&1; then
+            echo "❌ ERROR: P12 password verification failed. The password might be incorrect or the file is corrupted."
+            exit 1
+          fi
+          echo "✅ P12 password verified."
 
           # Temporary keychain (random password, auto-deleted at end)
           KC_PASS=$(openssl rand -hex 20)
@@ -276,7 +292,7 @@ jobs:
             -k build.keychain \
             -P "$P12_PASSWORD" \
             -T /usr/bin/codesign \
-            -f pkcs12 \
+            -T /usr/bin/security \
             -A
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
