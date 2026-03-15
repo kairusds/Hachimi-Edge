@@ -51,29 +51,6 @@ jobs:
       # ── 1. Checkout (for inject_ipa.sh) ──────────────────────────
       - uses: actions/checkout@v4
 
-      # ── 0. Validate required secrets ─────────────────────────────
-      - name: Validate required secrets
-        env:
-          _P12:         ${{ secrets.IOS_P12_BASE64 }}
-          _P12_PASS:    ${{ secrets.IOS_P12_PASSWORD }}
-          _PROV:        ${{ secrets.IOS_PROVISION_BASE64 }}
-          _TEAM:        ${{ secrets.IOS_TEAM_ID }}
-          _BUNDLE:      ${{ secrets.IOS_BUNDLE_ID }}
-          _IDENTITY:    ${{ secrets.IOS_CODE_SIGN_IDENTITY }}
-        run: |
-          MISSING=()
-          [[ -z "$_P12"      ]] && MISSING+=("IOS_P12_BASE64")
-          [[ -z "$_P12_PASS" ]] && MISSING+=("IOS_P12_PASSWORD")
-          [[ -z "$_PROV"     ]] && MISSING+=("IOS_PROVISION_BASE64")
-          [[ -z "$_TEAM"     ]] && MISSING+=("IOS_TEAM_ID")
-          [[ -z "$_BUNDLE"   ]] && MISSING+=("IOS_BUNDLE_ID")
-          [[ -z "$_IDENTITY" ]] && MISSING+=("IOS_CODE_SIGN_IDENTITY")
-          if [[ ${#MISSING[@]} -gt 0 ]]; then
-            echo "❌ Missing GitHub Secrets — go to Settings → Secrets → Actions and add:"
-            for s in "${MISSING[@]}"; do echo "   • $s"; done
-            exit 1
-          fi
-          echo "✅ All required secrets are set"
 
       # ── 2. Download latest libhachimi.dylib from Build iOS ────────
       - name: Download iOS dylib artifact
