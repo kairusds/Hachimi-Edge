@@ -28,11 +28,6 @@ on:
         description: 'Temporary IPA download URL (Google Drive / WeTransfer / Dropbox)'
         required: true
         type: string
-      app_version:
-        description: 'App version for OTA manifest (e.g. 1.0.0)'
-        required: false
-        default: '1.0.0'
-        type: string
       app_display_name:
         description: 'Custom app name shown on iOS home screen'
         required: false
@@ -140,6 +135,20 @@ jobs:
           (cd "$PLIST_WORK" && zip -qr "$GITHUB_WORKSPACE/patched_unsigned.ipa" Payload)
           rm -rf "$PLIST_WORK"
           echo "Info.plist patched OK"
+
+          # Read actual app version from IPA Info.plist for OTA manifest
+          PEEK=$(mktemp -d /tmp/ver.XXXXXX)
+          unzip -q patched_unsigned.ipa -d "$PEEK"
+          VER_PLIST=$(find "$PEEK/Payload" -maxdepth 2 -name "Info.plist" | head -1)
+          plutil -convert xml1 "$VER_PLIST" 2>/dev/null || true
+          APP_VERSION=$(
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$VER_PLIST" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$VER_PLIST" 2>/dev/null \
+            || echo "1.0"
+          )
+          rm -rf "$PEEK"
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Detected app version: $APP_VERSION"
 
       - name: Import certificate & provisioning profile
         env:
@@ -261,7 +270,7 @@ jobs:
                   <key>bundle-identifier</key>
                   <string>${{ secrets.IOS_BUNDLE_ID }}</string>
                   <key>bundle-version</key>
-                  <string>${{ inputs.app_version }}</string>
+                  <string>${APP_VERSION}</string>
                   <key>kind</key><string>software</string>
                   <key>title</key><string>Uma Musume + Hachimi</string>
                 </dict>
