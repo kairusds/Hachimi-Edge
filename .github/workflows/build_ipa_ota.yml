@@ -51,6 +51,30 @@ jobs:
       # ── 1. Checkout (for inject_ipa.sh) ──────────────────────────
       - uses: actions/checkout@v4
 
+      # ── 0. Validate required secrets ─────────────────────────────
+      - name: Validate required secrets
+        env:
+          _P12:         ${{ secrets.IOS_P12_BASE64 }}
+          _P12_PASS:    ${{ secrets.IOS_P12_PASSWORD }}
+          _PROV:        ${{ secrets.IOS_PROVISION_BASE64 }}
+          _TEAM:        ${{ secrets.IOS_TEAM_ID }}
+          _BUNDLE:      ${{ secrets.IOS_BUNDLE_ID }}
+          _IDENTITY:    ${{ secrets.IOS_CODE_SIGN_IDENTITY }}
+        run: |
+          MISSING=()
+          [[ -z "$_P12"      ]] && MISSING+=("IOS_P12_BASE64")
+          [[ -z "$_P12_PASS" ]] && MISSING+=("IOS_P12_PASSWORD")
+          [[ -z "$_PROV"     ]] && MISSING+=("IOS_PROVISION_BASE64")
+          [[ -z "$_TEAM"     ]] && MISSING+=("IOS_TEAM_ID")
+          [[ -z "$_BUNDLE"   ]] && MISSING+=("IOS_BUNDLE_ID")
+          [[ -z "$_IDENTITY" ]] && MISSING+=("IOS_CODE_SIGN_IDENTITY")
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "❌ Missing GitHub Secrets — go to Settings → Secrets → Actions and add:"
+            for s in "${MISSING[@]}"; do echo "   • $s"; done
+            exit 1
+          fi
+          echo "✅ All required secrets are set"
+
       # ── 2. Download latest libhachimi.dylib from Build iOS ────────
       - name: Download iOS dylib artifact
         uses: dawidd6/action-download-artifact@v6
@@ -168,7 +192,7 @@ jobs:
 
           # Read actual app version from IPA Info.plist for OTA manifest
           PEEK=$(mktemp -d /tmp/ver.XXXXXX)
-          unzip -q patched_unsigned.ipa -d "$PEEK"
+          unzip -q "$GITHUB_WORKSPACE/patched_unsigned.ipa" -d "$PEEK"
           VER_PLIST=$(find "$PEEK/Payload" -maxdepth 2 -name "Info.plist" | head -1)
           plutil -convert xml1 "$VER_PLIST" 2>/dev/null || true
           APP_VERSION=$(
@@ -187,8 +211,16 @@ jobs:
           PROVISION_BASE64: ${{ secrets.IOS_PROVISION_BASE64 }}
         run: |
           # Decode from secrets (values never visible in logs)
-          echo "$P12_BASE64"       | base64 --decode > /tmp/cert.p12
-          echo "$PROVISION_BASE64" | base64 --decode > /tmp/profile.mobileprovision
+          # Use printf to avoid echo adding newline corruption to base64
+          printf '%s' "$P12_BASE64"       | base64 --decode > /tmp/cert.p12
+          printf '%s' "$PROVISION_BASE64" | base64 --decode > /tmp/profile.mobileprovision
+
+          # Validate decoded files are non-empty
+          P12_SIZE=$(stat -f%z /tmp/cert.p12 2>/dev/null || echo 0)
+          PROV_SIZE=$(stat -f%z /tmp/profile.mobileprovision 2>/dev/null || echo 0)
+          echo "P12 size: $P12_SIZE bytes | Profile size: $PROV_SIZE bytes"
+          [[ "$P12_SIZE"   -gt 100 ]] || { echo "❌ IOS_P12_BASE64 is empty or invalid"; exit 1; }
+          [[ "$PROV_SIZE"  -gt 100 ]] || { echo "❌ IOS_PROVISION_BASE64 is empty or invalid"; exit 1; }
 
           # Temporary keychain (random password, auto-deleted at end)
           KC_PASS=$(openssl rand -hex 20)
@@ -198,8 +230,11 @@ jobs:
           security set-keychain-settings -t 3600 -u build.keychain
 
           security import /tmp/cert.p12 \
-            -k build.keychain -P "$P12_PASSWORD" \
-            -T /usr/bin/codesign -A
+            -k build.keychain \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -f pkcs12 \
+            -A
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
             -s -k "$KC_PASS" build.keychain
@@ -214,6 +249,7 @@ jobs:
             ~/Library/MobileDevice/Provisioning\ Profiles/"${PROFILE_UUID}.mobileprovision"
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
           echo "KC_PASS=$KC_PASS"           >> $GITHUB_ENV
+
 
           # Shred temp files immediately
           rm -f /tmp/cert.p12 /tmp/profile.mobileprovision
