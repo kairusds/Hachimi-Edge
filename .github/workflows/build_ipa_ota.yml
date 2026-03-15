@@ -34,9 +34,9 @@ on:
         default: '1.0.0'
         type: string
       app_display_name:
-        description: 'Custom app name shown on iOS home screen (e.g. "Uma + Hachimi")'
+        description: 'Custom app name shown on iOS home screen'
         required: false
-        default: ''
+        default: 'Uma + Hachimi'
         type: string
       enable_files_sharing:
         description: 'Expose game data folder in Files app (UIFileSharingEnabled)'
