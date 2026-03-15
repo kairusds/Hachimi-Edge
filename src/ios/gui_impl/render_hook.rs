@@ -1,23 +1,25 @@
 //! iOS render hook — Metal backend via wgpu + egui-wgpu.
 //!
-//! Strategy: Hook Unity's CADisplayLink callback to inject the egui render pass
-//! after the Unity frame is complete.  This is safer than hooking Metal at the
-//! CAMetalLayer level and avoids Metal validation errors.
+//! Uses `egui_wgpu::wgpu` re-exports so there is no version conflict with
+//! any other wgpu dependency in the graph.
 //!
 //! # Status
-//! This module is a scaffold.  Full wgpu + CAMetalLayer integration will be done
-//! once the base compile target (`aarch64-apple-ios`) is verified to link cleanly.
+//! Scaffold — full CAMetalLayer / CADisplayLink integration is Phase 3.
+//! The module compiles cleanly and defines the public API surface.
 
-use crate::core::{Error, Hachimi};
+// Use wgpu types re-exported by egui-wgpu to avoid duplicate-version conflicts
+use egui_wgpu::wgpu;
+use egui_wgpu::{Renderer, ScreenDescriptor};
 
-// ── wgpu / egui-wgpu state ─────────────────────────────────────────────────
-// Stored as a static Option so the render hook closure can access it without locks.
+use crate::core::Error;
 
-struct RenderState {
+// ── renderer state ────────────────────────────────────────────────────────────
+
+pub struct RenderState {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub surface: wgpu::Surface<'static>,
-    pub renderer: egui_wgpu::Renderer,
+    pub renderer: Renderer,
     pub surface_config: wgpu::SurfaceConfiguration,
 }
 
@@ -25,22 +27,21 @@ static mut RENDER_STATE: Option<RenderState> = None;
 
 /// Initialise the wgpu Metal device and egui-wgpu renderer.
 ///
-/// Must be called from the game's render thread after the Metal surface
-/// (CAMetalLayer) is available.  The `layer_ptr` is a `*mut CAMetalLayer`
-/// cast to `usize` to remain FFI-safe at declaration time.
+/// Must be called from the game's render thread once the Metal surface
+/// (CAMetalLayer) is available. `layer_ptr` is a `*mut CAMetalLayer`
+/// cast to `usize` to remain FFI-safe at the declaration site.
 pub async fn init_wgpu(layer_ptr: usize) -> Result<(), Error> {
-    use wgpu::InstanceDescriptor;
-
-    let instance = wgpu::Instance::new(&InstanceDescriptor {
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::METAL,
         ..Default::default()
     });
 
-    // SAFETY: layer_ptr is a valid CAMetalLayer* from the game's render thread.
+    // SAFETY: layer_ptr is a valid CAMetalLayer* obtained from the game's render thread.
     let surface = unsafe {
         instance.create_surface_unsafe(
-            wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer_ptr as *mut std::ffi::c_void)
-        ).map_err(|e| Error::GuiRendererInitError(e.to_string()))?
+            wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer_ptr as *mut std::ffi::c_void),
+        )
+        .map_err(|e| Error::GuiRendererInitError(e.to_string()))?
     };
 
     let adapter = instance
@@ -58,12 +59,12 @@ pub async fn init_wgpu(layer_ptr: usize) -> Result<(), Error> {
         .map_err(|e| Error::GuiRendererInitError(e.to_string()))?;
 
     let caps = surface.get_capabilities(&adapter);
-    let format = caps.formats[0]; // prefer first (usually Bgra8Unorm)
+    let format = caps.formats[0];
 
     let surface_config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format,
-        width: 0,  // will be updated on first frame
+        width: 0,  // updated on first frame
         height: 0,
         present_mode: wgpu::PresentMode::Fifo,
         alpha_mode: caps.alpha_modes[0],
@@ -72,7 +73,11 @@ pub async fn init_wgpu(layer_ptr: usize) -> Result<(), Error> {
     };
     surface.configure(&device, &surface_config);
 
-    let renderer = egui_wgpu::Renderer::new(&device, format, None, 1, false);
+    let renderer = Renderer::new(
+        &device,
+        format,
+        egui_wgpu::RendererOptions::default(),
+    );
 
     unsafe {
         RENDER_STATE = Some(RenderState { device, queue, surface, renderer, surface_config });
@@ -83,7 +88,7 @@ pub async fn init_wgpu(layer_ptr: usize) -> Result<(), Error> {
 }
 
 /// Called every frame (from the hooked CADisplayLink callback).
-/// Runs the egui pass and presents to the Metal surface.
+/// Runs the egui pass and composites onto the Metal surface.
 pub fn render_frame(width: u32, height: u32) {
     let Some(rs) = (unsafe { RENDER_STATE.as_mut() }) else { return };
     let Some(gui_mutex) = crate::core::Gui::instance() else { return };
@@ -91,7 +96,6 @@ pub fn render_frame(width: u32, height: u32) {
 
     gui.set_screen_size(width as i32, height as i32);
 
-    // Reconfigure surface if size changed
     if rs.surface_config.width != width || rs.surface_config.height != height {
         rs.surface_config.width = width;
         rs.surface_config.height = height;
@@ -105,16 +109,20 @@ pub fn render_frame(width: u32, height: u32) {
             return;
         }
     };
-    let view = output_frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let view = output_frame
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
 
     let full_output = gui.run();
-    let clipped_primitives = gui.context.tessellate(full_output.shapes, full_output.pixels_per_point);
+    let clipped_primitives = gui
+        .context
+        .tessellate(full_output.shapes, full_output.pixels_per_point);
 
     let mut encoder = rs.device.create_command_encoder(
-        &wgpu::CommandEncoderDescriptor { label: Some("egui_encoder") }
+        &wgpu::CommandEncoderDescriptor { label: Some("egui_encoder") },
     );
 
-    let screen_descriptor = egui_wgpu::ScreenDescriptor {
+    let screen_descriptor = ScreenDescriptor {
         size_in_pixels: [width, height],
         pixels_per_point: full_output.pixels_per_point,
     };
@@ -122,7 +130,13 @@ pub fn render_frame(width: u32, height: u32) {
     for (id, delta) in &full_output.textures_delta.set {
         rs.renderer.update_texture(&rs.device, &rs.queue, *id, delta);
     }
-    rs.renderer.update_buffers(&rs.device, &rs.queue, &mut encoder, &clipped_primitives, &screen_descriptor);
+    rs.renderer.update_buffers(
+        &rs.device,
+        &rs.queue,
+        &mut encoder,
+        &clipped_primitives,
+        &screen_descriptor,
+    );
 
     {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -131,7 +145,7 @@ pub fn render_frame(width: u32, height: u32) {
                 view: &view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load, // composite over game frame
+                    load: wgpu::LoadOp::Load,
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -151,8 +165,5 @@ pub fn render_frame(width: u32, height: u32) {
 }
 
 pub fn init() {
-    // The wgpu device cannot be created synchronously here because it requires
-    // the CAMetalLayer to already exist.  The actual init happens lazily on the
-    // first render tick via a hook on Unity's display-link callback.
     info!("iOS: render_hook module loaded (wgpu/Metal, lazy init)");
 }

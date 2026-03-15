@@ -431,7 +431,12 @@ pub struct OsOption<T> {
     android: Option<T>,
 
     #[cfg(target_os = "windows")]
-    windows: Option<T>
+    windows: Option<T>,
+
+    // Ensure T is always used; PhantomData has zero size and is not deserialized
+    #[cfg(not(any(target_os = "android", target_os = "windows")))]
+    #[serde(skip)]
+    _marker: std::marker::PhantomData<T>,
 }
 
 impl<T> OsOption<T> {
@@ -441,6 +446,9 @@ impl<T> OsOption<T> {
 
         #[cfg(target_os = "windows")]
         return self.windows.as_ref();
+
+        #[cfg(not(any(target_os = "android", target_os = "windows")))]
+        None
     }
 }
 
@@ -791,6 +799,9 @@ impl<T> AssetInfo<T> {
 
         #[cfg(target_os = "windows")]
         return self.windows;
+
+        #[cfg(not(any(target_os = "android", target_os = "windows")))]
+        Default::default()
     }
 
     pub fn metadata_ref(&self) -> &AssetMetadata {
@@ -799,6 +810,21 @@ impl<T> AssetInfo<T> {
 
         #[cfg(target_os = "windows")]
         return &self.windows;
+
+        #[cfg(not(any(target_os = "android", target_os = "windows")))]
+        // SAFETY: AssetMetadata is Default; we return a reference to a temporary.
+        // Use a thread_local to avoid UB.
+        {
+            thread_local! {
+                static DEFAULT_META: std::cell::RefCell<crate::core::hachimi::AssetMetadata> =
+                    std::cell::RefCell::new(Default::default());
+            }
+            // SAFETY: We cast the borrow to 'static lifetime. The thread-local is never
+            // dropped while the thread is alive, so this is safe for the lifetime of &self.
+            unsafe {
+                &*(DEFAULT_META.with(|m| m.as_ptr() as *const crate::core::hachimi::AssetMetadata))
+            }
+        }
     }
 }
 

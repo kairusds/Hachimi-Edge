@@ -469,6 +469,10 @@ impl Gui {
             windows.push(Box::new(FirstTimeSetupWindow::new()));
         }
 
+        // Extract iOS FAB position before `config` is moved into the struct
+        #[cfg(target_os = "ios")]
+        let fab_pos = egui::Pos2::new(config.ios.fab_x, config.ios.fab_y);
+
         let now = Instant::now();
         let instance = Gui {
             context,
@@ -490,10 +494,7 @@ impl Gui {
             show_menu: false,
 
             #[cfg(target_os = "ios")]
-            fab_pos: egui::Pos2::new(
-                config.ios.fab_x,
-                config.ios.fab_y,
-            ),
+            fab_pos,
             #[cfg(target_os = "ios")]
             fab_dragging: false,
 
@@ -1408,7 +1409,7 @@ impl Gui {
             self.fab_pos += response.drag_delta();
             self.fab_dragging = true;
 
-            let screen = ctx.input(|i| i.screen_rect);
+            let screen = ctx.input(|i| i.screen_rect());
             self.fab_pos.x = self.fab_pos.x.clamp(0.0, screen.width() - fab_size.x);
             self.fab_pos.y = self.fab_pos.y.clamp(0.0, screen.height() - fab_size.y);
         }

@@ -1,4 +1,4 @@
-pub fn init() {
+pub fn init(filter_level: log::LevelFilter, _file_logging: bool) {
     let log_path = crate::ios::utils::get_log_path();
 
     // Ensure the parent directory exists
@@ -13,7 +13,7 @@ pub fn init() {
         .expect("failed to open iOS log file");
 
     simplelog::WriteLogger::init(
-        simplelog::LevelFilter::Debug,
+        filter_level,
         simplelog::Config::default(),
         log_file,
     )
@@ -21,3 +21,4 @@ pub fn init() {
 
     info!("Hachimi iOS logger initialized, log: {}", log_path.display());
 }
+

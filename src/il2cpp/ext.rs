@@ -51,7 +51,7 @@ impl LocalizedDataExt for LocalizedData {
             return handle.target();
         }
 
-        let Some(path) = self.config.extra_asset_bundle.as_ref().map(|p| self.get_data_path(p)).unwrap_or_default() else {
+        let Some(path) = self.config.extra_asset_bundle.as_ref().map(|p: &String| self.get_data_path(p)).unwrap_or_default() else {
             return 0 as _;
         };
 

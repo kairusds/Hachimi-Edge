@@ -643,7 +643,14 @@ pub fn get_data_path() -> String {
             unsafe { (*Application::get_persistentDataPath()).as_utf16str() }.to_string()
         }
     }
+
+    #[cfg(target_os = "ios")]
+    {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/var/mobile".to_string());
+        format!("{}/Documents/hachimi", home)
+    }
 }
+
 
 pub fn get_masterdb_path() -> String {
     info!("get_masterdb_path base: {}", get_data_path());

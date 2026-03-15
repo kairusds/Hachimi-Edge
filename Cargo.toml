@@ -60,8 +60,7 @@ dobby-rs = "0.1"
 [target.'cfg(target_os = "ios")'.dependencies]
 libc = "0.2"
 dobby-rs = "0.1"
-# egui Metal rendering via wgpu
-wgpu = { version = "22", features = ["metal"] }
+# egui Metal rendering via wgpu (uses wgpu re-exported from egui-wgpu, no separate dep needed)
 egui-wgpu = "0.33"
 # Objective-C runtime FFI for CAMetalLayer, UIEvent, UIWindow hooks
 objc2 = "0.5"
