@@ -124,10 +124,11 @@ jobs:
         run: |
           chmod +x tools/ios/inject_ipa.sh
           tools/ios/inject_ipa.sh \
-            original.ipa \
-            artifacts/libhachimi.dylib \
-            patched_unsigned.ipa
-          echo "Patched: $(du -sh patched_unsigned.ipa | cut -f1)"
+            "$GITHUB_WORKSPACE/original.ipa" \
+            "$GITHUB_WORKSPACE/artifacts/libhachimi.dylib" \
+            "$GITHUB_WORKSPACE/patched_unsigned.ipa"
+          echo "Patched: $(du -sh "$GITHUB_WORKSPACE/patched_unsigned.ipa" | cut -f1)"
+
 
       # ── 6. Patch Info.plist (display name + Files sharing) ────────
       - name: Patch Info.plist

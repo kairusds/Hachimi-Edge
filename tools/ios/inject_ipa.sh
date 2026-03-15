@@ -151,7 +151,9 @@ if $FILES_SHARING; then
 fi
 
 pushd "$WORK_DIR" > /dev/null
-zip -qr "$OUTPUT_IPA" Payload
+# Resolve output path to absolute BEFORE pushd changes cwd
+ABS_OUTPUT_IPA="$(cd "$(dirname "$OUTPUT_IPA")" 2>/dev/null && pwd)/$(basename "$OUTPUT_IPA")"
+zip -qr "$ABS_OUTPUT_IPA" Payload
 popd > /dev/null
 
 echo ""
