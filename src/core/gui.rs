@@ -133,6 +133,7 @@ const PIXELS_PER_POINT_RATIO: f32 = 3.0/1080.0;
 
 static INSTANCE: OnceCell<Mutex<Gui>> = OnceCell::new();
 static IS_CONSUMING_INPUT: AtomicBool = AtomicBool::new(false);
+static WANTS_INPUT: AtomicBool = AtomicBool::new(false);
 static DISABLED_GAME_UIS: Lazy<Mutex<FnvHashSet<SendPtr>>> =
     Lazy::new(|| Mutex::new(FnvHashSet::default()));
 static PLUGIN_MENU_ITEMS: Lazy<Mutex<Vec<PluginMenuItem>>> = Lazy::new(|| Mutex::new(Vec::new()));
@@ -904,6 +905,13 @@ impl Gui {
         // Store this as an atomic value so the input thread can check it without locking the gui
         self.set_consuming_input(self.is_consuming_input());
 
+        WANTS_INPUT.store(
+            self.context.wants_pointer_input() || 
+            self.context.is_pointer_over_area() || 
+            self.context.wants_keyboard_input(), 
+            atomic::Ordering::Relaxed
+        );
+
         self.context.end_pass()
     }
 
@@ -1546,6 +1554,10 @@ impl Gui {
 
         self.menu_visible = val;
         IS_CONSUMING_INPUT.store(val, atomic::Ordering::Relaxed);
+    }
+
+    pub fn wants_input_atomic() -> bool {
+        WANTS_INPUT.load(atomic::Ordering::Relaxed)
     }
 
     pub fn toggle_menu(&mut self) {

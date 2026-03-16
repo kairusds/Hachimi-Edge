@@ -147,6 +147,10 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         return LRESULT(0);
     }
 
+    if !Gui::wants_input_atomic() {
+        return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
+    }
+
     LRESULT(0)
 }
 
