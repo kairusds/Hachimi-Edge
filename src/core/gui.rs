@@ -681,8 +681,9 @@ impl Gui {
         let orientation_scale = {
             #[cfg(target_os = "windows")]
             {
+                let config = Hachimi::instance().config.load();
                 let orientation_ratio = if is_landscape { height as f32 / width as f32 } else { 1.0 };
-                if is_landscape { orientation_ratio * Hachimi::instance().config.load().windows.gui_landscape_ratio } else { 1.0 }
+                if is_landscape && config.windows.enable_gui_landscape_ratio { orientation_ratio * config.windows.gui_landscape_ratio } else { 1.0 }
             }
 
             #[cfg(target_os = "android")]
@@ -2240,8 +2241,14 @@ impl ConfigEditor {
             {
                 if should_show_option(search, &t!("config_editor.gui_landscape_ratio")) {
                     ui.label(t!("config_editor.gui_landscape_ratio"));
-                    ui.add(egui::Slider::new(&mut config.windows.gui_landscape_ratio, 0.25..=1.0).step_by(0.05).fixed_decimals(2));
+                    ui.checkbox(&mut config.windows.enable_gui_landscape_ratio, t!("enable"));
                     ui.end_row();
+
+                    if config.windows.enable_gui_landscape_ratio {
+                        ui.label("");
+                        ui.add(egui::Slider::new(&mut config.windows.gui_landscape_ratio, 0.25..=1.0).step_by(0.05).fixed_decimals(2));
+                        ui.end_row();
+                    }
                 }
             }
 

@@ -75,6 +75,8 @@ pub struct Config {
     pub window_always_on_top: bool,
     #[serde(default = "Config::default_true")]
     pub discord_rpc: bool,
+    #[serde(default = "Config::default_true")]
+    pub enable_gui_landscape_ratio: bool,
     #[serde(default = "Config::default_gui_landscape_ratio")]
     pub gui_landscape_ratio: f32
 }
