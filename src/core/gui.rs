@@ -219,7 +219,7 @@ static KEYBOARD_SELECTION: Lazy<Mutex<RangeInt>> = Lazy::new(|| {
     Mutex::new(RangeInt::new(0, 1))
 });
 #[cfg(target_os = "android")]
-pub static KEYBOARD_OWNER: Lazy<Mutex<Option<KeyboardOwner>>> = 
+pub static KEYBOARD_OWNER: Lazy<Mutex<Option<KeyboardOwner>>> =
     Lazy::new(|| Mutex::new(None));
 #[cfg(target_os = "android")]
 #[derive(PartialEq)]
@@ -300,9 +300,9 @@ pub fn handle_android_keyboard<T: 'static>(res: &egui::Response, val: &mut T) {
         PENDING_KB_TYPE.store(TouchScreenKeyboardType::KeyboardType::NumberPad as i32, Ordering::Release);
         i.to_string()
     } else {
-        String::new() 
+        String::new()
     };
-    
+
     if res.gained_focus() {
         {
             let mut owner_lock = KEYBOARD_OWNER.lock().unwrap();
@@ -369,12 +369,12 @@ pub fn handle_android_keyboard<T: 'static>(res: &egui::Response, val: &mut T) {
                         }
                     }
                 } else if let Some(i) = val_any_mut.downcast_mut::<i32>() {
-                    if let Ok(parsed) = kb_txt_str.parse::<i32>() { 
+                    if let Ok(parsed) = kb_txt_str.parse::<i32>() {
                         if *i != parsed { *i = parsed; }
                     }
                 }
 
-                let kb_txt_clone = kb_txt_str.clone(); 
+                let kb_txt_clone = kb_txt_str.clone();
                 res.ctx.data_mut(|data| {
                     if let Some(mut state) = data.get_temp::<TextEditState>(res.id) {
                         let start_char = utf16_to_char_index(&kb_txt_clone, unity_range.start as usize);
@@ -538,15 +538,20 @@ impl Gui {
     pub fn set_screen_size(&mut self, width: i32, height: i32) {
         let is_landscape = width > height;
         let main_axis_size = if is_landscape { height } else { width.min(height) };
-        
-        #[cfg(not(target_os = "windows"))]
-        let orientation_scale = 1.0;
-        
-        #[cfg(target_os = "windows")]
-        {
-            let orientation_ratio = if is_landscape { height as f32 / width as f32 } else { 1.0 };
-            let orientation_scale = if is_landscape { orientation_ratio * Hachimi::instance().config.load().windows.gui_landscape_ratio } else { 1.0 };
-        }
+
+        let orientation_scale = {
+            #[cfg(not(target_os = "windows"))]
+            { 1.0 }
+            #[cfg(target_os = "windows")]
+            {
+                if !is_landscape { 1.0 }
+                else {
+                    let orientation_ratio = height as f32 / width as f32;
+                    orientation_ratio * Hachimi::instance().config.load().windows.gui_landscape_ratio
+                }
+            }
+        };
+
 
         let pixels_per_point = main_axis_size as f32 * PIXELS_PER_POINT_RATIO * orientation_scale;
         self.context.set_pixels_per_point(pixels_per_point);
@@ -621,7 +626,7 @@ impl Gui {
         self.context.set_style(style);
 
         self.context.begin_pass(input);
-        
+
         if self.menu_visible { self.run_menu(); }
         if self.update_progress_visible { self.run_update_progress(); }
 
@@ -863,7 +868,7 @@ impl Gui {
                             });
                             ui.horizontal(|ui| {
                                 let mut value = hachimi.discord_rpc.load(atomic::Ordering::Relaxed);
-                                
+
                                 ui.label(t!("menu.discord_rpc"));
                                 if ui.checkbox(&mut value, "").changed() {
                                     hachimi.discord_rpc.store(value, atomic::Ordering::Relaxed);
@@ -1146,7 +1151,7 @@ impl Gui {
                 egui::epaint::StrokeKind::Inside
             );
 
-            let icon_size = 12.0 * scale; 
+            let icon_size = 12.0 * scale;
             let icon_rect = egui::Rect::from_center_size(
                 egui::pos2(rect.right() - padding.x - icon_size / 2.0, rect.center().y),
                 egui::vec2(icon_size, icon_size)
@@ -1200,7 +1205,7 @@ impl Gui {
                         if !search_term.is_empty() && !label.to_lowercase().contains(&search_term.to_lowercase()) {
                             continue;
                         }
-    
+
                         let is_selected = value == choice_val;
                         if ui.add(egui::Button::selectable(is_selected, *label)).clicked() {
                             *value = *choice_val;
@@ -1456,7 +1461,7 @@ fn simple_window_layout(ui: &mut egui::Ui, id: egui::Id, add_contents: impl FnOn
     ui.scope_builder(builder, |ui| {
         ui.with_layout(egui::Layout::top_down(egui::Align::Min), add_contents);
 
-        ui.separator(); 
+        ui.separator();
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), add_buttons);
     });
@@ -1810,7 +1815,7 @@ impl ConfigEditor {
                 ui.label(t!("config_editor.gui_scale"));
                 ui.add(egui::Slider::new(&mut config.gui_scale, 0.25..=2.0).step_by(0.05));
                 ui.end_row();
-                
+
                 #[cfg(target_os = "windows")]
                 {
                     ui.label(t!("config_editor.gui_landscape_ratio"));
@@ -2334,9 +2339,9 @@ impl Window for FirstTimeSetupWindow {
                                 }
                                 self.has_auto_selected = true;
                             }
-  
+
                             filtered_repos.sort_by_key(|repo| !repo.is_recommended(current_lang_str));
-                            
+
                             egui::ScrollArea::vertical().show(ui, |ui| {
                                 egui::Frame::NONE
                                 .inner_margin(egui::Margin::symmetric(8, 0))
@@ -2352,7 +2357,7 @@ impl Window for FirstTimeSetupWindow {
                                     for repo in filtered_repos.iter() {
                                         let is_matched = repo.is_recommended(current_lang_str);
                                         let is_selected = self.current_tl_repo.as_ref() == Some(&repo.index);
-                                        
+
                                         // Add separator before switching from matched to unmatched
                                         if let Some(prev_matched) = last_section {
                                             if prev_matched != is_matched {
@@ -2373,7 +2378,7 @@ impl Window for FirstTimeSetupWindow {
                                                 ui.label(egui::RichText::new(short_desc).small());
                                             }
                                         }
-                                        
+
                                         last_section = Some(is_matched);
                                     }
                                 });
