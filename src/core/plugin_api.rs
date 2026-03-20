@@ -561,12 +561,12 @@ unsafe extern "C" fn android_dex_call_static_string(_handle: u64, _method: *cons
     false
 }
 
-unsafe extern "C" fn gui_save_menu_width() {
-    crate::core::gui::save_menu_width();
+unsafe extern "C" fn gui_get_menu_width() -> f32 {
+    gui::get_menu_width()
 }
 
-unsafe extern "C" fn gui_restore_menu_width() {
-    crate::core::gui::restore_menu_width();
+unsafe extern "C" fn gui_set_menu_width(width: f32) {
+    gui::set_menu_width(width);
 }
 
 unsafe extern "C" fn hachimi_get_base_dir() -> *const c_char {
@@ -732,8 +732,8 @@ pub struct Vtable {
     pub android_dex_call_static_noargs: unsafe extern "C" fn(handle: u64, method: *const c_char, sig: *const c_char) -> bool,
     pub android_dex_call_static_string: unsafe extern "C" fn(handle: u64, method: *const c_char, sig: *const c_char, arg: *const c_char) -> bool,
 
-    pub gui_save_menu_width: unsafe extern "C" fn(),
-    pub gui_restore_menu_width: unsafe extern "C" fn(),
+    pub gui_get_menu_width: unsafe extern "C" fn() -> f32,
+    pub gui_set_menu_width: unsafe extern "C" fn(width: f32),
     pub hachimi_get_base_dir: unsafe extern "C" fn() -> *const c_char,
     pub hachimi_get_data_path: unsafe extern "C" fn() -> *const c_char,
 }
@@ -795,8 +795,8 @@ impl Vtable {
         android_dex_unload,
         android_dex_call_static_noargs,
         android_dex_call_static_string,
-        gui_save_menu_width,
-        gui_restore_menu_width,
+        gui_get_menu_width,
+        gui_set_menu_width,
         hachimi_get_base_dir,
         hachimi_get_data_path,
     };
