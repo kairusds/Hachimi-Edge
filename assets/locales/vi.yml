@@ -1,13 +1,15 @@
-hachimi: "Hachimi"
+hachimi: "Hachimi Edge"
 
 windows:
   menu_open_key: "Mũi tên phải"
 
 android:
-  menu_open_key: "Vol Up + Vol Down"
+  menu_open_key: "Vol Up + Vol Down\n\uf25a hoặc chạm 3 lần phía trên bên trái"
 
 splash_sub: "\uf015 Nhấn nút %{open_key_str} để mở menu."
 loading_label: "Đang tải..."
+search_filter: "Nhập để tìm kiếm..."
+open: "Mở"
 cancel: "Hủy"
 save: "Lưu"
 done: "Hoàn tất"
@@ -29,6 +31,7 @@ in_game_browser_confirm_content: "Bạn có muốn mở trình duyệt trong gam
 browser_dialog_title: "Trình duyệt"
 
 menu:
+  check_for_updates: "\uf0aa Kiểm tra cập nhật"
   fps_text: "FPS: %{fps}"
   close_menu: "\uf00d Đóng menu"
   stats_heading: "\uf022 Thống kê"
@@ -44,8 +47,8 @@ menu:
   stay_on_top: "Giữ cửa sổ trên cùng"
   translation_heading: "\uf02d Bản dịch"
   reload_localized_data: "\uf021 Tải lại dữ liệu dịch"
-  check_for_updates: "\uf0aa Kiểm tra cập nhật"
-  check_for_updates_pedantic: "\uf0aa Kiểm tra cập nhật (sâu)"
+  tl_check_for_updates: "\uf0aa Kiểm tra cập nhật bản dịch"
+  tl_check_for_updates_pedantic: "\uf0aa Kiểm tra cập nhật bản dịch (sâu)"
   dump_localize_dict: "Xuất file localize dict"
   danger_zone_heading: "\uf071 Vùng nguy hiểm"
   danger_zone_warning: "Những lựa chọn này có thể gây ra các tác dụng không mong muốn. Hãy sử dụng cẩn thận!"
@@ -65,6 +68,8 @@ notification:
   errors_during_update: "%{count} lỗi đã xảy ra trong lúc cập nhật. Kiểm tra log để biết thêm thông tin."
   checking_for_updates: "Đang kiểm tra cập nhật..."
   no_updates: "Không có bản cập nhật."
+  ipc_softreset_exec: "Đã khởi động mềm IPC từ xa."
+
 
 first_time_setup:
   title: "Thiết lập lần đầu"
@@ -81,16 +86,17 @@ first_time_setup:
 
 about:
   title: "Giới thiệu"
-  copyright: "© 2024-%{year} LeadRDRK and contributors"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds and contributors"
   view_license: "Xem bản quyền"
-  check_for_updates: "Kiểm tra cập nhật"
+  open_website: "Mở trang web"
+  view_source_code: "Xem mã nguồn"
 
 license:
   title: "Bản quyền"
 
 tl_updater:
   title: "Đang cập nhật..."
-  warning: "Bản dịch sẽ không hoạt động\ntrong lúc đang cập nhật"
+  warning: "Bản dịch sẽ không hoạt động trong lúc đang cập nhật"
 
 config_editor:
   title: "Chỉnh sửa cài đặt"
@@ -103,50 +109,88 @@ config_editor:
     Tùy chọn này sẽ tắt GUI của Hachimi sau khi bạn khởi động lại game,
     nghĩa là bạn sẽ KHÔNG thể truy cập trình chỉnh sửa cài đặt nữa.
     Nếu như bạn không có ý định này, hãy đóng hộp thoại và TẮT tùy chọn.
+  ipv4_only: "Chỉ IPv4 ureq"
+  meta_index_url: "URL Meta bản dịch"
   debug_mode: "Chế độ gỡ lỗi"
+  enable_file_logging: "Bật ghi nhật ký tệp"
+  apply_atlas_workaround: "Sửa lỗi Atlas TL"
   translator_mode: "Chế độ dịch"
-  skip_first_time_setup: "Bỏ qua thiết lập\nlần đầu"
-  disable_auto_update_check: "Tắt kiểm tra cập\nnhật tự động"
+  skip_first_time_setup: "Bỏ qua thiết lập lần đầu"
+  lazy_translation_updates: "Cập nhật bản dịch tinh gọn"
+  disable_auto_update_check: "Tắt kiểm tra cập nhật tự động"
   disable_translations: "Tắt bản dịch"
   enable_ipc: "Bật IPC"
   ipc_listen_all: "IPC listen all"
-  auto_translate_stories: "Tự động dịch\ntruyện"
-  auto_translate_ui: "Tự động dịch UI\n(KHÔNG ỔN ĐỊNH)"
+  auto_translate_stories: "Tự động dịch truyện"
+  auto_tl_warning: >-
+    Lưu ý: Tính năng này không tự hoạt động; yêu cầu thiết lập bên ngoài.
+    Việc bật tùy chọn này yêu cầu cài đặt máy chủ dịch thuật tương thích trên
+    máy tính hoặc dịch vụ đám mây có API như py3translationServer hoặc
+    Sugoi Toolkit. Nếu không có máy chủ chạy, sẽ không có bản dịch bổ sung và
+    trải nghiệm chơi game có thể bị ảnh hưởng. Vui lòng để tùy chọn này bị tắt
+    nếu bạn không có sẵn máy chủ dịch thuật.
+  auto_translate_ui: "Tự động dịch UI (KHÔNG ỔN ĐỊNH)"
   target_fps: "Đặt FPS"
-  virtual_resolution_multiplier: "Số nhân độ\nphân giải ảo"
+  virtual_resolution_multiplier: "Số nhân độ phân giải ảo"
   ui_scale: "Tỷ lệ UI"
+  gui_scale: "Tỷ lệ lớp phủ"
+  gui_landscape_ratio: "Tỷ lệ thu phóng lớp phủ ngang"
   graphics_quality: "Chất lượng đồ họa"
   vsync: "VSync"
   auto_full_screen: "Tự động toàn màn hình"
   full_screen_mode: "Chế độ toàn màn hình"
   full_screen_mode_exclusive: "Exclusive"
   full_screen_mode_borderless: "Borderless"
-  block_minimize_in_full_screen: "Chặn thu nhỏ trong\nchế độ toàn màn hình"
+  block_minimize_in_full_screen: "Chặn thu nhỏ trong chế độ toàn màn hình"
   resolution_scaling: "Tỷ lệ độ phân giải"
   resolution_scaling_default: "Mặc định (1080p)"
   resolution_scaling_ssize: "Tỷ lệ theo kích thước màn hình"
   resolution_scaling_wsize: "Tỷ lệ theo kích thước cửa sổ"
   window_always_on_top: "Cửa sổ luôn ở trên cùng"
-  story_choice_auto_select_delay: "Độ trễ tự động chọn\nlựa chọn truyện"
-  story_text_speed_multiplier: "Hệ số tốc độ văn bản\ntruyện"
-  force_allow_dynamic_camera: "Buộc cho phép\ndynamic camera"
-  live_theater_allow_same_chara: "Cho phép cùng\nnhân vật trong live"
+  story_choice_auto_select_delay: "Độ trễ tự động chọn lựa chọn truyện"
+  story_text_speed_multiplier: "Hệ số tốc độ văn bản truyện"
+  force_allow_dynamic_camera: "Buộc cho phép dynamic camera"
+  live_theater_allow_same_chara: "Cho phép cùng nhân vật trong live"
   physics_update_mode: "Chế độ vật lý"
-  hide_ingame_ui_hotkey: "Phím tắt ẩn giao\ndiện trong game"
+  hide_ingame_ui_hotkey: "Phím tắt ẩn giao diện trong game"
   hide_ingame_ui_hotkey_info: >-
-    Tùy chọn này cho phép phím tắt để bật/tắt giao diện người dùng (UI) trong trò chơi.
-    Đối với Android, đó là nhấn hai lần phím Tăng âm lượng (Volume Up) trong vòng 0,3 giây.
-    Đối với PC/Android có bàn phím, đó là phím Insert (Phím Chèn). Phím này cũng có thể được thay đổi trong tệp cấu hình (config file).
+    Tùy chọn này cho phép sử dụng phím tắt để ẩn/hiện giao diện (UI) trong trò chơi.
+    Đối với Android, bạn cần nhấn đúp phím Tăng âm lượng, hoặc nhấn ba lần vào góc trên bên phải màn hình.
+    Đối với PC/Android có bàn phím, đó là phím Insert và có thể được cấu hình trong GUI hoặc tệp config.
+  menu_open_key: "Phím tắt mở menu"
+  menu_open_key_set: "Nhấn để thiết lập"
+  render_scale: "Tỷ lệ kết xuất"
+  aniso_level: "Lọc dị hướng"
+  live_vocals_swap: "Thay đổi giọng hát trực tiếp"
+  live_vocals_swap_character_n: "Nhân vật %{index}"
+  skill_info_dialog: "Hộp thoại thông tin kỹ năng tùy chỉnh"
+  homescreen_bgseason: "Mùa nền Màn hình chính"
+  shadow_resolution: "Độ phân giải bóng đổ"
+
+theme_editor:
+  title: "Trình chỉnh sửa Giao diện"
+  ui_accent_color: "Màu nhấn"
+  ui_window_fill: "Màu nền cửa sổ"
+  ui_panel_fill: "Màu nền bảng điều khiển"
+  ui_extreme_bg_color: "Nền ô nhập liệu"
+  ui_text_color: "Màu văn bản"
+  ui_window_rounding: "Bo góc"
 
 tl_update_dialog:
   title: "Bản cập nhật mới"
   content: "Đã có bản cập nhật bản dịch mới (%{size}). Bạn có muốn tải về không?"
+  content_zip_warning: "Đã có bản cập nhật dịch thuật mới (%{changed_size}). Bản cập nhật này sẽ tải về toàn bộ tệp lưu trữ (%{download_size}) thay thế."
 
 update_prompt_dialog:
   title: "Bản cập nhật mới"
   content: |
     Đã có phiên bản Hachimi mới (%{version}). Bạn có muốn cài đặt không?
     Game sẽ được khởi động lại để áp dụng bản cập nhật.
+  android_content: |
+    Đã có bản cập nhật Hachimi Edge mới (%{version}). Bạn có muốn cài đặt không?
+
+    Nhấn "Có" để mở UmaPatcher Edge và patch lại game hiện tại của bạn.
+    (Không cần tải lại toàn bộ game hay APK, bạn chỉ cần patch lại như bình thường vì UmaPatcher Edge luôn tự tải về phiên bản Hachimi Edge mới nhất.)
 
 updating_dialog:
   title: "Đang cập nhật"

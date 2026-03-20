@@ -1,5 +1,5 @@
 // Originally from sy1ntexx/egui-d3d11
-use egui::{Event, Key, Modifiers, PointerButton, Pos2, RawInput, Vec2};
+use egui::{Event, Key, Modifiers, MouseWheelUnit, PointerButton, Pos2, RawInput, Vec2};
 use std::ffi::CStr;
 use windows::Win32::{
     Foundation::HWND,
@@ -18,7 +18,7 @@ use windows::Win32::{
             WHEEL_DELTA, WM_CHAR, WM_KEYDOWN, WM_KEYUP,
             WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDBLCLK, WM_MBUTTONDOWN,
             WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDBLCLK,
-            WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
+            WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_INPUT
         },
     },
 };
@@ -112,7 +112,11 @@ pub fn process(input: &mut RawInput, zoom_factor: f32, umsg: u32, wparam: usize,
                 input.events.push(Event::Zoom(if delta > 0. { 1.5 } else { 0.5 }));
                 InputResult::Zoom
             } else {
-                input.events.push(Event::Scroll(Vec2::new(0., delta)));
+                input.events.push(Event::MouseWheel {
+                    unit: MouseWheelUnit::Line,
+                    delta: Vec2::new(0., delta),
+                    modifiers: Modifiers::default()
+                });
                 InputResult::Scroll
             }
         }
@@ -123,7 +127,11 @@ pub fn process(input: &mut RawInput, zoom_factor: f32, umsg: u32, wparam: usize,
                 input.events.push(Event::Zoom(if delta > 0. { 1.5 } else { 0.5 }));
                 InputResult::Zoom
             } else {
-                input.events.push(Event::Scroll(Vec2::new(delta, 0.)));
+                input.events.push(Event::MouseWheel {
+                    unit: MouseWheelUnit::Line,
+                    delta: Vec2::new(delta, 0.),
+                    modifiers: Modifiers::default()
+                });
                 InputResult::Scroll
             }
         }
@@ -176,6 +184,7 @@ pub fn is_handled_msg(umsg: u32) -> bool {
         WM_LBUTTONDBLCLK | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_MBUTTONDBLCLK | WM_MBUTTONDOWN |
         WM_MBUTTONUP | WM_MOUSEHWHEEL | WM_MOUSEMOVE | WM_MOUSEWHEEL | WM_RBUTTONDBLCLK |
         WM_RBUTTONDOWN | WM_RBUTTONUP | WM_SYSKEYDOWN | WM_SYSKEYUP => true,
+        WM_INPUT => true,
         _ => false
     }
 }
@@ -211,33 +220,73 @@ fn get_key_modifiers(msg: u32) -> Modifiers {
 }
 
 fn get_key(wparam: usize) -> Option<Key> {
-    match wparam {
-        0x30..=0x39 => unsafe { Some(std::mem::transmute::<_, Key>(wparam as u8 - 0x21)) },
-        0x41..=0x5A => unsafe { Some(std::mem::transmute::<_, Key>(wparam as u8 - 0x28)) },
-        _ => match VIRTUAL_KEY(wparam as u16) {
-            VK_DOWN => Some(Key::ArrowDown),
-            VK_LEFT => Some(Key::ArrowLeft),
-            VK_RIGHT => Some(Key::ArrowRight),
-            VK_UP => Some(Key::ArrowUp),
-            VK_ESCAPE => Some(Key::Escape),
-            VK_TAB => Some(Key::Tab),
-            VK_BACK => Some(Key::Backspace),
-            VK_RETURN => Some(Key::Enter),
-            VK_SPACE => Some(Key::Space),
-            VK_INSERT => Some(Key::Insert),
-            VK_DELETE => Some(Key::Delete),
-            VK_HOME => Some(Key::Home),
-            VK_END => Some(Key::End),
-            VK_PRIOR => Some(Key::PageUp),
-            VK_NEXT => Some(Key::PageDown),
-            _ => None,
-        },
+    let vk = VIRTUAL_KEY(wparam as u16);
+
+    match vk {
+        // nav/cmd keys
+        VK_DOWN => Some(Key::ArrowDown),
+        VK_LEFT => Some(Key::ArrowLeft),
+        VK_RIGHT => Some(Key::ArrowRight),
+        VK_UP => Some(Key::ArrowUp),
+        VK_ESCAPE => Some(Key::Escape),
+        VK_TAB => Some(Key::Tab),
+        VK_BACK => Some(Key::Backspace),
+        VK_RETURN => Some(Key::Enter),
+        VK_SPACE => Some(Key::Space),
+        VK_INSERT => Some(Key::Insert),
+        VK_DELETE => Some(Key::Delete),
+        VK_HOME => Some(Key::Home),
+        VK_END => Some(Key::End),
+        VK_PRIOR => Some(Key::PageUp),
+        VK_NEXT => Some(Key::PageDown),
+
+        // numbers 0-9
+        VIRTUAL_KEY(0x30) => Some(Key::Num0),
+        VIRTUAL_KEY(0x31) => Some(Key::Num1),
+        VIRTUAL_KEY(0x32) => Some(Key::Num2),
+        VIRTUAL_KEY(0x33) => Some(Key::Num3),
+        VIRTUAL_KEY(0x34) => Some(Key::Num4),
+        VIRTUAL_KEY(0x35) => Some(Key::Num5),
+        VIRTUAL_KEY(0x36) => Some(Key::Num6),
+        VIRTUAL_KEY(0x37) => Some(Key::Num7),
+        VIRTUAL_KEY(0x38) => Some(Key::Num8),
+        VIRTUAL_KEY(0x39) => Some(Key::Num9),
+
+        // letters a-z
+        VIRTUAL_KEY(0x41) => Some(Key::A),
+        VIRTUAL_KEY(0x42) => Some(Key::B),
+        VIRTUAL_KEY(0x43) => Some(Key::C),
+        VIRTUAL_KEY(0x44) => Some(Key::D),
+        VIRTUAL_KEY(0x45) => Some(Key::E),
+        VIRTUAL_KEY(0x46) => Some(Key::F),
+        VIRTUAL_KEY(0x47) => Some(Key::G),
+        VIRTUAL_KEY(0x48) => Some(Key::H),
+        VIRTUAL_KEY(0x49) => Some(Key::I),
+        VIRTUAL_KEY(0x4A) => Some(Key::J),
+        VIRTUAL_KEY(0x4B) => Some(Key::K),
+        VIRTUAL_KEY(0x4C) => Some(Key::L),
+        VIRTUAL_KEY(0x4D) => Some(Key::M),
+        VIRTUAL_KEY(0x4E) => Some(Key::N),
+        VIRTUAL_KEY(0x4F) => Some(Key::O),
+        VIRTUAL_KEY(0x50) => Some(Key::P),
+        VIRTUAL_KEY(0x51) => Some(Key::Q),
+        VIRTUAL_KEY(0x52) => Some(Key::R),
+        VIRTUAL_KEY(0x53) => Some(Key::S),
+        VIRTUAL_KEY(0x54) => Some(Key::T),
+        VIRTUAL_KEY(0x55) => Some(Key::U),
+        VIRTUAL_KEY(0x56) => Some(Key::V),
+        VIRTUAL_KEY(0x57) => Some(Key::W),
+        VIRTUAL_KEY(0x58) => Some(Key::X),
+        VIRTUAL_KEY(0x59) => Some(Key::Y),
+        VIRTUAL_KEY(0x5A) => Some(Key::Z),
+
+        _ => None
     }
 }
 
 fn get_clipboard_text() -> Option<String> {
     unsafe {
-        if OpenClipboard(HWND::default()).is_ok() {
+        if OpenClipboard(Some(HWND::default())).is_ok() {
             if let Ok(handle) = GetClipboardData(CF_TEXT.0 as u32) {
                 let txt = handle.0 as *const i8;
                 let data = Some(CStr::from_ptr(txt).to_str().ok()?.to_string());

@@ -1,10 +1,10 @@
 <img align="left" width="80" height="80" src="assets/icon.png">
 
-# Hachimi
+# Hachimi Edge
 
 [English](README.md) | [简体中文](README-zh_cn.md) | 繁體中文
 
-[![Discord 伺服器](https://dcbadge.limes.pink/api/server/https://discord.gg/BVEt5FcxEn)](https://discord.gg/BVEt5FcxEn)
+[![Discord 伺服器](https://dcbadge.limes.pink/api/server/https://discord.gg/YjBgmuqqYr)](https://discord.gg/YjBgmuqqYr)
 
 馬姑娘:媠達比的遊戲強化與翻譯模組
 

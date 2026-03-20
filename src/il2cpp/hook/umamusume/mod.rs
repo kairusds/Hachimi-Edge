@@ -18,7 +18,7 @@ mod MasterMissionData;
 mod TrainingParamChangeA2U;
 pub mod WebViewDefine;
 pub mod TextFrame;
-mod PartsSingleModeSkillListItem;
+pub mod PartsSingleModeSkillListItem;
 pub mod FlashActionPlayer;
 pub mod TextRubyData;
 pub mod TextDotData;
@@ -52,6 +52,14 @@ mod ApplicationSettingSaveLoader;
 mod LiveTheaterCharaSelect;
 mod LiveTheaterViewController;
 pub mod CySpringController;
+mod LiveUtil;
+pub mod MasterDataUtil;
+pub mod DialogCommonBase;
+pub mod DialogObject;
+pub mod ImageCommon;
+pub mod TimeUtil;
+pub mod CameraData;
+pub mod DialogManager;
 
 #[cfg(target_os = "windows")]
 pub mod SceneManager;
@@ -59,6 +67,9 @@ pub mod SceneManager;
 #[cfg(target_os = "windows")]
 mod PaymentUtility;
 mod LowResolutionCamera;
+pub mod TweenAnimationTimelineComponent;
+pub mod TweenAnimationTimelineData;
+pub mod TweenAnimationTimelineSheetData;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -116,6 +127,13 @@ pub fn init() {
     LiveTheaterCharaSelect::init(image);
     LiveTheaterViewController::init(image);
     CySpringController::init(image);
+    LiveUtil::init(image);
+    MasterDataUtil::init(image);
+    DialogCommonBase::init(image);
+    DialogObject::init(image);
+    ImageCommon::init(image);
+    TimeUtil::init(image);
+    DialogManager::init(image);
 
     #[cfg(target_os = "windows")]
     {
@@ -123,4 +141,8 @@ pub fn init() {
         PaymentUtility::init(image);
     }
     LowResolutionCamera::init(image);
+    CameraData::init(image);
+    TweenAnimationTimelineComponent::init(image);
+    TweenAnimationTimelineData::init(image);
+    TweenAnimationTimelineSheetData::init(image);
 }

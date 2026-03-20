@@ -1,11 +1,130 @@
-use std::sync::atomic::{self, AtomicBool};
-
+use std::{ptr, sync::atomic::{self, AtomicPtr}};
+use fnv::{FnvHashMap, FnvHashSet};
 use sqlparser::ast;
-
 use crate::{
-    core::{utils, Hachimi},
-    il2cpp::{ext::StringExt, hook::LibNative_Runtime, types::{Il2CppObject, Il2CppString}}
+    core::{utils::{get_masterdb_path, fit_text, wrap_fit_text}, Hachimi},
+    il2cpp::{ext::{StringExt, Il2CppStringExt}, hook::LibNative_Runtime::Sqlite3::{Connection, Query}, types::{Il2CppObject, Il2CppString}}
 };
+
+// public API
+#[derive(Default)]
+pub struct CharacterData {
+    pub chara_ids: FnvHashSet<i32>,
+    pub chara_names: FnvHashMap<i32, String>
+}
+
+impl CharacterData {
+    pub fn load_from_db() -> Self {
+        let mut chara_ids = FnvHashSet::default();
+        let mut chara_names = FnvHashMap::default();
+
+        let db_path = get_masterdb_path();
+        let conn = Connection::new();
+
+        if Connection::Open(conn, db_path.to_il2cpp_string(), ptr::null_mut(), ptr::null_mut(), 0) {
+            let sql = "SELECT C.id, T.text FROM chara_data AS C JOIN text_data AS T ON C.id = T.\"index\" WHERE T.id = 6";
+            let query = Connection::Query(conn, sql.to_il2cpp_string());
+
+            if !query.is_null() {
+                while Query::Step(query) {
+                    let id = Query::GetInt(query, 0);
+                    let name_ptr = Query::GetText(query, 1);
+
+                    if let Some(name) = unsafe { name_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()) {
+                        chara_ids.insert(id);
+                        chara_names.insert(id, name);
+                    }
+                }
+                Query::Dispose(query);
+            }
+            Connection::CloseDB(conn);
+        }
+
+        CharacterData { chara_ids, chara_names }
+    }
+
+    pub fn exists(&self, id: i32) -> bool {
+        self.chara_ids.contains(&id)
+    }
+
+    pub fn get_name(&self, id: i32) -> String {
+        // check text_data_dict.json (category 170)
+        if let Some(category_170) = Hachimi::instance().localized_data.load().text_data_dict.get(&170) {
+            if let Some(name) = category_170.get(&id) {
+                return name.clone();
+            }
+        }
+
+        // fallback to default Japanese name from mdb
+        if let Some(name) = self.chara_names.get(&id) {
+            return name.clone();
+        }
+
+        // unknown character name
+        "???".to_string()
+    }
+}
+
+// untranslated skill info
+#[derive(Default)]
+pub struct SkillInfo {
+    pub skill_names: FnvHashMap<i32, String>,
+    pub skill_descs: FnvHashMap<i32, String>,
+}
+
+impl SkillInfo {
+    pub fn load_from_db() -> Self {
+        let mut skill_names = FnvHashMap::default();
+        let mut skill_descs = FnvHashMap::default();
+
+        let db_path = get_masterdb_path();
+        let conn = Connection::new();
+
+        if Connection::Open(conn, db_path.to_il2cpp_string(), ptr::null_mut(), ptr::null_mut(), 0) {
+            // category 47 = names, 48 = descriptions
+            let sql = "SELECT \"index\", text, id FROM text_data WHERE id IN (47, 48)";
+            let query = Connection::Query(conn, sql.to_il2cpp_string());
+
+            if !query.is_null() {
+                while Query::Step(query) {
+                    let index = Query::GetInt(query, 0);
+                    let text_ptr = Query::GetText(query, 1);
+                    let category = Query::GetInt(query, 2);
+
+                    if let Some(text) = unsafe { text_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()) {
+                        match category {
+                            47 => skill_names.insert(index, text),
+                            48 => skill_descs.insert(index, text),
+                            _ => None,
+                        };
+                    }
+                }
+                Query::Dispose(query);
+            }
+            Connection::CloseDB(conn);
+        }
+
+        SkillInfo { skill_names, skill_descs }
+    }
+
+    pub fn get_name(&self, id: i32) -> String {
+        if let Some(name) = self.skill_names.get(&id) {
+            return name.clone();
+        }
+
+        // unknown skill name
+        "???".to_string()
+    }
+
+    pub fn get_desc(&self, id: i32) -> String {
+        if let Some(desc) = self.skill_descs.get(&id) {
+            return desc.clone();
+        }
+
+        // unknown skill desc
+        "???".to_string()
+    }
+}
 
 // All of this add column/param stuff could be simplified to two hash maps, but that's overkill.
 pub trait SelectQueryState {
@@ -71,7 +190,7 @@ impl Column {
 
     fn try_get_int(&self, query: *mut Il2CppObject) -> Option<i32> {
         if let Some(idx) = self.select_idx {
-            Some(LibNative_Runtime::Sqlite3::Query::GetInt(query, idx))
+            Some(Query::GetInt(query, idx))
         }
         else {
             None
@@ -101,29 +220,39 @@ pub struct TextDataQuery {
     category: Column,
     index: Column
 }
+pub struct TextFormatting {
+    pub line_len: i32,
+    pub line_count: i32,
+    pub font_size: i32
+}
 
-pub static TDQ_IS_SKILL_LEARNING_QUERY: AtomicBool = AtomicBool::new(false);
+#[derive(Default)]
+pub struct SkillTextFormatting {
+    pub name: Option<TextFormatting>,
+    pub desc: Option<TextFormatting>,
+    pub is_localized: bool
+}
+
+pub static TDQ_SKILL_TEXT_FORMAT:AtomicPtr<SkillTextFormatting> = AtomicPtr::new(ptr::null_mut());
 
 impl TextDataQuery {
-    // These values are guesstimated
-    const SKILL_NAME_LINE_WIDTH: i32 = 13;
-    const SKILL_NAME_FONT_SIZE: i32 = 32;
-
-    const SKILL_DESC_LINE_WIDTH: i32 = 18;
-    const SKILL_DESC_LINE_COUNT: i32 = 4;
-    const SKILL_DESC_FONT_SIZE: i32 = 28;
-
-    pub fn with_skill_learning_query(callback: impl FnOnce()) {
-        TDQ_IS_SKILL_LEARNING_QUERY.store(true, atomic::Ordering::Relaxed);
+    pub fn with_skill_query(text_cfg: &SkillTextFormatting, callback: impl FnOnce()) {
+        let cfg_ptr = (text_cfg as *const SkillTextFormatting).cast_mut();
+        TDQ_SKILL_TEXT_FORMAT.store(cfg_ptr, atomic::Ordering::Relaxed);
         callback();
-        TDQ_IS_SKILL_LEARNING_QUERY.store(false, atomic::Ordering::Relaxed);
+        TDQ_SKILL_TEXT_FORMAT.store(ptr::null_mut(), atomic::Ordering::Relaxed);
     }
 
-    fn is_skill_learning_query() -> bool {
-        TDQ_IS_SKILL_LEARNING_QUERY.load(atomic::Ordering::Relaxed)
+    // Abuse static lifetime for our funky not-really static pointer because we like living on the Edge :>
+    fn requested_skill_format() -> Result<&'static mut SkillTextFormatting, ()> {
+        let cfg_ptr = TDQ_SKILL_TEXT_FORMAT.load(atomic::Ordering::Relaxed);
+        if cfg_ptr.is_null() {
+            return Err(());
+        }
+        Ok(unsafe{&mut *cfg_ptr})
     }
 
-    fn get_skill_name(index: i32) -> Option<*mut Il2CppString> {
+    pub fn get_skill_name(index: i32) -> Option<*mut Il2CppString> {
         // Return None if skill name translation is disabled
         if Hachimi::instance().config.load().disable_skill_name_translation {
             return None;
@@ -137,20 +266,28 @@ impl TextDataQuery {
             .unwrap_or_default();
 
         if let Some(text) = text_opt {
-            // Fit the text when it's being used in the skill learning screen
-            if Self::is_skill_learning_query() {
-                if let Some(fitted) = utils::fit_text(text, Self::SKILL_NAME_LINE_WIDTH, Self::SKILL_NAME_FONT_SIZE) {
-                    return Some(fitted.to_il2cpp_string())
-                }
-            }
-            Some(text.to_il2cpp_string())
+            // Fit text if and as requested.
+            Self::requested_skill_format().ok()
+                .and_then(|cfg| {
+                    cfg.is_localized = true;
+                    cfg.name.as_ref()
+                })
+                .and_then(|name| { match name.line_count {
+                    1 => fit_text(text, name.line_len, name.font_size),
+                    _ => wrap_fit_text(text, name.line_len, name.line_count, name.font_size)
+                    }
+                })
+                .map_or_else(
+                    || Some(text.to_il2cpp_string()),
+                    |fitted| Some(fitted.to_il2cpp_string()),
+                )
         }
         else {
             None
         }
     }
 
-    fn get_skill_desc(mut index: i32) -> Option<*mut Il2CppString> {
+    pub fn get_skill_desc(index: i32) -> Option<*mut Il2CppString> {
         let localized_data = Hachimi::instance().localized_data.load();
         let text_opt = localized_data
             .text_data_dict
@@ -159,15 +296,17 @@ impl TextDataQuery {
             .unwrap_or_default();
 
         if let Some(text) = text_opt {
-            // Do some prewrapping when it's being used in the skill learning screen
-            if Self::is_skill_learning_query() {
-                if let Some(fitted) = utils::wrap_fit_text(text,
-                    Self::SKILL_DESC_LINE_WIDTH, Self::SKILL_DESC_LINE_COUNT, Self::SKILL_DESC_FONT_SIZE
-                ) {
-                    return Some(fitted.to_il2cpp_string());
-                }
-            }
-            Some(text.to_il2cpp_string())
+            // Fit text if and as requested.
+            Self::requested_skill_format().ok()
+                .and_then(|cfg| {
+                    cfg.is_localized = true;
+                    cfg.desc.as_ref()
+                })
+                .and_then(|desc| wrap_fit_text(text, desc.line_len, desc.line_count, desc.font_size))
+                .map_or_else(
+                    || Some(text.to_il2cpp_string()),
+                    |fitted| Some(fitted.to_il2cpp_string()),
+                )
         }
         else {
             None
@@ -209,7 +348,6 @@ impl SelectQueryState for TextDataQuery {
                     _ => ()
                 };
 
-                
                 return Hachimi::instance().localized_data.load()
                     .text_data_dict
                     .get(&category)
@@ -365,7 +503,7 @@ impl SelectExt for ast::Select {
                 }
             }
         }
-    
+
         None
     }
 }

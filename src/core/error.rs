@@ -1,4 +1,6 @@
 use std::fmt;
+#[cfg(target_os = "windows")]
+use windows::core::Error as WindowsError;
 
 #[derive(Debug)]
 pub enum Error {
@@ -92,5 +94,12 @@ impl From<ureq::Error> for Error {
 impl From<zip::result::ZipError> for Error {
     fn from(e: zip::result::ZipError) -> Self {
         Error::ZipError(e)
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl From<WindowsError> for Error {
+    fn from(e: WindowsError) -> Self {
+        Error::RuntimeError(e.to_string())
     }
 }

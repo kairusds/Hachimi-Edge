@@ -1,4 +1,4 @@
-#![allow(static_mut_refs)]
+#![allow(static_mut_refs, non_snake_case, non_camel_case_types)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate cstr;

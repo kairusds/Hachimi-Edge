@@ -1,6 +1,6 @@
 [package]
 name = "hachimi"
-version = "0.18.0"
+version = "0.23.0"
 rust-version = "1.91.1"
 edition = "2021"
 
@@ -9,7 +9,10 @@ name = "hachimi"
 crate-type = ["cdylib"]
 
 [profile.release]
+opt-level = 3
 strip = true
+lto = "fat"
+codegen-units = 1
 
 [profile.dev]
 debug = "limited"
@@ -17,47 +20,52 @@ debug = "limited"
 [dependencies]
 log = "0.4"
 cstr = "0.2"
-chrono = "0.4.42"
 once_cell = "1.19"
+chrono = "0.4.42"
 arc-swap = "1.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 fnv = "1.0"
 widestring = "1.1"
-egui = { version = "0.27", default-features = false }
-egui_extras = { version = "0.27", default-features = false, features = ["image"] }
-image = { version = "0.24", default-features = false, features = ["png"] }
+egui = { version = "0.33.3", default-features = false, features = ["serde"] }
+egui-scale = "0.3.0"
+egui_extras = { version = "0.33.3", default-features = false, features = ["image"] }
+image = { version = "0.25.9", default-features = false, features = ["png"] }
 png = "0.17"
 sqlparser = "0.43"
 textwrap = "0.16"
 atomic_float = "0.1"
 blake3 = "1.5"
-ureq = { version = "2.10", features = ["json"] }
+ureq = { version = "3.2.0", features = ["json"] }
+http = "1.4.0"
 size = "0.4"
+memmap2 = "0.9.9"
 thread-priority = "3.0.0"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 unicode-width = "0.1"
 tiny_http = "0.12"
 rust-i18n = "3.1"
+sys-locale = "0.3.2"
+simplelog = "0.12.2"
 
 [target.'cfg(target_os = "android")'.dependencies]
 libc = "0.2"
 android_logger = "0.15.1"
 procfs = "0.16"
-jni = "0.21"
-egui_glow = "0.27"
-glow = "0.13"
+jni = "0.21.1"
+egui_glow = "0.33.3"
+glow = "0.16"
 dobby-rs = "0.1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windebug_logger = "0.1"
 minhook = "0.5"
-egui-directx11 = "0.4"
+egui-directx11 = "0.12.1"
 discord-rich-presence = "1.0.0"
 pelite = "0.10"
 
 [target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.56"
+version = "0.62.2"
 features = [
     "Win32_System_LibraryLoader",
     "Win32_System_Memory",

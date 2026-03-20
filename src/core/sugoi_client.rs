@@ -12,7 +12,7 @@ pub struct SugoiClient {
 
 static INSTANCE: Lazy<Arc<SugoiClient>> = Lazy::new(|| {
     Arc::new(SugoiClient {
-        agent: ureq::Agent::new(),
+        agent: ureq::Agent::new_with_defaults(),
         url: Hachimi::instance().config.load().sugoi_url.as_ref()
             .map(|s| s.clone())
             .unwrap_or_else(|| "http://127.0.0.1:14366".to_owned())
@@ -25,11 +25,12 @@ impl SugoiClient {
     }
 
     pub fn translate(&self, content: &[String]) -> Result<Vec<String>, Error> {
-        Ok(self.agent.post(&self.url)
-            .set("Content-Type", "application/json")
-            .send_json(Message::TranslateSentences { content })?
-            .into_json()?
-        )
+        let res = self.agent.post(&self.url)
+            .header("Content-Type", "application/json")
+            .send_json(Message::TranslateSentences { content })?;
+
+        let body_str = res.into_body().read_to_string()?; 
+        Ok(serde_json::from_str(&body_str)?)
     }
 
     pub fn translate_one(&self, content: String) -> Result<String, Error> {

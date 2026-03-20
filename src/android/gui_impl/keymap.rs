@@ -21,6 +21,7 @@ pub const KEYCODE_CUT: jint = 277;
 pub const KEYCODE_PASTE: jint = 279;
 pub const KEYCODE_SEMICOLON: jint = 74;
 pub const KEYCODE_COMMA: jint = 55;
+pub const KEYCODE_BACK: jint = 4;
 pub const KEYCODE_BACKSLASH: jint = 73;
 pub const KEYCODE_SLASH: jint = 76;
 pub const KEYCODE_LEFT_BRACKET: jint = 71;
@@ -104,6 +105,10 @@ pub fn get_key(key_code: jint) -> Option<Key> {
         KEYCODE_PASTE => Some(Key::Paste),
         KEYCODE_SEMICOLON => Some(Key::Semicolon),
         KEYCODE_COMMA => Some(Key::Comma),
+        // from https://docs.rs/egui/latest/src/egui/data/key.rs.html#187
+        // Back navigation key from multimedia keyboard.
+        // Android sends this key on Back button press. Does not work on Web.
+        KEYCODE_BACK => Some(Key::BrowserBack),
         KEYCODE_BACKSLASH => Some(Key::Backslash),
         KEYCODE_SLASH => Some(Key::Slash),
         KEYCODE_LEFT_BRACKET => Some(Key::OpenBracket),

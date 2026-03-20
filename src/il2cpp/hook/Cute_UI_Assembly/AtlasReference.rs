@@ -29,6 +29,10 @@ pub fn on_LoadAsset(bundle: *mut Il2CppObject, this: *mut Il2CppObject, name: &U
         return;
     }
 
+    if Hachimi::instance().config.load().apply_atlas_workaround {
+        return;
+    }
+
     let base_path = name[AssetBundle::ASSET_PATH_PREFIX.len()..].path_basename();
     if !base_path.starts_with("atlas/") {
         debug!("bad path: {}", name);

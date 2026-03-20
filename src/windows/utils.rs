@@ -39,7 +39,7 @@ pub fn get_proc_address(hmodule: HMODULE, name: &CStr) -> usize {
 
 pub fn get_exec_path() -> PathBuf {
     let mut slice = [0u16; MAX_PATH as usize];
-    let length = unsafe { GetModuleFileNameW(HMODULE::default(), &mut slice) } as usize;
+    let length = unsafe { GetModuleFileNameW(None, &mut slice) } as usize;
     let exec_path_str = unsafe { Utf16Str::from_slice_unchecked(&slice[..length]) }.to_string();
 
     PathBuf::from(exec_path_str)
@@ -114,7 +114,7 @@ pub fn get_scaling_res() -> Option<(i32, i32)> {
 
 pub unsafe fn set_window_topmost(hwnd: HWND, topmost: bool) -> Result<(), windows::core::Error> {
     let insert_after = if topmost { HWND_TOPMOST } else { HWND_NOTOPMOST };
-    SetWindowPos(hwnd, insert_after, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+    SetWindowPos(hwnd, Some(insert_after), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
 }
 
 pub fn show_error(e: impl AsRef<str>) {

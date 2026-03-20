@@ -31,7 +31,7 @@ pub fn quick_open(dialog_title: &str, url: &str) {
         null_mut(),
         null_mut(),
         TextId::from_name("Common0007"),
-        9 // BIG_ONE_BUTTON
+        DialogCommon::FormType::BIG_ONE_BUTTON
     );
 
     let web_view_manager = instance();

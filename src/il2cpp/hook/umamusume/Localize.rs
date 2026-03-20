@@ -1,7 +1,6 @@
-use std::collections::{hash_map::Entry, BTreeMap};
+use std::{cell::LazyCell, collections::{hash_map::Entry, BTreeMap}};
 
 use fnv::FnvHashMap;
-use once_cell::unsync::Lazy;
 
 use crate::{
     core::{utils, Hachimi, SugoiClient},
@@ -11,7 +10,7 @@ use crate::{
 use super::TextId;
 
 // SAFETY: Localize::Get is only called from the Unity main thread.
-static mut TEXTID_NAME_CACHE: Lazy<FnvHashMap<i32, String>> = Lazy::new(|| FnvHashMap::default());
+static mut TEXTID_NAME_CACHE: LazyCell<FnvHashMap<i32, String>> = LazyCell::new(|| FnvHashMap::default());
 
 /**
  * Gallop::Localize::Get

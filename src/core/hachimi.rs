@@ -3,10 +3,20 @@ use arc_swap::ArcSwap;
 use fnv::{FnvHashMap, FnvHashSet};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use textwrap::wrap_algorithms::Penalties;
 
-use crate::{core::plugin_api::Plugin, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}}};
+use crate::{core::{plugin_api::Plugin, updater}, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}, sql::{CharacterData, SkillInfo}}};
 
 use super::{game::{Game, Region}, ipc, plurals, template, template_filters, tl_repo, utils, Error, Interceptor};
+
+pub const REPO_PATH: &str = "kairusds/Hachimi-Edge";
+pub const GITHUB_API: &str = "https://api.github.com/repos";
+pub const CODEBERG_API: &str = "https://codeberg.org/api/v1/repos";
+pub const WEBSITE_URL: &str = "https://hachimi.noccu.art";
+pub const UMAPATCHER_PACKAGE_NAME: &str = "com.leadrdrk.umapatcher.edge";
+pub const UMAPATCHER_INSTALL_URL: &str = "https://github.com/kairusds/UmaPatcher-Edge/releases/latest";
+
+pub static CONFIG_LOAD_ERROR: AtomicBool = AtomicBool::new(false);
 
 pub struct Hachimi {
     // Hooking stuff
@@ -17,6 +27,11 @@ pub struct Hachimi {
     // Localized data
     pub localized_data: ArcSwap<LocalizedData>,
     pub tl_updater: Arc<tl_repo::Updater>,
+
+    // Character data
+    pub chara_data: ArcSwap<CharacterData>,
+    // Untranslated skill info
+    pub skill_info: ArcSwap<SkillInfo>,
 
     // Shared properties
     pub game: Game,
@@ -35,8 +50,7 @@ pub struct Hachimi {
     #[cfg(target_os = "windows")]
     pub discord_rpc: AtomicBool,
 
-    #[cfg(target_os = "windows")]
-    pub updater: Arc<crate::windows::updater::Updater>
+    pub updater: Arc<updater::Updater>
 }
 
 static INSTANCE: OnceCell<Arc<Hachimi>> = OnceCell::new();
@@ -51,7 +65,7 @@ impl Hachimi {
         let instance = match Self::new() {
             Ok(v) => v,
             Err(e) => {
-                super::log::init(false); // early init to log error
+                super::log::init(false, false); // early init to log error
                 error!("Init failed: {}", e);
                 return false;
             }
@@ -67,7 +81,7 @@ impl Hachimi {
             instance.config.store(Arc::new(config));
         }
 
-        super::log::init(instance.config.load().debug_mode);
+        super::log::init(config.debug_mode, config.enable_file_logging);
 
         info!("Hachimi {}", env!("HACHIMI_DISPLAY_VERSION"));
         info!("Game region: {}", instance.game.region);
@@ -102,6 +116,10 @@ impl Hachimi {
             localized_data: ArcSwap::default(),
             tl_updater: Arc::default(),
 
+            // Same with these
+            chara_data: ArcSwap::default(),
+            skill_info: ArcSwap::default(),
+
             game,
             template_parser: template::Parser::new(&template_filters::LIST),
 
@@ -116,20 +134,26 @@ impl Hachimi {
             #[cfg(target_os = "windows")]
             discord_rpc: AtomicBool::new(config.windows.discord_rpc),
 
-            #[cfg(target_os = "windows")]
             updater: Arc::default(),
 
             config: ArcSwap::new(Arc::new(config))
         })
     }
 
-    fn load_config(data_dir: &Path, region: &Region) -> Result<Config, Error> {
+    // region param is unused?
+    fn load_config(data_dir: &Path, _region: &Region) -> Result<Config, Error> {
         let config_path = data_dir.join("config.json");
         if fs::metadata(&config_path).is_ok() {
             let json = fs::read_to_string(&config_path)?;
-            Ok(serde_json::from_str(&json)?)
-        }
-        else {
+            match serde_json::from_str::<Config>(&json) {
+                Ok(config) => Ok(config),
+                Err(e) => {
+                    eprintln!("Failed to parse config: {}", e);
+                    CONFIG_LOAD_ERROR.store(true, std::sync::atomic::Ordering::Release);
+                    Ok(Config::default())
+                }
+            }
+        }else {
             Ok(Config::default())
         }
     }
@@ -176,6 +200,22 @@ impl Hachimi {
             }
         };
         self.localized_data.store(Arc::new(new_data));
+    }
+
+    pub fn init_character_data(&self) {
+        if self.chara_data.load().chara_ids.is_empty() {
+            let data = CharacterData::load_from_db();
+            self.chara_data.store(Arc::new(data));
+            info!("Character database loaded successfully.");
+        }
+    }
+
+    pub fn init_skill_info(&self) {
+        if self.skill_info.load().skill_names.is_empty() {
+            let data = SkillInfo::load_from_db();
+            self.skill_info.store(Arc::new(data));
+            info!("Skill info loaded successfully.");
+        }
     }
 
     pub fn on_dlopen(&self, filename: &str, handle: usize) -> bool {
@@ -232,15 +272,12 @@ impl Hachimi {
 
     pub fn run_auto_update_check(&self) {
         if !self.config.load().disable_auto_update_check {
-            #[cfg(not(target_os = "windows"))]
-            self.tl_updater.clone().check_for_updates(false);
-
             // Check for hachimi updates first, then translations
             // Don't auto check for tl updates if it's not up to date
-            #[cfg(target_os = "windows")]
             self.updater.clone().check_for_updates(|new_update| {
-                if !new_update {
-                    Hachimi::instance().tl_updater.clone().check_for_updates(false);
+                let hachimi = Hachimi::instance();
+                if !new_update && !hachimi.config.load().translator_mode {
+                    hachimi.tl_updater.clone().check_for_updates(false);
                 }
             });
         }
@@ -258,6 +295,10 @@ pub struct Config {
     #[serde(default)]
     pub debug_mode: bool,
     #[serde(default)]
+    pub enable_file_logging: bool,
+    #[serde(default)]
+    pub apply_atlas_workaround: bool,
+    #[serde(default)]
     pub translator_mode: bool,
     #[serde(default)]
     pub disable_gui: bool,
@@ -273,11 +314,23 @@ pub struct Config {
     #[serde(default)]
     pub skip_first_time_setup: bool,
     #[serde(default)]
+    pub lazy_translation_updates: bool,
+    #[serde(default)]
     pub disable_auto_update_check: bool,
     #[serde(default)]
     pub disable_translations: bool,
+    #[serde(default = "Config::default_gui_scale")]
+    pub gui_scale: f32,
     #[serde(default = "Config::default_ui_scale")]
     pub ui_scale: f32,
+    #[serde(default = "Config::default_render_scale")]
+    pub render_scale: f32,
+    #[serde(default)]
+    pub msaa: crate::il2cpp::hook::umamusume::GraphicSettings::MsaaQuality,
+    #[serde(default)]
+    pub aniso_level: crate::il2cpp::hook::UnityEngine_CoreModule::Texture::AnisoLevel,
+    #[serde(default)]
+    pub shadow_resolution: crate::il2cpp::hook::umamusume::CameraData::ShadowResolution,
     #[serde(default)]
     pub graphics_quality: crate::il2cpp::hook::umamusume::GraphicSettings::GraphicsQuality,
     #[serde(default = "Config::default_story_choice_auto_select_delay")]
@@ -292,6 +345,12 @@ pub struct Config {
     pub force_allow_dynamic_camera: bool,
     #[serde(default)]
     pub live_theater_allow_same_chara: bool,
+    #[serde(default = "Config::default_live_vocals_swap")]
+    pub live_vocals_swap: [i32; 6],
+    #[serde(default)]
+    pub skill_info_dialog: bool,
+    #[serde(default)]
+    pub homescreen_bgseason: crate::il2cpp::hook::umamusume::TimeUtil::BgSeason,
     pub sugoi_url: Option<String>,
     #[serde(default)]
     pub auto_translate_stories: bool,
@@ -305,11 +364,27 @@ pub struct Config {
     pub language: Language,
     #[serde(default = "Config::default_meta_index_url")]
     pub meta_index_url: String,
+    #[serde(default)]
+    pub ipv4_only: bool,
     pub physics_update_mode: Option<SpringUpdateMode>,
     #[serde(default = "Config::default_ui_animation_scale")]
     pub ui_animation_scale: f32,
     #[serde(default)]
     pub disabled_hooks: FnvHashSet<String>,
+
+    // theme settings
+    #[serde(default = "Config::default_ui_accent")]
+    pub ui_accent_color: egui::Color32,
+    #[serde(default = "Config::default_window_fill")]
+    pub ui_window_fill: egui::Color32,
+    #[serde(default = "Config::default_panel_fill")]
+    pub ui_panel_fill: egui::Color32,
+    #[serde(default = "Config::default_extreme_bg")]
+    pub ui_extreme_bg_color: egui::Color32,
+    #[serde(default = "Config::default_text_color")]
+    pub ui_text_color: egui::Color32,
+    #[serde(default = "Config::default_window_rounding")]
+    pub ui_window_rounding: f32,
 
     #[cfg(target_os = "windows")]
     #[serde(flatten)]
@@ -324,10 +399,19 @@ impl Config {
     fn default_open_browser_url() -> String { "https://www.google.com/".to_owned() }
     fn default_virtual_res_mult() -> f32 { 1.0 }
     fn default_ui_scale() -> f32 { 1.0 }
+    fn default_render_scale() -> f32 { 1.0 }
+    fn default_gui_scale() -> f32 { 1.0 }
     fn default_story_choice_auto_select_delay() -> f32 { 1.2 }
     fn default_story_tcps_multiplier() -> f32 { 3.0 }
     fn default_meta_index_url() -> String { "https://gitlab.com/umatl/hachimi-meta/-/raw/main/meta.json".to_owned() }
     fn default_ui_animation_scale() -> f32 { 1.0 }
+    fn default_live_vocals_swap() -> [i32; 6] { [0; 6] }
+    pub fn default_ui_accent() -> egui::Color32 { egui::Color32::from_rgb(100, 150, 240) }
+    pub fn default_window_fill() -> egui::Color32 { egui::Color32::from_rgba_premultiplied(27, 27, 27, 220) }
+    pub fn default_panel_fill() -> egui::Color32 { egui::Color32::from_rgba_premultiplied(27, 27, 27, 220) }
+    pub fn default_extreme_bg() -> egui::Color32 { egui::Color32::from_rgb(15, 15, 15) }
+    pub fn default_text_color() -> egui::Color32 { egui::Color32::from_gray(170) }
+    pub fn default_window_rounding() -> f32 { 10.0 }
 }
 
 impl Default for Config {
@@ -355,11 +439,11 @@ impl<T> OsOption<T> {
     }
 }
 
-#[derive(Default, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[allow(non_camel_case_types)]
 pub enum Language {
     #[serde(rename = "en")]
-    #[default] English,
+    English,
 
     #[serde(rename = "zh-tw")]
     TChinese,
@@ -368,7 +452,32 @@ pub enum Language {
     SChinese,
 
     #[serde(rename = "vi")]
-    Vietnamese
+    Vietnamese,
+
+    #[serde(rename = "id")]
+    Indonesian,
+
+    #[serde(rename = "es")]
+    Spanish
+}
+
+impl Default for Language {
+    fn default() -> Self {
+        let locale = sys_locale::get_locale().as_deref().unwrap_or("en").to_lowercase();
+        if locale.contains("zh-hk") || locale.contains("zh-tw") || locale.contains("zh-hant") {
+            Self::TChinese
+        } else if locale.contains("zh") {
+            Self::SChinese
+        } else if locale.starts_with("vi") {
+            Self::Vietnamese
+        } else if locale.starts_with("id") {
+            Self::Indonesian
+        } else if locale.starts_with("es") {
+            Self::Spanish
+        } else {
+            Self::English
+        }
+    }
 }
 
 impl Language {
@@ -376,7 +485,9 @@ impl Language {
         Self::English.choice(),
         Self::TChinese.choice(),
         Self::SChinese.choice(),
-        Self::Vietnamese.choice()
+        Self::Vietnamese.choice(),
+        Self::Indonesian.choice(),
+        Self::Spanish.choice()
     ];
 
     pub fn set_locale(&self) {
@@ -388,7 +499,9 @@ impl Language {
             Language::English => "en",
             Language::TChinese => "zh-tw",
             Language::SChinese => "zh-cn",
-            Language::Vietnamese => "vi"
+            Language::Vietnamese => "vi",
+            Language::Indonesian => "id",
+            Language::Spanish => "es"
         }
     }
 
@@ -397,7 +510,9 @@ impl Language {
             Language::English => "English",
             Language::TChinese => "繁體中文",
             Language::SChinese => "简体中文",
-            Language::Vietnamese => "Tiếng Việt"
+            Language::Vietnamese => "Tiếng Việt",
+            Language::Indonesian => "Bahasa Indonesia",
+            Language::Spanish => "Español (ES)"
         }
     }
 
@@ -420,7 +535,9 @@ pub struct LocalizedData {
     assets_path: Option<PathBuf>,
 
     pub plural_form: plurals::Resolver,
-    pub ordinal_form: plurals::Resolver
+    pub ordinal_form: plurals::Resolver,
+
+    pub wrapper_penalties: Penalties
 }
 
 impl LocalizedData {
@@ -457,6 +574,8 @@ impl LocalizedData {
         let plural_form = Self::parse_plural_form_or_default(&config.plural_form)?;
         let ordinal_form = Self::parse_plural_form_or_default(&config.ordinal_form)?;
 
+        let wrapper_penalties = Self::parse_wrap_penalties_or_default(&config.wrapper_penalties);
+
         Ok(LocalizedData {
             localize_dict: Self::load_dict_static(&path, config.localize_dict.as_ref()).unwrap_or_default(),
             hashed_dict: Self::load_dict_static(&path, config.hashed_dict.as_ref()).unwrap_or_default(),
@@ -472,6 +591,8 @@ impl LocalizedData {
 
             plural_form,
             ordinal_form,
+
+            wrapper_penalties,
 
             config,
             path
@@ -529,6 +650,19 @@ impl LocalizedData {
         }
     }
 
+    fn parse_wrap_penalties_or_default(opt: &Option<PenaltiesConfig>) -> Penalties {
+        let Some(cfg) = opt else {
+            return Penalties::new()
+        };
+        Penalties {
+            nline_penalty: cfg.nline_penalty,
+            overflow_penalty: cfg.overflow_penalty,
+            short_last_line_fraction: cfg.short_last_line_fraction,
+            short_last_line_penalty: cfg.short_last_line_penalty,
+            hyphen_penalty: cfg.hyphen_penalty
+        }
+    }
+
     pub fn get_assets_path<P: AsRef<Path>>(&self, rel_path: P) -> Option<PathBuf> {
         self.assets_path.as_ref().map(|p| p.join(rel_path))
     }
@@ -576,13 +710,17 @@ pub struct LocalizedDataConfig {
     // Predefined line widths are counts of cjk characters.
     // 1 cjk char = 2 columns, so setting this value to 2 replicates the default behaviour.
     pub line_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub systext_cue_lines: FnvHashMap<String, i32>,
+    pub wrapper_penalties: Option<PenaltiesConfig>,
 
     #[serde(default)]
     pub auto_adjust_story_clip_length: bool,
     pub story_line_count_offset: Option<i32>,
     pub text_frame_line_spacing_multiplier: Option<f32>,
     pub text_frame_font_size_multiplier: Option<f32>,
-    pub skill_list_item_desc_font_size_multiplier: Option<f32>,
+    #[serde(default)]
+    pub skill_formatting: SkillFormatting,
     #[serde(default)]
     pub text_common_allow_overflow: bool,
     #[serde(default)]
@@ -662,4 +800,44 @@ impl<T> AssetInfo<T> {
 #[derive(Deserialize, Clone, Default)]
 pub struct AssetMetadata {
     pub bundle_name: Option<String>
+}
+
+#[derive(Deserialize, Clone)]
+pub struct PenaltiesConfig {
+    nline_penalty: usize,
+    overflow_penalty: usize,
+    short_last_line_fraction: usize,
+    short_last_line_penalty: usize,
+    hyphen_penalty: usize
+}
+
+#[derive(Deserialize, Clone)]
+pub struct SkillFormatting {
+    #[serde(default = "SkillFormatting::default_length")]
+    pub name_length: i32,
+    #[serde(default = "SkillFormatting::default_length")]
+    pub desc_length: i32,
+    #[serde(default = "SkillFormatting::default_lines")]
+    pub name_short_lines: i32,
+
+    #[serde(default = "SkillFormatting::default_mult")]
+    pub name_short_mult: f32,
+    #[serde(default = "SkillFormatting::default_mult")]
+    pub name_sp_mult: f32,
+}
+impl SkillFormatting {
+    fn default_length() -> i32 { 18 }
+    fn default_lines() -> i32 { 1 }
+    fn default_mult() -> f32 { 1.0 }
+}
+
+impl Default for SkillFormatting {
+    fn default() -> Self {
+        SkillFormatting {
+            name_length: 13,
+            desc_length: 18,
+            name_short_lines: 1,
+            name_short_mult: 1.0,
+            name_sp_mult: 1.0 }
+    }
 }

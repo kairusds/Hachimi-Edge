@@ -102,16 +102,27 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
         let texture_sets_path = Path::new("an_texture_sets").join(&amp_name.to_string());
 
         for group in group_list.iter() {
-            let texture = AnMeshInfoParameterGroup::get__textureSetColor(group);
+            let texture_color = AnMeshInfoParameterGroup::get__textureSetColor(group);
             let texture_set_name = AnMeshInfoParameterGroup::get_TextureSetName(group);
             let texture_set_name_utf16 = unsafe { (*texture_set_name).as_utf16str() };
-            
+
             // Try to load a replacement
             let texture_set_filename = texture_set_name_utf16.to_string() + ".png";
             let rel_path = texture_sets_path.join(texture_set_filename);
 
             if let Some(path) = localized_data.get_assets_path(&rel_path) {
-                replace_texture_with_diff(texture, &path, true);
+                replace_texture_with_diff(texture_color, &path, true);
+            }
+
+            // Replace alpha texture (_A.png files)
+            let texture_alpha = AnMeshInfoParameterGroup::get__textureSetA(group);
+            if !texture_alpha.is_null() {
+                let texture_set_filename_a = texture_set_name_utf16.to_string() + "_A.png";
+                let rel_path_a = texture_sets_path.join(texture_set_filename_a);
+
+                if let Some(path_a) = localized_data.get_assets_path(&rel_path_a) {
+                    replace_texture_with_diff(texture_alpha, &path_a, true);
+                }
             }
         }
     }

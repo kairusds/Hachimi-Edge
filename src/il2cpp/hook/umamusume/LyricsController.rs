@@ -82,7 +82,7 @@ extern "C" fn LoadLyrics(this: *mut Il2CppObject, id: i32, path: *mut Il2CppStri
         return true;
     };
 
-    let mut process_element = |data: &mut dyn LyricsDataCommon| {
+    let process_element = |data: &mut dyn LyricsDataCommon| {
         let time_key = data.get_key();
         if let Some(text) = secs_dict.get(&time_key) {
             *data.lyrics_mut() = text.to_il2cpp_string();

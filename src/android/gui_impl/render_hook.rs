@@ -4,8 +4,8 @@ use std::num::NonZeroU32;
 use std::os::raw::c_char;
 use std::os::raw::{c_uint, c_void};
 use std::sync::Arc;
+use std::cell::OnceCell;
 use glow::HasContext;
-use once_cell::unsync::OnceCell;
 
 use crate::core::{Error, Gui, Hachimi};
 
@@ -116,7 +116,7 @@ fn init_painter() -> Result<&'static mut egui_glow::Painter, Error> {
     }
 
     let gl = init_gl();
-    let painter = egui_glow::Painter::new(Arc::new(gl), "", None)?;
+    let painter = egui_glow::Painter::new(Arc::new(gl), "", None, false)?;
     unsafe {
         PAINTER.set(painter).unwrap_unchecked();
     }

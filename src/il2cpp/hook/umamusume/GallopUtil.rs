@@ -6,9 +6,9 @@ type LineHeadWrapCommonFnJP = extern "C" fn(
 extern "C" fn LineHeadWrapCommonJP(
     s: *mut Il2CppString, line_char_count: i32, handling_type: i32, is_match_delegate: *mut Il2CppDelegate
 ) -> *mut Il2CppString {
+    // Don't wrap prewrapped text.
     if utils::game_str_has_newline(s) {
-        // assume prewrapped, let the game handle it
-        return get_orig_fn!(LineHeadWrapCommonJP, LineHeadWrapCommonFnJP)(s, line_char_count, handling_type, is_match_delegate);
+        return s;
     }
 
     if let Some(wrapped) = utils::wrap_text_il2cpp(s, line_char_count) {

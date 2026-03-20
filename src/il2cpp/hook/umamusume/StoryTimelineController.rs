@@ -19,8 +19,8 @@ type GotoBlockFn = extern "C" fn(this: *mut Il2CppObject, block_id: i32, weaken_
 pub extern "C" fn GotoBlock(this: *mut Il2CppObject, block_id: i32, weaken_cy_spring: bool, is_update: bool, is_choice: bool) {
     if Hachimi::instance().config.load().enable_ipc {
         let mut guard = CURRENT.lock().unwrap();
-        // TODO: replace this with .is_none_or() whenever that comes out of nightly
-        if !(*guard).as_ref().is_some_and(|h| h.target() == this) {
+
+        if !(*guard).as_ref().is_none_or(|h| h.target() == this) {
             *guard = Some(GCHandle::new_weak_ref(this, false));
         }
         LAST_BLOCK_ID.store(block_id, atomic::Ordering::Relaxed);

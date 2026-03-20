@@ -1,4 +1,3 @@
-#![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 
 macro_rules! new_hook {
@@ -7,7 +6,7 @@ macro_rules! new_hook {
         if !hachimi.config.load().disabled_hooks.contains(stringify!($hook)) {
             info!("new_hook!: {}", stringify!($hook));
             if ($orig != 0) {
-                let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
+                let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
                 if let Err(e) = res {
                     error!("{}", e);
                 }
@@ -73,6 +72,7 @@ pub mod UnityEngine_CoreModule;
 pub mod UnityEngine_AssetBundleModule;
 pub mod UnityEngine_TextRenderingModule;
 pub mod UnityEngine_ImageConversionModule;
+pub mod Unity_RenderPipelines_Universal_Runtime;
 pub mod UnityEngine_UI;
 pub mod UnityEngine_UIModule;
 pub mod Unity_TextMeshPro;
@@ -98,6 +98,7 @@ pub fn init() {
     UnityEngine_CoreModule::init();
     UnityEngine_TextRenderingModule::init();
     UnityEngine_ImageConversionModule::init();
+    Unity_RenderPipelines_Universal_Runtime::init();
     UnityEngine_UI::init();
     UnityEngine_UIModule::init();
     Unity_TextMeshPro::init();

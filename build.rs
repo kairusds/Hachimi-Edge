@@ -34,7 +34,7 @@ fn setup_version_env() {
         }
 
         if let Some(output) = execute_command(Command::new("git").args(["status", "--porcelain"])) {
-            if !output.stdout.is_empty() {
+            if !output.stdout.is_empty() && std::env::var("HACHIMI_IGNORE_DIRTY").is_err() {
                 version_str.push_str("-dirty");
             }
         }
@@ -60,6 +60,9 @@ fn main() {
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
     if target_os == "windows" {
         setup_windows_build();
+    } else if target_os == "android" {
+        println!("cargo:rustc-link-arg=-Wl,-z,max-page-size=16384");
+        println!("cargo:rustc-link-arg=-Wl,-z,common-page-size=16384");
     }
 
     setup_version_env();

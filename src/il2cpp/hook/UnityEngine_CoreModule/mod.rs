@@ -11,6 +11,14 @@ pub mod RenderTexture;
 pub mod Graphics;
 pub mod Behaviour;
 pub mod Component;
+pub mod UnityAction;
+#[cfg(target_os = "android")]
+pub mod TouchScreenKeyboard;
+#[cfg(target_os = "android")]
+pub mod TouchScreenKeyboardType;
+pub mod RectTransform;
+pub mod Transform;
+pub mod RectOffset;
 
 #[cfg(target_os = "windows")]
 pub mod QualitySettings;
@@ -40,6 +48,15 @@ pub fn init() {
     Graphics::init(image);
     Behaviour::init(image);
     Component::init(image);
+    UnityAction::init(image);
+    RectTransform::init(image);
+    Transform::init(image);
+    RectOffset::init(image);
+    #[cfg(target_os = "android")]
+    {
+        TouchScreenKeyboard::init(image);
+        TouchScreenKeyboardType::init(image);
+    }
 
     #[cfg(target_os = "windows")]
     {

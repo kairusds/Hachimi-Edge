@@ -3,7 +3,7 @@ use crate::il2cpp::{symbols::get_method_addr, types::*};
 use super::Connection::SELECT_QUERIES;
 
 type GetTextFn = extern "C" fn(this: *mut Il2CppObject, idx: i32) -> *mut Il2CppString;
-extern "C" fn GetText(this: *mut Il2CppObject, idx: i32) -> *mut Il2CppString {
+pub extern "C" fn GetText(this: *mut Il2CppObject, idx: i32) -> *mut Il2CppString {
     if let Some(query) = SELECT_QUERIES.lock().unwrap().get(&(this as usize)) {
         return query.get_text(this, idx).unwrap_or_else(|| get_orig_fn!(GetText, GetTextFn)(this, idx));
     }
@@ -11,13 +11,16 @@ extern "C" fn GetText(this: *mut Il2CppObject, idx: i32) -> *mut Il2CppString {
 }
 
 type DisposeFn = extern "C" fn(this: *mut Il2CppObject);
-extern "C" fn Dispose(this: *mut Il2CppObject) {
+pub extern "C" fn Dispose(this: *mut Il2CppObject) {
     SELECT_QUERIES.lock().unwrap().remove(&(this as usize));
     get_orig_fn!(Dispose, DisposeFn)(this);
 }
 
 static mut GETINT_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetInt, GETINT_ADDR, i32, this: *mut Il2CppObject, index: i32);
+
+static mut STEP_ADDR: usize = 0;
+impl_addr_wrapper_fn!(Step, STEP_ADDR, bool, this: *mut Il2CppObject);
 
 pub fn init(LibNative_Runtime: *const Il2CppImage) {
     get_class_or_return!(LibNative_Runtime, "LibNative.Sqlite3", Query);
@@ -30,5 +33,6 @@ pub fn init(LibNative_Runtime: *const Il2CppImage) {
 
     unsafe {
         GETINT_ADDR = get_method_addr(Query, c"GetInt", 1);
+        STEP_ADDR = get_method_addr(Query, c"Step", 0);
     }
 }

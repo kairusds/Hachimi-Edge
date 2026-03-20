@@ -1,13 +1,15 @@
-hachimi: "Hachimi"
+hachimi: "Hachimi Edge"
 
 windows:
   menu_open_key: "右方向鍵"
 
 android:
-  menu_open_key: "提高音量鍵 + 降低音量鍵"
+  menu_open_key: "提高音量鍵 + 降低音量鍵\n\uf25a 或 三擊左上角"
 
 splash_sub: "\uf015 按下 %{open_key_str} 來打開選單。"
 loading_label: "載入中"
+search_filter: "輸入以搜尋..."
+open: "開啟"
 cancel: "取消"
 save: "儲存"
 done: "完成"
@@ -29,6 +31,7 @@ in_game_browser_confirm_content: "您是否想要開啟遊戲內瀏覽器？"
 browser_dialog_title: "瀏覽器"
 
 menu:
+  check_for_updates: "\uf0aa 檢查更新"
   fps_text: "FPS: %{fps}"
   close_menu: "\uf00d 關閉選單"
   stats_heading: "\uf022 狀態"
@@ -44,8 +47,8 @@ menu:
   stay_on_top: "保持在最上層"
   translation_heading: "\uf02d 翻譯"
   reload_localized_data: "\uf021 重新載入翻譯數據"
-  check_for_updates: "\uf0aa 檢查更新"
-  check_for_updates_pedantic: "\uf0aa 檢查更新（深度模式）"
+  tl_check_for_updates: "\uf0aa 檢查翻譯更新"
+  tl_check_for_updates_pedantic: "\uf0aa 檢查翻譯更新（深度模式）"
   dump_localize_dict: "導出 localize dict"
   danger_zone_heading: "\uf071 危險區域"
   danger_zone_warning: "更改這些選項可能會導致遊戲異常，請小心使用！"
@@ -65,6 +68,7 @@ notification:
   errors_during_update: "更新時發生 %{count} 個錯誤，請確認日誌以獲取更多資訊。"
   checking_for_updates: "檢查更新"
   no_updates: "無可用的更新。"
+  ipc_softreset_exec: "已遠端軟重啟（IPC）。"
 
 first_time_setup:
   title: "設定精靈"
@@ -83,9 +87,10 @@ first_time_setup:
 
 about:
   title: "關於"
-  copyright: "© 2024-%{year} LeadRDRK and contributors"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds and contributors"
   view_license: "查看許可證"
-  check_for_updates: "檢查更新"
+  open_website: "開啟網站"
+  view_source_code: "查看原始碼"
 
 license:
   title: "許可證"
@@ -107,18 +112,31 @@ config_editor:
     此選項會在您重新啟動遊戲後停用 Hachimi 覆蓋層，
     這意味著您將無法訪問設置編輯器。
     如果是不小心誤觸此選項，請關閉此對話框並禁用該選項。
+  ipv4_only: "僅限 IPv4 ureq"
+  meta_index_url: "翻譯 Meta URL"
   debug_mode: "除錯模式"
+  enable_file_logging: "啟用檔案記錄"
+  apply_atlas_workaround: "套用 TL Atlas 修復"
   translator_mode: "翻譯者模式"
   skip_first_time_setup: "跳過設定精靈"
+  lazy_translation_updates: "寬鬆翻譯更新檢查"
   disable_auto_update_check: "禁用自動更新檢查"
   disable_translations: "禁用翻譯"
   enable_ipc: "啟用 IPC"
   ipc_listen_all: "監聽所有 IPC 地址"
   auto_translate_stories: "自動翻譯劇情"
+  auto_tl_warning: >-
+    注意：此功能無法獨立運行，需要外部設置。
+    啟用此選項需要您的電腦上安裝相容的翻譯伺服器，
+    或使用提供 API 的雲服務（如 py3translationServer 或 Sugoi Toolkit）。
+    若未運行伺服器，將無法進行額外翻譯，且可能影響遊戲運行。
+    如果您沒有可用的翻譯伺服器，請保持此選項關閉。
   auto_translate_ui: "自動翻譯 UI\n(可能會導致UI錯誤)"
   target_fps: "目標 FPS"
   virtual_resolution_multiplier: "虛擬解析度倍率"
   ui_scale: "UI 比例"
+  gui_scale: "疊加層縮放"
+  gui_landscape_ratio: "橫屏覆蓋層縮放比例"
   ui_animation_scale: "UI 動畫速度"
   graphics_quality: "圖像品質"
   vsync: "VSync"
@@ -140,19 +158,43 @@ config_editor:
   disable_skill_name_translation: "停用技能名稱翻譯"
   hide_ingame_ui_hotkey: "隱藏遊戲內 UI 快捷鍵"
   hide_ingame_ui_hotkey_info: >-
-    此選項允許使用一個快捷鍵來切換遊戲內的用戶介面（UI）。
-    對於 Android 裝置，操作是在 0.3 秒內連按兩次「音量調高」鍵。
-    對於 PC/安卓（帶鍵盤） 而言，它是 Insert 鍵（插入鍵）。此按鍵也可以在 設定檔（config file） 中更改。
+    此選項允許使用快捷鍵切換遊戲內介面（UI）的顯示。
+    Android 端，您需要雙擊「音量上鍵」，或連續三次點擊螢幕右上角。
+    對於配備鍵盤的 PC/Android 裝置，預設按鍵為 Insert，並可在 GUI 或設定檔中進行更改。
+  menu_open_key: "選單開啟熱鍵"
+  menu_open_key_set: "按下按鍵進行設定"
+  render_scale: "渲染比例"
+  aniso_level: "各向異性過濾"
+  live_vocals_swap: "Live演唱人聲切換"
+  live_vocals_swap_character_n: "角色 %{index}"
+  skill_info_dialog: "自訂技能資訊視窗"
+  homescreen_bgseason: "主介面背景季節"
+  shadow_resolution: "陰影解析度"
+
+theme_editor:
+  title: "界面主題編輯器"
+  ui_accent_color: "重點色"
+  ui_window_fill: "視窗背景顏色"
+  ui_panel_fill: "面板背景顏色"
+  ui_extreme_bg_color: "輸入框背景"
+  ui_text_color: "文字顏色"
+  ui_window_rounding: "圓角程度"
 
 tl_update_dialog:
   title: "有可用的更新"
   content: "有可用的更新 (%{size})，是否要下載？"
+  content_zip_warning: "有新的翻譯更新可用（%{changed_size}）。此更新將改為下載完整的封存檔（%{download_size}）。"
 
 update_prompt_dialog:
   title: "有可用的更新"
   content: |
     目前有可用的更新 (%{version})，是否要安裝？
     遊戲將重新啟動以套用更新內容。
+  android_content: |
+    檢測到 Hachimi Edge 的新版本 (%{version})。是否更新？
+
+    點擊「是」將跳轉至 UmaPatcher Edge，在其中重新為當前遊戲補丁以更新 Hachimi。
+    (無需重新下載完整遊戲文件或 APK，重新為當前遊戲版本的 APK 補丁並安裝即可，UmaPatcher Edge 將自動下載最新版本的 Hachimi Edge。)
 
 updating_dialog:
   title: "更新中"

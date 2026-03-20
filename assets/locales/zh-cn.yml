@@ -1,13 +1,15 @@
-hachimi: "Hachimi"
+hachimi: "Hachimi Edge"
 
 windows:
   menu_open_key: "右方向键"
 
 android:
-  menu_open_key: "「音量+」键 + 「音量-」键"
+  menu_open_key: "「音量+」键 + 「音量-」键\n\uf25a 或 三击左上角"
 
 splash_sub: "\uf015 按 %{open_key_str} 打开菜单"
 loading_label: "加载中..."
+search_filter: "输入以搜索..."
+open: "打开"
 cancel: "取消"
 save: "保存"
 done: "完成"
@@ -29,6 +31,7 @@ in_game_browser_confirm_content: "确定要打开游戏内浏览器吗？"
 browser_dialog_title: "浏览器"
 
 menu:
+  check_for_updates: "\uf0aa 检查更新"
   fps_text: "帧率: %{fps}"
   close_menu: "\uf00d 关闭菜单"
   stats_heading: "\uf022 统计数据"
@@ -44,8 +47,8 @@ menu:
   stay_on_top: "窗口置顶"
   translation_heading: "\uf02d 翻译"
   reload_localized_data: "\uf021 重新加载本地化数据"
-  check_for_updates: "\uf0aa 检查更新"
-  check_for_updates_pedantic: "\uf0aa 检查更新（详细）"
+  tl_check_for_updates: "\uf0aa 检查翻译更新"
+  tl_check_for_updates_pedantic: "\uf0aa 检查翻译更新（详细）"
   dump_localize_dict: "导出本地化字典"
   danger_zone_heading: "\uf071 危险操作"
   danger_zone_warning: "这些选项可能会对游戏产生异常影响，请谨慎使用！"
@@ -67,6 +70,7 @@ notification:
   no_updates: "无可用更新"
   press_to_set_menu_key: "请在游戏窗口按下新的按键以设为打开菜单按键"
   menu_open_key_set: "已设置打开菜单按键为 %{key}"
+  ipc_softreset_exec: "已远程软重启（IPC）"
 
 first_time_setup:
   title: "初始化设置"
@@ -92,16 +96,17 @@ first_time_setup:
 
 about:
   title: "关于"
-  copyright: "© 2024-%{year} LeadRDRK 及贡献者"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds 及贡献者"
   view_license: "查看许可证"
-  check_for_updates: "检查更新"
+  open_website: "打开网站"
+  view_source_code: "查看源代码"
 
 license:
   title: "许可证"
 
 tl_updater:
   title: "更新中..."
-  warning: "翻译功能在更新期间\n将暂时不可用"
+  warning: "翻译功能在更新期间 将暂时不可用"
 
 config_editor:
   title: "配置编辑器"
@@ -115,23 +120,31 @@ config_editor:
     此选项将在游戏重启后禁用Hachimi的GUI，
     您将无法再访问配置编辑器。
     如非本意，请关闭此窗口并禁用此选项。
+  meta_index_url: "翻译 Meta URL"
   debug_mode: "调试模式"
+  enable_file_logging: "启用文件日志记录"
+  apply_atlas_workaround: "应用 TL Atlas 修复"
   translator_mode: "翻译者模式"
   skip_first_time_setup: "跳过初始化设置"
+  lazy_translation_updates: "宽松翻译更新检查"
   disable_auto_update_check: "禁用自动更新检查"
   disable_translations: "禁用翻译功能"
   enable_ipc: "启用 IPC"
   ipc_listen_all: "IPC 监听所有地址"
   auto_translate_stories: "自动翻译剧情"
   auto_tl_warning: >-
-    此选项需要搭配兼容的翻译服务提供程序，
-    或使用与 py3translationServer 相同框架的云服务才能正常工作。如果未安装这些提供程序，
-    则不会进行任何额外的翻译，并且很可能会影响游戏体验。
-    如果您没有安装翻译框架，请保持此选项为禁用状态。
-  auto_translate_ui: "自动翻译游戏界面\n(可能导致游戏界面异常)"
+    注意：此功能无法独立运行，需要外部设置。
+    启用此选项需要您的电脑上安装兼容的翻译服务器
+    或使用提供 API 的云服务（如 py3translationServer 或 Sugoi Toolkit）。
+    若未运行服务器，将无法进行额外翻译，且可能影响游戏运行。
+    如果您没有可用的翻译服务器，请保持此选项关闭。
+  ipv4_only: "仅限 IPv4 ureq"
+  auto_translate_ui: "自动翻译游戏界面 (可能导致游戏界面异常)"
   target_fps: "目标帧率"
   virtual_resolution_multiplier: "分辨率缩放倍数"
   ui_scale: "界面缩放比例"
+  gui_scale: "叠加层缩放"
+  gui_landscape_ratio: "横屏覆盖层缩放比例"
   ui_animation_scale: "UI 动画速度"
   graphics_quality: "图形质量"
   vsync: "垂直同步"
@@ -148,26 +161,48 @@ config_editor:
   story_choice_auto_select_delay: "剧情选项自动选择延迟"
   story_text_speed_multiplier: "剧情文本速度倍率"
   force_allow_dynamic_camera: "强制启用动态镜头"
-  live_theater_allow_same_chara: "在 LIVE 剧场中\n允许设置多个相同角色"
+  live_theater_allow_same_chara: "在 LIVE 剧场中 允许设置多个相同角色"
   physics_update_mode: "物理引擎更新模式"
   disable_skill_name_translation: "禁用技能名称翻译"
   hide_ingame_ui_hotkey: "隐藏游戏内 UI 的快捷键"
   hide_ingame_ui_hotkey_info: >-
-    此选项允许使用一个快捷键来切换游戏内的UI是否显示。
-    在Android上，此快捷键为快速双击「音量+」键。
-    PC或带键盘的Android中此快捷键为 Insert 键。该快捷键也可以在配置文件中更改。
+    此选项允许使用快捷键切换游戏内界面（UI）的显示。
+    Android 端，您需要双击“音量上键”，或连续三次点击屏幕右上角。
+    对于配备键盘的 PC/Android 设备，默认按键为 Insert，并可在 GUI 或配置文件中进行更改。
   menu_open_key: "打开菜单按键"
   menu_open_key_set: "按下以设置"
+  render_scale: "渲染比例"
+  aniso_level: "各向异性过滤"
+  live_vocals_swap: "Live演唱人声切换"
+  live_vocals_swap_character_n: "角色 %{index}"
+  skill_info_dialog: "自定技能信息弹窗"
+  homescreen_bgseason: "主界面背景季节"
+  shadow_resolution: "阴影分辨率"
+
+theme_editor:
+  title: "界面主题编辑器"
+  ui_accent_color: "强调色"
+  ui_window_fill: "窗口背景色"
+  ui_panel_fill: "面板背景色"
+  ui_extreme_bg_color: "输入框背景"
+  ui_text_color: "文本颜色"
+  ui_window_rounding: "圆角半径"
 
 tl_update_dialog:
   title: "新翻译更新可用"
   content: "新的翻译更新可用 (%{size})，是否下载？"
+  content_zip_warning: "有新的翻译更新可用（%{changed_size}）。此更新将改为下载完整的存档（%{download_size}）。"
 
 update_prompt_dialog:
   title: "新版本可用"
   content: |
     发现新的Hachimi更新 (%{version})，是否立即安装？
     安装完成后游戏将自动重启。
+  android_content: |
+    检测到 Hachimi Edge 的新版本 (%{version})。是否更新？
+
+    点击“是”将跳转至 UmaPatcher Edge，在其中重新为当前游戏补丁以更新 Hachimi。
+    (无需重新下载完整游戏文件或 APK，重新为当前游戏版本的 APK 补丁并安装即可，UmaPatcher Edge 将自动下载最新版本的 Hachimi Edge。)
 
 updating_dialog:
   title: "更新中"
