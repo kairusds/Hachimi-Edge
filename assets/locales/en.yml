@@ -73,6 +73,7 @@ notification:
   press_to_set_menu_key: "Press a key in the game window to set the open-menu hotkey."
   menu_open_key_set: "Open-menu hotkey set to %{key}"
   ipc_softreset_exec: "IPC remote soft-reset executed"
+  atlas_workaround_reset: "Atlas files modified: workaround disabled."
 
 first_time_setup:
   title: "First Time Setup"

@@ -441,6 +441,9 @@ impl Updater {
             let mut new_config = (**config).clone();
             new_config.apply_atlas_workaround = false;
             hachimi.save_and_reload_config(new_config)?;
+            if let Some(gui_mutex) = Gui::instance() {
+                gui_mutex.lock().unwrap().show_notification(&t!("notification.atlas_workaround_reset"));
+            }
         }
 
         // Drop the download state
