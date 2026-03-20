@@ -72,6 +72,7 @@ notification:
   press_to_set_menu_key: "Pulsa una tecla para establecer la tecla que abre el menú."
   menu_open_key_set: "Tecla para abrir el menú: %{key}"
   ipc_softreset_exec: "Reinicio suave remoto (IPC) ejecutado con éxito."
+  atlas_workaround_reset: "Archivos de Atlas modificados: arreglo temporal desactivado."
 
 
 first_time_setup:
