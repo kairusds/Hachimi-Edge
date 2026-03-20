@@ -77,12 +77,12 @@ impl RepoFile {
         let Ok(mut file) = fs::File::open(full_path) else { return false };
         let mut hasher = blake3::Hasher::new();
         let mut buffer = vec![0u8; 8192];
-        
+
         while let Ok(n) = file.read(&mut buffer) {
             if n == 0 { break; }
             hasher.update(&buffer[..n]);
         }
-        
+
         hasher.finalize().to_hex().as_str() == self.hash
     }
 }
@@ -102,6 +102,7 @@ struct UpdateInfo {
     #[allow(dead_code)]
     total_size: usize,       // Total size of all files (for ZIP downloads)
     will_use_zip: bool,      // Whether ZIP download will be used
+    modifies_atlas: bool     // Whether file updates include atlases
 }
 
 #[derive(Default, Clone)]
@@ -141,8 +142,8 @@ static NUM_THREADS: Lazy<usize> = Lazy::new(|| {
     max(1, parallelism / 2)
 });
 
-const INCREMENTAL_UPDATE_LIMIT_GITHUB: usize = 55; 
-const INCREMENTAL_UPDATE_LIMIT_GITLAB: usize = 250; 
+const INCREMENTAL_UPDATE_LIMIT_GITHUB: usize = 55;
+const INCREMENTAL_UPDATE_LIMIT_GITLAB: usize = 250;
 const INCREMENTAL_SIZE_RATIO_THRESHOLD: f64 = 0.8;
 const ZIP_SIZE_WARNING_RATIO: f64 = 1.2;  // Warn if ZIP is 1.2x larger than changes
 
@@ -177,7 +178,7 @@ impl Updater {
     }
 
     fn is_github_hosted(url: &str) -> bool {
-        url.contains("github.com") || 
+        url.contains("github.com") ||
         url.contains("githubusercontent.com") ||
         url.contains("github.io")
     }
@@ -199,7 +200,7 @@ impl Updater {
 
         // as long as the update is less than 80% of the total size of the repo, keep it incremental
         if (update_size as f64) < (total_size as f64 * INCREMENTAL_SIZE_RATIO_THRESHOLD) {
-            return false; 
+            return false;
         }
 
         // if the update >80% of the repo size, just grab the ZIP
@@ -247,6 +248,7 @@ impl Updater {
         };
 
         let is_new_repo = index.base_url != repo_cache.base_url;
+        let mut modifies_atlas = false;
         let mut update_files: Vec<RepoFile> = Vec::new();
         let mut update_size: usize = 0;
         let mut total_size: usize = 0;
@@ -296,6 +298,9 @@ impl Updater {
             if updated {
                 update_files.push(file.clone());
                 update_size += file.size;
+                if file.path.contains("/atlas/") {
+                    modifies_atlas = true;
+                }
             }
             total_size += file.size;
         }
@@ -324,13 +329,14 @@ impl Updater {
                 update_size,
                 total_size,
                 will_use_zip,
+                modifies_atlas
             })));
 
             if let Some(mutex) = Gui::instance() {
                 // Determine the dialog message based on download strategy
                 let dialog_message = if will_use_zip && update_size > 0 {
                     let size_ratio = total_size as f64 / update_size.max(1) as f64;
-                    
+
                     if size_ratio >= ZIP_SIZE_WARNING_RATIO {
                         // Warn user about larger ZIP download
                         debug!(
@@ -339,7 +345,7 @@ impl Updater {
                             total_size / (1024 * 1024),
                             size_ratio
                         );
-                        
+
                         t!(
                             "tl_update_dialog.content_zip_warning",
                             changed_size = Size::from_bytes(update_size),
@@ -367,7 +373,7 @@ impl Updater {
         else if let Some(mutex) = Gui::instance() {
             mutex.lock().unwrap().show_notification(&t!("notification.no_tl_updates"));
         }
-        
+
         Ok(())
     }
 
@@ -423,12 +429,21 @@ impl Updater {
         else {
             self.clone().download_incremental(&update_info, &localized_data_dir, cached_files.clone())
         }?;
-        
+
         // Modify the config if needed
-        if hachimi.config.load().localized_data_dir.is_none() {
-            let mut config = (**hachimi.config.load()).clone();
-            config.localized_data_dir = Some(LOCALIZED_DATA_DIR.to_owned());
-            hachimi.save_and_reload_config(config)?;
+        let config = hachimi.config.load();
+        if config.localized_data_dir.is_none() {
+            let mut new_config = (**config).clone();
+            new_config.localized_data_dir = Some(LOCALIZED_DATA_DIR.to_owned());
+            hachimi.save_and_reload_config(new_config)?;
+        }
+        if config.apply_atlas_workaround && (update_info.modifies_atlas || update_info.will_use_zip) {
+            let mut new_config = (**config).clone();
+            new_config.apply_atlas_workaround = false;
+            hachimi.save_and_reload_config(new_config)?;
+            if let Some(gui_mutex) = Gui::instance() {
+                gui_mutex.lock().unwrap().show_notification(&t!("notification.atlas_workaround_reset"));
+            }
         }
 
         // Drop the download state
@@ -497,7 +512,7 @@ impl Updater {
 
                     while let Ok(repo_file) = receiver_clone.lock().unwrap().recv() {
                         if stop_signal_clone.load(atomic::Ordering::Relaxed) { break; }
-                        
+
                         let file_path = repo_file.get_fs_path(&localized_data_dir_clone);
                         let url = utils::concat_unix_path(&base_url_clone, &repo_file.path);
 
@@ -507,7 +522,7 @@ impl Updater {
                             }
                             let mut file = fs::File::create(&file_path)?;
                             let res = job.agent.get(&url).call()?;
-                            
+
                             http::download_file_buffered(res, &mut file, &mut job.buffer, |bytes| {
                                 job.hasher.update(bytes);
                                 let prev_size = current_bytes_clone.fetch_add(bytes.len(), atomic::Ordering::SeqCst);
@@ -667,12 +682,12 @@ impl Updater {
                                     continue;
                                 }
                             };
-                            
+
                             let repo_file = match files_to_extract_clone.get(zip_entry.name()) {
                                 Some(file) => file.clone(),
                                 None => continue,
                             };
-                        
+
                             let path = repo_file.get_fs_path(&localized_data_dir_clone);
                             if let Some(parent) = path.parent() {
                                 if fs::create_dir_all(parent).is_err() {
@@ -680,7 +695,7 @@ impl Updater {
                                     continue;
                                 }
                             }
-                        
+
                             let mut out_file = match fs::File::create(&path) {
                                 Ok(file) => file,
                                 Err(_) => {
@@ -709,7 +724,7 @@ impl Updater {
                                     }
                                 }
                             }
-                        
+
                             let hash = hasher.finalize().to_hex().to_string();
                             if hash != repo_file.hash {
                                 let path_str = path.to_str().unwrap_or("").to_string();
@@ -717,7 +732,7 @@ impl Updater {
                                 stop_signal_clone.store(true, atomic::Ordering::Relaxed);
                                 return;
                             }
-                            
+
                             cached_files_clone.lock().unwrap().insert(repo_file.path.clone(), hash);
                             hasher.reset();
                         }
@@ -734,7 +749,7 @@ impl Updater {
             for handle in handles {
                 handle.join().unwrap();
             }
-            
+
             if let Some(err) = fatal_error.lock().unwrap().take() { return Err(err); }
             error_count = non_fatal_error_count.load(atomic::Ordering::Relaxed);
         }
