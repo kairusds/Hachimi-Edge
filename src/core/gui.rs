@@ -538,15 +538,17 @@ impl Gui {
     pub fn set_screen_size(&mut self, width: i32, height: i32) {
         let is_landscape = width > height;
         let main_axis_size = if is_landscape { height } else { width.min(height) };
-        
-        #[cfg(not(target_os = "windows"))]
-        let orientation_scale = 1.0;
-        
-        #[cfg(target_os = "windows")]
-        {
-            let orientation_ratio = if is_landscape { height as f32 / width as f32 } else { 1.0 };
-            let orientation_scale = if is_landscape { orientation_ratio * Hachimi::instance().config.load().windows.gui_landscape_ratio } else { 1.0 };
-        }
+
+        let orientation_scale = {
+            #[cfg(target_os = "windows")]
+            {
+                let orientation_ratio = if is_landscape { height as f32 / width as f32 } else { 1.0 };
+                if is_landscape { orientation_ratio * Hachimi::instance().config.load().windows.gui_landscape_ratio } else { 1.0 }
+            }
+
+            #[cfg(target_os = "android")]
+            { 1.0 }
+        };
 
         let pixels_per_point = main_axis_size as f32 * PIXELS_PER_POINT_RATIO * orientation_scale;
         self.context.set_pixels_per_point(pixels_per_point);
@@ -698,7 +700,7 @@ impl Gui {
         }
 
         // Store this as an atomic value so the input thread can check it without locking the gui
-        IS_CONSUMING_INPUT.store(self.is_consuming_input(), atomic::Ordering::Relaxed);
+        self.set_consuming_input(self.is_consuming_input());
 
         self.context.end_pass()
     }
@@ -1294,6 +1296,15 @@ impl Gui {
 
     pub fn is_consuming_input_atomic() -> bool {
         IS_CONSUMING_INPUT.load(atomic::Ordering::Relaxed)
+    }
+
+    pub fn set_consuming_input(&mut self, val: bool) {
+        if !self.windows.is_empty() && !val {
+            self.windows.clear();
+        }
+
+        self.menu_visible = val;
+        IS_CONSUMING_INPUT.store(val, atomic::Ordering::Relaxed);
     }
 
     pub fn toggle_menu(&mut self) {

@@ -76,12 +76,14 @@ impl MultiTapState {
 
 const CORNER_TAP_LIMIT: usize = 3;
 const VOLUME_TAP_LIMIT: usize = 2;
+const RESET_GUI_CONSUMING_TAP_LIMIT: usize = 4;
 const TAP_WINDOW_MS: i64 = 300;
 const CORNER_ZONE_RATIO: f32 = 0.12; // 12% screen size
 
 static VOLUME_UP_STATE: MultiTapState = MultiTapState::new();
 static CORNER_TAP_STATE: MultiTapState = MultiTapState::new();
 static TOGGLE_GAME_UI_TAP_STATE: MultiTapState = MultiTapState::new();
+static RESET_GUI_CONSUMING_STATE: MultiTapState = MultiTapState::new();
 static SCREEN_WIDTH: AtomicI32 = AtomicI32::new(0);
 static SCREEN_HEIGHT: AtomicI32 = AtomicI32::new(0);
 
@@ -134,10 +136,17 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
             keymap::KEYCODE_VOLUME_DOWN => {
                 VOLUME_DOWN_PRESSED.store(pressed, Ordering::Relaxed);
 
-                if pressed && VOLUME_UP_PRESSED.load(Ordering::Relaxed) {
+                if pressed && VOLUME_UP_PRESSED.load(Ordering::Relaxed) && repeat_count == 0 {
                     if let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) {
                         gui.toggle_menu();
                     }
+                }
+                
+                if pressed && RESET_GUI_CONSUMING_STATE.register_tap(RESET_GUI_CONSUMING_TAP_LIMIT, TAP_WINDOW_MS) {
+                    if let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) {
+                        gui.set_consuming_input(false);
+                    }
+                    return JNI_TRUE;
                 }
             }
 

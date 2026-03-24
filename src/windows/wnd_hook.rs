@@ -33,13 +33,25 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
     };
 
     match umsg {
-        // Check for Home key presses
         WM_KEYDOWN | WM_SYSKEYDOWN => {
+            let current_key = wparam.0 as u16;
+
+            if current_key == 0x4B { // Virtual keycode for "K", see the get_key method on gui_impl/input.rs
+                let hotkey_vk = Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind;
+
+                if unsafe { windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState(hotkey_vk as i32) < 0 } {
+                    if let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) {
+                        gui.set_consuming_input(false);
+                    }
+                    return LRESULT(0); 
+                }
+            }
+
             if MENU_KEY_CAPTURE.load(atomic::Ordering::Relaxed) {
                 MENU_KEY_CAPTURE.store(false, atomic::Ordering::Relaxed);
                 let hachimi = Hachimi::instance();
                 let mut new_config = hachimi.config.load().as_ref().clone();
-                new_config.windows.menu_open_key = wparam.0 as u16;
+                new_config.windows.menu_open_key = current_key;
                 let _ = hachimi.save_config(&new_config);
                 hachimi.config.store(Arc::new(new_config));
                 let key_label = crate::windows::utils::vk_to_display_label(Hachimi::instance().config.load().windows.menu_open_key);
@@ -51,14 +63,14 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 });
                 return LRESULT(0);
             }
-            if wparam.0 as u16 == Hachimi::instance().config.load().windows.menu_open_key {
+            if current_key == Hachimi::instance().config.load().windows.menu_open_key {
                 let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
                     return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
                 };
 
                 gui.toggle_menu();
                 return LRESULT(0);
-            }else if wparam.0 as u16 == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind {
+            }else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind {
                 Thread::main_thread().schedule(Gui::toggle_game_ui);
             }
         },
