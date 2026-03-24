@@ -131,6 +131,7 @@ jobs:
         with:
           name: windows
           path: |
+            build/blake3.json
             build/hachimi.dll
             build/hachimi_installer.exe
 
