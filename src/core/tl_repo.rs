@@ -393,6 +393,21 @@ impl Updater {
             .expect("Failed to spawn updater thread");
     }
 
+    fn create_dir(path: &Path, override_exists: bool) -> Result<(), Error> {
+        if override_exists {
+            // rm -rf
+            if let Ok(meta) = fs::metadata(path) {
+                if meta.is_dir() {
+                    fs::remove_dir_all(path)?;
+                }
+            }
+        }
+
+        // mkdir -p
+        fs::create_dir_all(path)?;
+        Ok(())
+    }
+
     fn run_internal(self: Arc<Self>) -> Result<(), Error> {
         let Some(update_info) = (**self.new_update.load()).clone() else {
             return Ok(());
@@ -408,18 +423,13 @@ impl Updater {
         let hachimi = Hachimi::instance();
         hachimi.localized_data.store(Arc::new(LocalizedData::default()));
 
-        // Clear the localized data if downloading from a new repo
         let localized_data_dir = hachimi.get_data_path(LOCALIZED_DATA_DIR);
-        if update_info.is_new_repo {
-            // rm -rf
-            if let Ok(meta) = fs::metadata(&localized_data_dir) {
-                if meta.is_dir() {
-                    fs::remove_dir_all(&localized_data_dir)?;
-                }
-            }
-        }
 
-        fs::create_dir_all(&localized_data_dir)?;
+        if update_info.is_new_repo {
+            Self::create_dir(&localized_data_dir, true)?;
+        } else {
+            Self::create_dir(&localized_data_dir, false)?;
+        }
 
         // Download the files - use the pre-determined strategy
         let cached_files = Arc::new(Mutex::new(update_info.cached_files.clone()));
@@ -518,7 +528,7 @@ impl Updater {
 
                         let execute_result = (|| -> Result<String, Error> {
                             if let Some(parent) = Path::new(&file_path).parent() {
-                                fs::create_dir_all(parent)?;
+                                Self::create_dir(parent, false)?;
                             }
                             let mut file = fs::File::create(&file_path)?;
                             let res = job.agent.get(&url).call()?;
@@ -690,7 +700,7 @@ impl Updater {
 
                             let path = repo_file.get_fs_path(&localized_data_dir_clone);
                             if let Some(parent) = path.parent() {
-                                if fs::create_dir_all(parent).is_err() {
+                                if Self::create_dir(parent, false).is_err() {
                                     non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::SeqCst);
                                     continue;
                                 }
