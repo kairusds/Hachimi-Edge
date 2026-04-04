@@ -4,9 +4,9 @@ windows:
   menu_open_key: "Seta direita"
 
 android:
-  menu_open_key: "Vol. Cima + Vol. Baixo\n\uf25a ou três toques rápidos no canto superior esquerdo da tela"
+  menu_open_key: "Vol. Cima + Vol. Baixo\n\uf25a ou dê três toques no canto superior esquerdo da tela"
 
-splash_sub: "\uf015 Pressione %{open_key_str} para abrir o menu."
+splash_sub: "\uf015 Pressione %{open_key_str}\npara abrir o menu."
 loading_label: "Carregando..."
 search_filter: "Digite para pesquisar..."
 open: "Abrir"
