@@ -1,0 +1,267 @@
+hachimi: "Hachimi Edge"
+
+windows:
+  menu_open_key: "Seta direita"
+
+android:
+  menu_open_key: "Vol. Cima + Vol. Baixo\n\uf25a ou dê três toques no canto superior esquerdo da tela"
+
+splash_sub: "\uf015 Pressione %{open_key_str}\npara abrir o menu."
+loading_label: "Carregando..."
+search_filter: "Digite para pesquisar..."
+open: "Abrir"
+cancel: "Cancelar"
+save: "Salvar"
+done: "Finalizar"
+next: "Próximo"
+previous: "Anterior"
+yes: "Sim"
+no: "Não"
+ok: "OK"
+retry: "Tentar novamente"
+default: "Padrão"
+off: "Desligado"
+on: "Ligado"
+enable: "Habilitar"
+info: "Info."
+warning: "Aviso"
+confirm_dialog_title: "Confirmar"
+soft_restart_confirm_content: "Você tem certeza que deseja realizar um soft-restart do jogo?"
+in_game_browser_confirm_content: "Você tem certeza que deseja abrir o navegador do jogo?"
+browser_dialog_title: "Navegador"
+
+menu:
+  check_for_updates: "\uf0aa Buscar atualizações"
+  fps_text: "FPS: %{fps}"
+  close_menu: "\uf00d Fechar menu"
+  stats_heading: "\uf022 Estatísticas"
+  localize_dict_entries: "Entradas do localize_dict: %{count}"
+  hashed_dict_entries: "Entradas do hashed_dict: %{count}"
+  config_heading: "\uf0ad Configurações"
+  open_config_editor: "\uf040 Abrir editor de configurações"
+  reload_config: "\uf021 Recarregar configurações"
+  open_first_time_setup: "\uf135 Abrir configuração inicial"
+  graphics_heading: "\uf03e Gráficos"
+  fps_label: "FPS"
+  vsync_label: "VSync"
+  stay_on_top: "Mostrar no topo"
+  translation_heading: "\uf02d Tradução"
+  reload_localized_data: "\uf021 Recarregar tradução"
+  tl_check_for_updates: "\uf0aa Buscar atualizações de tradução"
+  tl_check_for_updates_pedantic: "\uf0aa Buscar atualizações de tradução (rigorosamente)"
+  dump_localize_dict: "Exportar localize dict"
+  danger_zone_heading: "\uf071 Área Perigosa"
+  danger_zone_warning: "Estas opções podem acabar tendo efeitos indesejados no seu jogo. Use com cuidado!"
+  soft_restart: "\uf021 Soft-Restart"
+  open_in_game_browser: "\uf0ac Abrir navegador do jogo"
+  toggle_game_ui: "\uf06e Alternar UI do jogo"
+  discord_rpc: "Discord RPC"
+
+notification:
+  saved_localize_dump: "Exportado em localize_dump.json"
+  config_reloaded: "Configurações recarregadas."
+  config_saved: "Configurações salvas."
+  config_error: "As configurações estão corrompidas. Usando valores padrão..."
+  localized_data_reloaded: "Tradução recarregada."
+  checking_for_tl_updates: "Buscando atualizações de tradução..."
+  no_tl_updates: "Nenhuma atualização de tradução encontrada."
+  update_failed: "Atualização falhou: %{reason}"
+  update_completed: "Atualização foi realizada."
+  errors_during_update: "%{count} erros aconteceram durante a atualização. Verifique os registros para mais detalhes."
+  checking_for_updates: "Procurando atualizações..."
+  no_updates: "Nenhuma atualização encontrada."
+  press_to_set_menu_key: "Pressione uma tecla para definir um atalho para o menu."
+  menu_open_key_set: "Tecla definida para abrir o menu: %{key}"
+  ipc_softreset_exec: "Soft-restart remoto (IPC) realizado."
+  atlas_workaround_reset: "Arquivos de atlas modificados: solução temporária desabilitada."
+
+first_time_setup:
+  title: "Configuração inicial"
+  welcome_heading: "Bem-vindo"
+  welcome_content: >-
+    O Hachimi foi instalado! Esta tela irá guiá-lo através do processo inicial de instalação.
+    Se não estiver interessado em utilizar as funcionalidades de tradução, pode ignorá-las fechando esta janela.
+
+
+    AVISO: O Hachimi é um projeto desenvolvido pela comunidade. Todas as traduções foram feitas por vários contribuintes.
+    Este projeto não é desenvolvido e nem apoiado pela Cygames, Inc., e viola os termos de serviço do jogo. Ao continuar,
+    você está aceitando os riscos envolvidos.
+  translation_repo_heading: "Repositório de tradução"
+  select_translation_repo: "Selecione um repositório de tradução:"
+  no_compatible_repo: "Nenhum repositório de tradução é compatível com esta versão do jogo."
+  skip_translation: "Ignorar traduções."
+  complete_heading: "Feito!"
+  complete_content: >-
+    Clique em Finalizar para salvar as configurações.
+    Se você tiver escolhido um repositório de tradução, uma busca por atualizações será realizada
+    e em seguida será perguntando se você deseja baixar os dados de tradução disponíveis.
+
+about:
+  title: "Sobre"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds e contribuidores"
+  view_license: "Ver licença"
+  open_website: "Abrir site"
+  view_source_code: "Ver código fonte"
+
+license:
+  title: "Licença"
+
+tl_updater:
+  title: "Atualizando..."
+  warning: "As traduções não irão funcionar enquanto uma atualização estiver sendo realizada"
+
+config_editor:
+  title: "Editor de configurações"
+  general_tab: "\uf013 Geral"
+  graphics_tab: "\uf03e Gráficos"
+  gameplay_tab: "\uf11b Jogabilidade"
+  language: "Idioma"
+  restore_defaults: "Restaurar Padrão"
+  disable_overlay: "Desabilitar sobreposição (GUI)"
+  disable_overlay_warning: >-
+    Esta opção irá desabilitar a sobreposição do Hachimi após você reiniciar o jogo,
+    isso significa que você NÃO poderá acessar o editor de configurações após ativá-la.
+    Se não deseja isso, clique em OK e DESABILITE esta opção.
+  ipv4_only: "Utilizar apenas IPv4 (ureq)"
+  meta_index_url: "URL dos Metadados das Traduções"
+  debug_mode: "Modo de depuração"
+  enable_file_logging: "Habilitar arquivo de registro"
+  apply_atlas_workaround: "Solução temporária para arquivos de Atlas"
+  translator_mode: "Modo tradutor"
+  skip_first_time_setup: "Pular configuração inicial"
+  lazy_translation_updates: "Atualizações rápidas de tradução"
+  disable_auto_update_check: "Desabilitar busca automática de atualizações"
+  disable_translations: "Desabilitar traduções"
+  enable_ipc: "Habilitar IPC"
+  ipc_listen_all: "IPC: Escutar Tudo"
+  auto_translate_stories: "Tradução automática das histórias"
+  auto_tl_warning: >-
+    Nota: este recurso não funcionará por si só; ele requer uma configuração externa.
+    Habilitar esta opção requer um servidor de tradução compatível instalado no
+    seu computador e um serviço de nuvem com uma API aberta como a do
+    py3translationServer ou Sugoi Toolkit. Sem um servidor rodando, nenhuma tradução
+    poderá ser realizada e a jogabilidade do jogo pode acabar sendo afetada.
+    Por favor, deixe esta opção desabilitada se você não tem um servidor
+    de tradução disponível.
+  auto_translate_ui: "Tradução automática da UI (PODE QUEBRAR AS UIs)"
+  target_fps: "FPS Alvo"
+  virtual_resolution_multiplier: "Multiplicador virtual de resolução"
+  ui_scale: "Escala da UI"
+  gui_scale: "Escala da sobreposição"
+  gui_landscape_ratio: "Proporção da escala da sobreposição (paisagem)"
+  ui_animation_scale: "Escala das animações da UI"
+  graphics_quality: "Qualidade dos gráficos"
+  vsync: "VSync"
+  auto_full_screen: "Tela cheia automática"
+  full_screen_mode: "Modo de tela cheia"
+  full_screen_mode_exclusive: "Exclusiva"
+  full_screen_mode_borderless: "Janela sem bordas"
+  block_minimize_in_full_screen: "Bloquear minimização em tela cheia"
+  resolution_scaling: "Escala de resolução"
+  resolution_scaling_default: "Padrão (1080p)"
+  resolution_scaling_ssize: "Dimensionar para tamanho da tela"
+  resolution_scaling_wsize: "Dimensionar para tamanho da janela"
+  window_always_on_top: "Janela sempre no topo"
+  story_choice_auto_select_delay: "Atraso nas escolhas durante o modo automático na história"
+  story_text_speed_multiplier: "Multiplicador de velocidade do texto da história"
+  force_allow_dynamic_camera: "Forçar uso da câmera dinâmica"
+  live_theater_allow_same_chara: "Permitir personagens repetidos nos shows"
+  physics_update_mode: "Modo de atualização das físicas"
+  disable_skill_name_translation: "Desabilitar tradução dos nomes das habilidades"
+  hide_ingame_ui_hotkey: "Atalho para esconder a UI do jogo"
+  hide_ingame_ui_hotkey_info: >-
+    Esta opção permite que um atalho seja utilizado para alternar a visualização da UI do jogo.
+    No Android, você pode pressionar rapidamente duas vezes o botão de volume para cima, ou tocar três vezes rapidamente no canto superior direito da tela.
+    No PC/Android com um teclado conectado, você pode pressionar a tecla Insert ou definir outra tecla nas configurações.
+  discord_rpc: "Discord RPC"
+  menu_open_key: "Atalho para abrir o menu"
+  menu_open_key_set: "Pressione para definir"
+  msaa: "MSAA"
+  render_scale: "Escala de Renderização"
+  aniso_level: "Filtragem Anisotrópica"
+  live_vocals_swap: "Vozes dos shows"
+  live_vocals_swap_character_n: "Personagem %{index}"
+  skill_info_dialog: "Caixa de informações das habilidades personalizada"
+  homescreen_bgseason: "Estação da tela de início"
+  shadow_resolution: "Resolução das Sombras"
+
+theme_editor:
+  title: "Editor do tema da GUI"
+  ui_accent_color: "Cor de destaque"
+  ui_window_fill: "Cor do fundo da janela"
+  ui_panel_fill: "Cor do fundo dos painéis"
+  ui_extreme_bg_color: "Cor dos campos de texto"
+  ui_text_color: "Cor do texto"
+  ui_window_rounding: "Cantos arrendondados"
+
+tl_update_dialog:
+  title: "Uma nova atualização está disponível."
+  content: "Uma nova atualização de tradução está disponível (%{size}). Deseja baixá-la?"
+  content_zip_warning: "Uma nova atualização de tradução está disponível (%{changed_size}). Esta atualização precisará baixar (%{download_size}) de dados."
+
+update_prompt_dialog:
+  title: "Uma nova atualização está disponível"
+  content: |
+    Uma nova atualização do Hachimi está disponível (%{version}). Deseja instalá-la?
+    O jogo será reiniciado para aplicar a atualização.
+  android_content: |
+    Uma nova atualização do Hachimi Edge está disponível (%{version}). Deseja instalá-la?
+
+    Toque em "Sim" para abrir o UmaPatcher Edge e reaplicar o patch no jogo.
+    (Não será necessário baixar os APKs do jogo novamente. Basta apenas aplicar o patch mais uma vez para que o UmaPatcher Edge instale a última versão do Hachimi Edge.)
+
+updating_dialog:
+  title: "Atualizando"
+  content: "Baixando atualização, o jogo reiniciará brevemente..."
+
+steam_overlay_conflict_dialog:
+  title: "Aviso"
+  content: >-
+    Compras podem não funcionar com a sobreposição do Hachimi habilitada. Se a sobreposição da Steam estiver aparecendo
+    por cima desta tela, ignore esta mensagem e pressione Não. Se nada tiver acontecido, pressione Sim
+    para desabilitar a sobreposição do Hachimi temporariamente. O jogo será fechado e, ao abri-lo novamente,
+    a sobreposição do Hachimi estará desabilitada e você conseguirá realizar a sua compra normalmente. Após isso,
+    basta reiniciar o seu jogo para habilitar a sobreposição do Hachimi novamente.
+key_names:
+  left: "Seta esquerda"
+  right: "Seta direita"
+  up: "Seta cima"
+  down: "Seta baixo"
+  insert: "Insert"
+  delete: "Delete"
+  home: "Home"
+  end: "End"
+  page_up: "Page Up"
+  page_down: "Page Down"
+  escape: "Escape"
+  tab: "Tab"
+  enter: "Enter"
+  space: "Space"
+  backspace: "Backspace"
+  clear: "Clear"
+  pause: "Pause"
+  caps_lock: "Caps Lock"
+  scroll_lock: "Scroll Lock"
+  num_lock: "Num Lock"
+  print_screen: "Print Screen"
+  left_win: "Windows esquerdo"
+  right_win: "Windows direito"
+  apps: "Menu"
+  alt: "Alt"
+  ctrl: "Ctrl"
+  shift: "Shift"
+  numpad_0: "Numpad 0"
+  numpad_1: "Numpad 1"
+  numpad_2: "Numpad 2"
+  numpad_3: "Numpad 3"
+  numpad_4: "Numpad 4"
+  numpad_5: "Numpad 5"
+  numpad_6: "Numpad 6"
+  numpad_7: "Numpad 7"
+  numpad_8: "Numpad 8"
+  numpad_9: "Numpad 9"
+  numpad_add: "Numpad +"
+  numpad_subtract: "Numpad -"
+  numpad_multiply: "Numpad *"
+  numpad_divide: "Numpad /"
+  numpad_decimal: "Numpad ."
