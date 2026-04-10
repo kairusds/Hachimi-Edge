@@ -21,13 +21,25 @@ pub fn load_libraries() -> Vec<Plugin> {
 
         if let Ok(handle) = res {
             if !handle.is_invalid() {
-                info!("Loaded library: {}", name);
+                let init_enum = {
+                    let v3_addr = utils::get_proc_address(handle, c"hachimi_init_v3");
+                    if v3_addr != 0 {
+                        Some(crate::core::plugin_api::PluginInit::V3(unsafe { std::mem::transmute(v3_addr) }))
+                    } else {
+                        let v2_addr = utils::get_proc_address(handle, c"hachimi_init");
+                        if v2_addr != 0 {
+                            Some(crate::core::plugin_api::PluginInit::V2(unsafe { std::mem::transmute(v2_addr) }))
+                        } else {
+                            None
+                        }
+                    }
+                };
 
-                let hachimi_init_addr = utils::get_proc_address(handle, c"hachimi_init");
-                if hachimi_init_addr != 0 {
+                if let Some(init_fn) = init_enum {
+                    info!("Loaded library: {}", name);
                     plugins.push(Plugin {
                         name: name.clone(),
-                        init_fn: unsafe { std::mem::transmute(hachimi_init_addr) }
+                        init_fn,
                     });
                 }
 
