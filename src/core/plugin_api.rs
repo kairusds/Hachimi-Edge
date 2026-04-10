@@ -172,6 +172,10 @@ unsafe extern "C" fn il2cpp_set_static_field_value(
     il2cpp::api::il2cpp_field_static_set_value(field, value as _)
 }
 
+unsafe extern "C" fn il2cpp_object_new(klass: *const Il2CppClass) -> *mut Il2CppObject{
+    return il2cpp::api::il2cpp_object_new(klass);
+}
+
 unsafe extern "C" fn il2cpp_unbox(obj: *mut Il2CppObject) -> *mut c_void {
     il2cpp::api::il2cpp_object_unbox(obj)
 }
@@ -575,6 +579,7 @@ pub struct Vtable {
     pub il2cpp_set_static_field_value: unsafe extern "C" fn(
         field: *mut FieldInfo, value: *const c_void
     ),
+    pub il2cpp_object_new: unsafe extern "C" fn(klass: *const Il2CppClass) -> *mut Il2CppObject,
     pub il2cpp_unbox: unsafe extern "C" fn(obj: *mut Il2CppObject) -> *mut c_void,
     pub il2cpp_get_main_thread: unsafe extern "C" fn() -> *mut Il2CppThread,
     pub il2cpp_get_attached_threads: unsafe extern "C" fn(out_size: *mut usize) -> *mut *mut Il2CppThread,
@@ -675,6 +680,7 @@ impl Vtable {
         il2cpp_set_field_value,
         il2cpp_get_static_field_value,
         il2cpp_set_static_field_value,
+        il2cpp_object_new,
         il2cpp_unbox,
         il2cpp_get_main_thread,
         il2cpp_get_attached_threads,
