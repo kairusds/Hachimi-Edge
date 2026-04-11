@@ -3,7 +3,7 @@ use std::process::{Command, Output};
 fn setup_windows_build() {
     // Link proxy export defs
     let absolute_path = std::fs::canonicalize("src/windows/proxy/exports.def").unwrap();
-    if std::env::consts::OS == "windows" {
+    if std::env::var("CARGO_CFG_TARGET_ENV").unwrap() == "msvc" {
         println!("cargo:rustc-cdylib-link-arg=/DEF:{}", absolute_path.display());
     } else {
         // I have to remove the '/DEF:' every time I cross compile on linux, so might as well do this
