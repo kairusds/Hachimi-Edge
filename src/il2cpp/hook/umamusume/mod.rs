@@ -71,6 +71,7 @@ pub mod TweenAnimationTimelineComponent;
 pub mod TweenAnimationTimelineData;
 pub mod TweenAnimationTimelineSheetData;
 mod PartsSingleModeChoiceRewardTextElementViewModel;
+mod PartsCommonHeaderTitle;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -147,4 +148,5 @@ pub fn init() {
     TweenAnimationTimelineData::init(image);
     TweenAnimationTimelineSheetData::init(image);
     PartsSingleModeChoiceRewardTextElementViewModel::init(image);
+    PartsCommonHeaderTitle::init(image);
 }
