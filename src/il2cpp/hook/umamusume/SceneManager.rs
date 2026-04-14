@@ -16,16 +16,17 @@ fn ChangeViewCommon(next_view_id: i32) {
 type ChangeViewJpfn = extern "C" fn(
     this: *mut Il2CppObject, next_view_id: i32, view_info: *mut Il2CppObject,
     callback_on_change_view_cancel: *mut Il2CppObject, callback_on_change_view_accept: *mut Il2CppObject,
-    force_change: bool, is_fast_destroy: bool
+    force_change: bool, is_fast_destroy: bool, fade_in_duration: f32
 );
 extern "C" fn ChangeViewJp(
     this: *mut Il2CppObject, next_view_id: i32, view_info: *mut Il2CppObject,
     callback_on_change_view_cancel: *mut Il2CppObject, callback_on_change_view_accept: *mut Il2CppObject,
-    force_change: bool, is_fast_destroy: bool
+    force_change: bool, is_fast_destroy: bool, fade_in_duration: f32
 ) {
     get_orig_fn!(ChangeViewJp, ChangeViewJpfn)(
         this, next_view_id, view_info, callback_on_change_view_cancel,
-        callback_on_change_view_accept, force_change, is_fast_destroy
+        callback_on_change_view_accept, force_change, is_fast_destroy,
+        fade_in_duration
     );
     ChangeViewCommon(next_view_id);
 }
@@ -51,7 +52,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, SceneManager);
 
     if Hachimi::instance().game.region == Region::Japan {
-        let ChangeView_addr = get_method_addr(SceneManager, c"ChangeView", 6);
+        let ChangeView_addr = get_method_addr(SceneManager, c"ChangeView", 7);
         new_hook!(ChangeView_addr, ChangeViewJp);
     }
     else {
