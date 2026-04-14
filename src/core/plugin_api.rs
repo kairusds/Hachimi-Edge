@@ -3,7 +3,7 @@ use std::ffi::{c_char, c_void, CStr};
 use once_cell::sync::OnceCell;
 use egui::Align;
 
-use crate::{core::{gui, Hachimi, Interceptor}, il2cpp::{self, types::{il2cpp_array_size_t, FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo}}};
+use crate::{core::{Hachimi, Interceptor, gui}, il2cpp::{self, types::{FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppMethodPointer, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo, il2cpp_array_size_t}}};
 
 const VERSION: i32 = 2;
 
@@ -140,6 +140,10 @@ unsafe extern "C" fn il2cpp_find_nested_class(
     il2cpp::symbols::find_nested_class(class, CStr::from_ptr(name))
         .inspect_err(|e| error!("{}", e))
         .unwrap_or(0 as _)
+}
+
+unsafe extern "C" fn il2cpp_resolve_icall(name: *const c_char) -> Il2CppMethodPointer {
+    il2cpp::api::il2cpp_resolve_icall(name)
 }
 
 unsafe extern "C" fn il2cpp_get_field_from_name(
@@ -564,6 +568,7 @@ pub struct Vtable {
     pub il2cpp_find_nested_class: unsafe extern "C" fn(
         class: *mut Il2CppClass, name: *const c_char
     ) -> *mut Il2CppClass,
+    pub il2cpp_resolve_icall: unsafe extern "C" fn(name: *const c_char) -> Il2CppMethodPointer,
     pub il2cpp_get_field_from_name: unsafe extern "C" fn(
         class: *mut Il2CppClass, name: *const c_char
     ) -> *mut FieldInfo,
@@ -675,6 +680,7 @@ impl Vtable {
         il2cpp_get_method_cached,
         il2cpp_get_method_addr_cached,
         il2cpp_find_nested_class,
+        il2cpp_resolve_icall,
         il2cpp_get_field_from_name,
         il2cpp_get_field_value,
         il2cpp_set_field_value,
