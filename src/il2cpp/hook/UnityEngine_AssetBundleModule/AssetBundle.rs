@@ -6,7 +6,7 @@ use widestring::Utf16Str;
 
 use crate::{core::{ext::Utf16StringExt, hachimi::AssetMetadata}, il2cpp::{
     api::il2cpp_resolve_icall, ext::{Il2CppObjectExt, Il2CppStringExt}, hook::{
-        umamusume::{StoryRaceTextAsset, StoryTimelineData, TextDotData, TextRubyData},
+        umamusume::{StoryParamChangeEffect, StoryRaceTextAsset, StoryTimelineData, TextDotData, TextRubyData},
         Cute_UI_Assembly::AtlasReference,
         UnityEngine_CoreModule::{GameObject, Texture2D}
     }, symbols::GCHandle, types::*
@@ -91,6 +91,9 @@ pub fn on_LoadAsset(bundle: *mut Il2CppObject, asset: *mut Il2CppObject, name: *
     }
     else if class == TextDotData::class() {
         TextDotData::on_LoadAsset
+    }
+    else if class == StoryParamChangeEffect::class() {
+        StoryParamChangeEffect::on_LoadAsset
     }
     else {
         return;
