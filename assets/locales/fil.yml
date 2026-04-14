@@ -1,0 +1,272 @@
+hachimi: "Hachimi Edge"
+
+windows:
+  menu_open_key: "Kanang arrow"
+
+android:
+  menu_open_key: "Vol Up + Vol Down\n\uf25a o i-tap nang tatlong beses ang kaliwang taas"
+
+splash_sub: "\uf015 Pindutin ang %{open_key_str} para buksan ang menu."
+loading_label: "Naglo-load..."
+search_filter: "I-type para hanapin..."
+open: "Buksan"
+cancel: "Kanselahin"
+save: "I-save"
+done: "Tapos na"
+next: "Susunod"
+previous: "Nakaraan"
+yes: "Oo"
+no: "Hindi"
+ok: "Sige"
+retry: "Subukan ulit"
+default: "Default"
+off: "Off"
+on: "On"
+enable: "I-enable"
+info: "Impormasyon"
+warning: "Babala"
+confirm_dialog_title: "Kumpirmahin"
+soft_restart_confirm_content: "Gusto mo ba talaga i-soft restart ang laro?"
+in_game_browser_confirm_content: "Gusto mo bang buksan ang in-game na browser?"
+browser_dialog_title: "Browser"
+
+menu:
+  check_for_updates: "\uf0aa Tignan kung may update"
+  fps_text: "FPS: %{fps}"
+  close_menu: "\uf00d Isara ang menu"
+  stats_heading: "\uf022 Mga Istatistika"
+  localize_dict_entries: "Mga entry sa localize_dict: %{count}"
+  hashed_dict_entries: "Mga entry sa hashed_dict: %{count}"
+  config_heading: "\uf0ad Config"
+  open_config_editor: "\uf040 Buksan ang editor ng config"
+  reload_config: "\uf021 I-reload ang config"
+  open_first_time_setup: "\uf135 Buksan ang setup"
+  graphics_heading: "\uf03e Grapiks"
+  fps_label: "FPS"
+  vsync_label: "VSync"
+  stay_on_top: "Manatili sa itaas"
+  translation_heading: "\uf02d Pagsasalin"
+  reload_localized_data: "\uf021 I-reload ang isinaling data"
+  tl_check_for_updates: "\uf0aa Tignan kung may update sa pagsasalin"
+  tl_check_for_updates_pedantic: "\uf0aa Tignan kung may update sa pagsasalin (pedantiko)"
+  dump_localize_dict: "I-dump ang localize dict"
+  danger_zone_heading: "\uf071 Mapanganib na Lugar"
+  danger_zone_warning: "Ang mga opsyong ito ay maaaring magkaroon ng hindi inaasahang epekto sa laro. Gamitin nang may pag-iingat!"
+  soft_restart: "\uf021 I-soft restart"
+  open_in_game_browser: "\uf0ac Buksan ang in-game na browser"
+  toggle_game_ui: "\uf06e I-toggle ang UI ng laro"
+  discord_rpc: "Discord RPC"
+
+notification:
+  saved_localize_dump: "Na-save sa localize_dump.json"
+  config_reloaded: "Na-reload ang config."
+  config_saved: "Config saved."
+  config_error: "Nasira ang config, gagamitin ang mga default sa halip..."
+  localized_data_reloaded: "Na-reload ang data ng pagsasalin."
+  checking_for_tl_updates: "Tinitignan kung may update sa pagsasalin..."
+  no_tl_updates: "Walang available na update sa pagsasalin."
+  update_failed: "Nabigo ang pag-update: %{reason}"
+  update_completed: "Tapos na ang pag-update."
+  errors_during_update: "May %{count} na error na nangyari habang naga-update. Suriin ang mga log para sa mga detalye."
+  checking_for_updates: "Tinitignan kung may update..."
+  no_updates: "Walang update na available."
+  press_to_set_menu_key: "Pindutin ang key sa window ng laro para itakda ang hotkey ng pagbukas ng menu."
+  menu_open_key_set: "Itinakda ang hotkey ng pagbukas sa %{key}"
+  ipc_softreset_exec: "Na-execute ng IPC remote ang soft-reset"
+  atlas_workaround_reset: "Nabago ang mga atlas file. Na-disable ang workaround."
+
+first_time_setup:
+  title: "Unang Beses na Pag-setup"
+  welcome_heading: "Maligayang Pagdating"
+  welcome_content: >-
+    Na-install na ang Hachimi! Gagabayan ka nito sa inisyal na pag-set up.
+    Kung hindi ka interesado sa tampok na pagsasalin, maaari mo itong laktawan sa pamamagitan ng pagsara
+    ng dialog na ito.
+
+
+    DISCLAIMER: Isang proyekto na pinangungunahan ng komunidad ang Hachimi. Ginawa ng mga iba't ibang mga kontribyutor ang mga pagsasalin.
+    Hindi ito binuo o kakaibat ng Cygames, Inc., at lumalabag ito sa Mga Tuntunin sa Serbisyo. Sa pamamagitan ng pagpatuloy,
+    tinatanggap mo na gagamitin mo ito sa iyong sariling peligro.
+  translation_repo_heading: "Repo ng pagsasalin"
+  select_translation_repo: "Pumili ng repo ng pagsasalin:"
+  no_compatible_repo: "Walang mga repo ng pagsasalin ang compatible sa itong bersyon ng laro."
+  skip_translation: "Laktawan ang pagsasalin"
+  complete_heading: "Tapos na!"
+  complete_content: >-
+    Pindutin ang Tapos na para i-save ang configuration.
+    Kung pumili ka ng repo ng pagsasalin, isasagawa ang pagsusuri ng update,
+    na magpo-prompt sa iyo na i-download ang bagong datos ng pagsasalin.
+
+about:
+  title: "About"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds at mga kontribyutor"
+  view_license: "Tignan ang lisensya"
+  open_website: "Buksan ang website"
+  view_source_code: "Tignan ang source code"
+
+license:
+  title: "Lisensya"
+  gpl_v3_only_notice: "Text ng GPL-3.0-only License"
+  ofl_fonts_header: "Kasama sa software na ito ang mga sumusunod na font na nasa ilalim ng SIL Open Font License 1.1:"
+  font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
+  font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. Lahat ng karapatan ay nakalaan."
+  ofl_notice: "Text ng SIL OFL 1.1 License"
+  font_alibaba_header: "Alibaba PuHuiTi 3.0"
+  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. Lahat ng karapatan ay nakalaan."
+
+tl_updater:
+  title: "Ina-update..."
+  warning: "Hindi gagana ang mga pagsasalin habang isinasagawa ang pag-update."
+
+config_editor:
+  title: "Editor ng Config"
+  general_tab: "\uf013 Pangkalahatan"
+  graphics_tab: "\uf03e Grapiks"
+  gameplay_tab: "\uf11b Paglalaro"
+  language: "Wika"
+  restore_defaults: "I-restore sa mga default"
+  disable_overlay: "I-disable ang overlay (GUI)"
+  disable_overlay_warning: >-
+    Idi-disable nito ang Hachimi overlay pagkatapos mo i-restart ang laro.
+    na nangangahulugan na HINDI mo maa-access ang Editor ng Config pagkatpos nito.
+    Kapag hindi ito sinasadya, isara ang dialog na ito at I-DISABLE ang opsyon.
+  ipv4_only: "IPv4 na ureq lamang"
+  meta_index_url: "URL ng Meta ng Pagsasalin"
+  debug_mode: "Mode ng pag-debug"
+  enable_file_logging: "I-enable ang pag-log sa file"
+  apply_atlas_workaround: "I-apply ang workaround sa TL atlas"
+  translator_mode: "Mode ng tagasalin"
+  skip_first_time_setup: "Laktawan ang unang-beses na pag-set up"
+  lazy_translation_updates: "Tamad na pag-update ng pagsasalin"
+  disable_auto_update_check: "I-disable ang awtomatikong pagsusuri ng update"
+  disable_translations: "I-disable ang pagsasalin"
+  enable_ipc: "I-enable ang IPC"
+  ipc_listen_all: "Makinig sa lahat ng address sa IPC"
+  auto_translate_stories: "Awtomatikong isalin ang mga kwento"
+  auto_tl_warning: >-
+    Paalala: Hindi gagana nang mag-isa ang feature na ito; kinakailangan ito ng external na pag-set up.
+    Ang pag-enable ng opsyong ito ay nangangailangan ng naka-install na compatible na translation server
+    sa iyong computer o isang cloud service na nagpapakita ng API tulad ng py3translationServer o Sugoi
+    Toolkit. Kung walang tumatakbong server, walang karagdagang pagsasalin ang mangyayari at maaaring
+    maapektuhan ang gameplay. Paki-disable ang opsyong ito kung wala kang available na translation server.
+  auto_translate_ui: "Awtomatikong isalin ang UI (BAKA SIRAIN ANG MGA UI)"
+  target_fps: "Target FPS"
+  virtual_resolution_multiplier: "Multiplier ng birtual na resolusyon"
+  ui_scale: "Laki ng UI"
+  gui_scale: "Laki ng Overlay"
+  gui_landscape_ratio: "Ratio ng laki ng landscape overlay"
+  ui_animation_scale: "Scale ng UI animation"
+  graphics_quality: "Kalidad ng grapiks"
+  vsync: "VSync"
+  auto_full_screen: "Awto na full screen"
+  full_screen_mode: "Full screen mode"
+  full_screen_mode_exclusive: "Eksklusibo"
+  full_screen_mode_borderless: "Borderless"
+  block_minimize_in_full_screen: "I-block ang pag-minimize sa full screen"
+  resolution_scaling: "Resolution scaling"
+  resolution_scaling_default: "Default (1080p)"
+  resolution_scaling_ssize: "I-scale sa laki ng screen"
+  resolution_scaling_wsize: "I-scale sa laki ng window"
+  window_always_on_top: "Palaging nasa taas ang window"
+  story_choice_auto_select_delay: "Delay ng awtomatikong pagpili ng pagpipilian sa kwento"
+  story_text_speed_multiplier: "Multiplier ng bilis ng text sa kwento"
+  force_allow_dynamic_camera: "Pwersahang payagan ang dinamikong camera"
+  live_theater_allow_same_chara: "Payagan ang katulad na karakter sa live theater"
+  physics_update_mode: "Mode ng pag-update ng pisiks"
+  disable_skill_name_translation: "I-disable ang pagsasalin ng pangalan ng skill"
+  hide_ingame_ui_hotkey: "Hotkey ng pagtago ng UI ng laro"
+  hide_ingame_ui_hotkey_info: >-
+    Pinapayagan ng opsyong ito ang isang shortcut key na i-toggle ang UI ng laro.
+    Para sa Android, kailangan mong i-double tap ang Volume Up key, o i-triple tap ang kanang itaas ng screen.
+    Para sa PC/Android na may keyboard, ito ang Insert key at maaaring i-configure sa GUI o config.
+  discord_rpc: "Discord RPC"
+  menu_open_key: "Hotkey ng pagbukas ng menu"
+  menu_open_key_set: "Itakda"
+  msaa: "MSAA"
+  render_scale: "Scale ng Pag-render"
+  aniso_level: "Anisotropic Filtering"
+  live_vocals_swap: "Pagpalit ng Boses sa Live"
+  live_vocals_swap_character_n: "Karakter %{index}"
+  skill_info_dialog: "Pasadyang dialog ng impormasyon sa skill"
+  homescreen_bgseason: "Panahon ng Homescreen Background "
+  shadow_resolution: "Resolusyon ng Anino"
+
+theme_editor:
+  title: "Editor ng Tema ng GUI"
+  ui_accent_color: "Kulay ng Accent"
+  ui_window_fill: "Kulay ng Background ng Window"
+  ui_panel_fill: "Kulay ng Background ng Panel"
+  ui_extreme_bg_color: "Background ng Input"
+  ui_text_color: "Kulay ng Text"
+  ui_window_rounding: "Mga Rounded Corner"
+
+tl_update_dialog:
+  title: "May bagong update"
+  content: "May bagong update sa pagsasalin (%{size}). Gusto mo ba ito i-download?"
+  content_zip_warning: "ay bagong update sa pagsasalin (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}) sa halip."
+
+update_prompt_dialog:
+  title: "May bagong update"
+  content: |
+    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    Ire-restart ang laro para ma-apply ang update.
+  android_content: |
+    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+
+    Pindutin ang "Oo" para buksan ang UmaPatcher Edge at i-patch muli ang laro.
+    (Hindi kailangan ng pag-download ulit ng laro o APK, kailangan mo lang mag-patch muli tulad ng dati mong ginagawa dahil palaging dina-download ng UmaPatcher Edge ang pinakabagong bersyon ng Hachimi Edge.)
+
+updating_dialog:
+  title: "Ina-update..."
+  content: "Dina-download ang update, ire-restart ang laro sa ilang sandali..."
+
+steam_overlay_conflict_dialog:
+  title: "Paalala"
+  content: >-
+    Maaaring hindi gumana ang mga pagbili kapag naka-enable ang Hachimi overlay. Kung lumitaw na ang Steam overlay para makabili ka,
+    huwag pansinin ang mensaheng ito at pindutin ang Hindi. Kung hindi ito gumana, pindutin ang Oo para pansamantalang i-disable
+    ang Hachimi overlay. Isasara nito ang laro, at sa susunod na magsimula ang laro, ang Hachimi overlay ay hindi na gagana at
+    makakabili ka na. Pagkatapos nito, maaari mong i-restart muli ang laro para muling i-enable ang Hachimi overlay.
+key_names:
+  left: "Kaliwang arrow"
+  right: "Kanang arrow"
+  up: "Up arrow"
+  down: "Down arrow"
+  insert: "Insert"
+  delete: "Delete"
+  home: "Home"
+  end: "End"
+  page_up: "Page Up"
+  page_down: "Page Down"
+  escape: "Escape"
+  tab: "Tab"
+  enter: "Enter"
+  space: "Space"
+  backspace: "Backspace"
+  clear: "Clear"
+  pause: "Pause"
+  caps_lock: "Caps Lock"
+  scroll_lock: "Scroll Lock"
+  num_lock: "Num Lock"
+  print_screen: "Print Screen"
+  left_win: "Left Windows"
+  right_win: "Right Windows"
+  apps: "Menu"
+  alt: "Alt"
+  ctrl: "Ctrl"
+  shift: "Shift"
+  numpad_0: "Numpad 0"
+  numpad_1: "Numpad 1"
+  numpad_2: "Numpad 2"
+  numpad_3: "Numpad 3"
+  numpad_4: "Numpad 4"
+  numpad_5: "Numpad 5"
+  numpad_6: "Numpad 6"
+  numpad_7: "Numpad 7"
+  numpad_8: "Numpad 8"
+  numpad_9: "Numpad 9"
+  numpad_add: "Numpad +"
+  numpad_subtract: "Numpad -"
+  numpad_multiply: "Numpad *"
+  numpad_divide: "Numpad /"
+  numpad_decimal: "Numpad ."
