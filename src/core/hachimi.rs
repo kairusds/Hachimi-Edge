@@ -16,6 +16,35 @@ pub const WEBSITE_URL: &str = "https://hachimi.noccu.art";
 pub const UMAPATCHER_PACKAGE_NAME: &str = "com.leadrdrk.umapatcher.edge";
 pub const UMAPATCHER_INSTALL_URL: &str = "https://github.com/kairusds/UmaPatcher-Edge/releases/latest";
 
+static mut ORIG_SQLITE3_OPEN_V2: Option<extern "C" fn(*const i8, *mut *mut std::ffi::c_void, i32, *const i8) -> i32> = None;
+static mut ORIG_SQLITE3_KEY: Option<extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void, i32) -> i32> = None;
+
+extern "C" fn sqlite3_open_v2_hook(filename: *const i8, pp_db: *mut *mut std::ffi::c_void, flags: i32, z_vfs: *const i8) -> i32 {
+    let result = unsafe { ORIG_SQLITE3_OPEN_V2.unwrap()(filename, pp_db, flags, z_vfs) };
+
+    if result == 0 && !pp_db.is_null() {
+        if crate::il2cpp::sql::AUTO_UNLOCK_NEXT_DB.swap(false, std::sync::atomic::Ordering::Relaxed) {
+            let raw_key = crate::il2cpp::sql::RETRIEVED_RAW_KEY.lock().unwrap();
+            if !raw_key.is_empty() {
+                let db_ptr = unsafe { *pp_db };
+                unsafe { ORIG_SQLITE3_KEY.unwrap()(db_ptr, raw_key.as_ptr() as *const std::ffi::c_void, raw_key.len() as i32) };
+            }
+        }
+    }
+    result
+}
+
+extern "C" fn sqlite3_key_hook(db: *mut std::ffi::c_void, p_key: *const std::ffi::c_void, n_key: i32) -> i32 {
+    if !p_key.is_null() {
+        let mut raw_guard = crate::il2cpp::sql::RETRIEVED_RAW_KEY.lock().unwrap();
+        if raw_guard.is_empty() {
+            let key_bytes = unsafe { std::slice::from_raw_parts(p_key as *const u8, n_key as usize) };
+            *raw_guard = key_bytes.to_vec();
+        }
+    }
+    unsafe { ORIG_SQLITE3_KEY.unwrap()(db, p_key, n_key) }
+}
+
 pub struct Hachimi {
     // Hooking stuff
     pub interceptor: Interceptor,
@@ -256,6 +285,57 @@ impl Hachimi {
     }
 
     pub fn on_dlopen(&self, filename: &str, handle: usize) -> bool {
+        let filename_lower = filename.to_lowercase();
+
+        #[cfg(target_os = "windows")]
+        if filename_lower.contains("libnative.dll") {
+            unsafe {
+                use windows::Win32::System::LibraryLoader::GetProcAddress;
+                use windows::core::PCSTR;
+
+                let h_module = windows::Win32::Foundation::HMODULE(handle as _);
+                let open_addr = GetProcAddress(h_module, PCSTR("sqlite3_open_v2\0".as_ptr()));
+                let key_addr = GetProcAddress(h_module, PCSTR("sqlite3_key\0".as_ptr()));
+
+                if let Some(addr) = open_addr {
+                    if let Ok(orig) = self.interceptor.hook(addr as usize, sqlite3_open_v2_hook as *const () as usize) {
+                        ORIG_SQLITE3_OPEN_V2 = Some(std::mem::transmute(orig));
+                    }
+                }
+                if let Some(addr) = key_addr {
+                    if let Ok(orig) = self.interceptor.hook(addr as usize, sqlite3_key_hook as *const () as usize) {
+                        ORIG_SQLITE3_KEY = Some(std::mem::transmute(orig));
+                    }
+                }
+            }
+        }
+
+        #[cfg(target_os = "android")]
+        if filename_lower.contains("libnative.so") {
+            unsafe {
+                let handle_ptr = handle as *mut libc::c_void;
+
+                let open_sym = b"sqlite3_open_v2\0".as_ptr() as *const libc::c_char;
+                let key_sym = b"sqlite3_key\0".as_ptr() as *const libc::c_char;
+
+                let open_addr = libc::dlsym(handle_ptr, open_sym);
+                let key_addr = libc::dlsym(handle_ptr, key_sym);
+
+                if !open_addr.is_null() {
+                    if let Ok(orig) = self.interceptor.hook(open_addr as usize, sqlite3_open_v2_hook  as *const () as usize) {
+                        ORIG_SQLITE3_OPEN_V2 = Some(std::mem::transmute(orig));
+                        info!("Successfully hooked native sqlite3_open_v2 (Android)");
+                    }
+                }
+                if !key_addr.is_null() {
+                    if let Ok(orig) = self.interceptor.hook(key_addr as usize, sqlite3_key_hook as *const () as usize) {
+                        ORIG_SQLITE3_KEY = Some(std::mem::transmute(orig));
+                        info!("Successfully hooked native sqlite3_key (Android)");
+                    }
+                }
+            }
+        }
+
         // Prevent double initialization
         if self.hooking_finished.load(atomic::Ordering::Relaxed) { return false; }
 

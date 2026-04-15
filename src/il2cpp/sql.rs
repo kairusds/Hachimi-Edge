@@ -1,10 +1,15 @@
-use std::ptr;
+use std::{ptr, sync::{atomic::{self, AtomicPtr, AtomicBool, Ordering}, Mutex, RwLock}};
 use fnv::{FnvHashMap, FnvHashSet};
 use sqlparser::ast;
+use once_cell::sync::Lazy;
 use crate::{
     core::{utils::get_masterdb_path, Hachimi},
     il2cpp::{ext::{StringExt, Il2CppStringExt}, hook::LibNative_Runtime::Sqlite3::{Connection, Query}, types::{Il2CppObject, Il2CppString}}
 };
+
+pub static RETRIEVED_RAW_KEY: Lazy<Mutex<Vec<u8>>> = Lazy::new(|| Mutex::new(Vec::new()));
+pub static AUTO_UNLOCK_NEXT_DB: AtomicBool = AtomicBool::new(false);
+pub static META_DATA: Lazy<RwLock<MetaData>> = Lazy::new(|| RwLock::new(MetaData::default()));
 
 // public API
 #[derive(Default)]
@@ -510,5 +515,75 @@ impl<'a> Iterator for BinaryOpIter<'a> {
 
             return Some(BinaryOpRef { left, op, right })
         }
+    }
+}
+
+#[derive(Default)]
+pub struct MetaData {
+    pub logical_name_to_hash: FnvHashMap<String, String>,
+}
+
+impl MetaData {
+    pub fn get_hash(logical_name: &str) -> Option<String> {
+        {
+            let meta_read = META_DATA.read().unwrap();
+            if !meta_read.logical_name_to_hash.is_empty() {
+                return meta_read.logical_name_to_hash.get(logical_name).cloned();
+            }
+        }
+
+        let mut meta_write = META_DATA.write().unwrap();
+
+        if meta_write.logical_name_to_hash.is_empty() {
+            if RETRIEVED_RAW_KEY.lock().unwrap().is_empty() {
+                return None;
+            }
+            let loaded = Self::load_from_db();
+            meta_write.logical_name_to_hash = loaded.logical_name_to_hash;
+        }
+
+        meta_write.logical_name_to_hash.get(logical_name).cloned()
+    }
+
+    fn load_from_db() -> Self {
+        let mut logical_name_to_hash = FnvHashMap::default();
+
+        let meta_path = std::path::PathBuf::from(crate::core::utils::get_data_path()).join("meta");
+        let db_path_str = meta_path.to_string_lossy().to_string();
+
+        let conn = Connection::new();
+
+        AUTO_UNLOCK_NEXT_DB.store(true, Ordering::Relaxed);
+
+        if Connection::Open(conn, db_path_str.to_il2cpp_string(), std::ptr::null_mut(), std::ptr::null_mut(), 0) {
+            let sql = "SELECT n, h FROM a";
+            let query = Connection::Query(conn, sql.to_il2cpp_string());
+
+            if !query.is_null() {
+                while Query::Step(query) {
+                    let path_ptr = Query::GetText(query, 0);
+                    let hash_ptr = Query::GetText(query, 1);
+
+                    if let (Some(path_str), Some(hash_str)) = (
+                        unsafe { path_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()),
+                        unsafe { hash_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()),
+                    ) {
+                        let logical_name = if let Some(idx) = path_str.rfind('/') {
+                            format!("{}.a", &path_str[idx + 1..])
+                        } else {
+                            format!("{}.a", path_str)
+                        };
+
+                        logical_name_to_hash.insert(logical_name, hash_str);
+                    }
+                }
+                Query::Dispose(query);
+            }
+            Connection::CloseDB(conn);
+        } else {
+            error!("Failed to open meta database at: {}", db_path_str);
+        }
+
+        MetaData { logical_name_to_hash }
     }
 }
