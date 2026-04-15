@@ -146,6 +146,10 @@ unsafe extern "C" fn il2cpp_resolve_icall(name: *const c_char) -> Il2CppMethodPo
     il2cpp::api::il2cpp_resolve_icall(name)
 }
 
+unsafe extern "C" fn il2cpp_class_get_methods(klass: *mut Il2CppClass, iter: *mut *mut c_void) -> *const MethodInfo {
+    il2cpp::api::il2cpp_class_get_methods(klass, iter)
+}
+
 unsafe extern "C" fn il2cpp_get_field_from_name(
     class: *mut Il2CppClass, name: *const c_char
 ) -> *mut FieldInfo {
@@ -569,6 +573,7 @@ pub struct Vtable {
         class: *mut Il2CppClass, name: *const c_char
     ) -> *mut Il2CppClass,
     pub il2cpp_resolve_icall: unsafe extern "C" fn(name: *const c_char) -> Il2CppMethodPointer,
+    pub il2cpp_class_get_methods: unsafe extern "C" fn(klass: *mut Il2CppClass, iter: *mut *mut c_void) -> *const MethodInfo,
     pub il2cpp_get_field_from_name: unsafe extern "C" fn(
         class: *mut Il2CppClass, name: *const c_char
     ) -> *mut FieldInfo,
@@ -681,6 +686,7 @@ impl Vtable {
         il2cpp_get_method_addr_cached,
         il2cpp_find_nested_class,
         il2cpp_resolve_icall,
+        il2cpp_class_get_methods,
         il2cpp_get_field_from_name,
         il2cpp_get_field_value,
         il2cpp_set_field_value,
