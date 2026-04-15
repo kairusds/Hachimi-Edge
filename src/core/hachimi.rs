@@ -528,7 +528,7 @@ impl Language {
             Language::Indonesian => "Bahasa Indonesia",
             Language::Spanish => "Español (ES)",
             Language::BPortuguese => "Português (Brasil)",
-            Language::Filipino => "Wikang Filipino"
+            Language::Filipino => "Filipino"
         }
     }
 
