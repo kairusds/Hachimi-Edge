@@ -1,0 +1,197 @@
+hachimi: "Hachimi Edge"
+
+windows:
+  menu_open_key: "Kanang arrow"
+
+android:
+  menu_open_key: "Vol Up + Vol Down\n\uf25a o i-tap nang tatlong beses ang top-left ng screen"
+
+splash_sub: "\uf015 Pindutin ang %{open_key_str} para buksan ang menu."
+loading_label: "Naglo-load..."
+search_filter: "I-type para hanapin..."
+open: "Buksan"
+cancel: "Kanselahin"
+save: "I-save"
+done: "Tapos na"
+next: "Susunod"
+previous: "Nakaraan"
+yes: "Oo"
+no: "Hindi"
+retry: "Subukan ulit"
+enable: "I-enable"
+info: "Impormasyon"
+warning: "Babala"
+confirm_dialog_title: "Kumpirmahin"
+soft_restart_confirm_content: "Gusto mo ba talaga i-soft restart ang laro?"
+in_game_browser_confirm_content: "Gusto mo bang buksan ang in-game na browser?"
+
+menu:
+  check_for_updates: "\uf0aa Tignan kung may update"
+  close_menu: "\uf00d Isara ang menu"
+  stats_heading: "\uf022 Mga Istatistika"
+  localize_dict_entries: "Mga entry sa localize_dict: %{count}"
+  hashed_dict_entries: "Mga entry sa hashed_dict: %{count}"
+  open_config_editor: "\uf040 Buksan ang config editor"
+  reload_config: "\uf021 I-reload ang config"
+  open_first_time_setup: "\uf135 Buksan ang setup"
+  stay_on_top: "Manatili sa itaas"
+  reload_localized_data: "\uf021 I-reload ang localized data"
+  tl_check_for_updates: "\uf0aa Tignan kung may update sa translations"
+  tl_check_for_updates_pedantic: "\uf0aa Tignan kung may update sa translations (pedantic)"
+  dump_localize_dict: "I-dump ang localize dict"
+  danger_zone_heading: "\uf071 Danger Zone"
+  danger_zone_warning: "Maaaring magkaroon ng hindi inaasahang epekto sa laro ang mga opsyong ito. Gamitin nang may pag-iingat!"
+  soft_restart: "\uf021 I-soft restart"
+  open_in_game_browser: "\uf0ac Buksan ang in-game na browser"
+  toggle_game_ui: "\uf06e I-toggle ang game UI"
+  discord_rpc: "Discord RPC"
+
+notification:
+  saved_localize_dump: "Na-save sa localize_dump.json"
+  config_reloaded: "Na-reload ang config."
+  config_saved: "Na-save ang config."
+  config_error: "Nasira ang config, gagamitin ang mga default sa halip..."
+  localized_data_reloaded: "Na-reload ang data ng pag-translate."
+  checking_for_tl_updates: "Tinitignan kung may update sa translations..."
+  no_tl_updates: "Walang available na update sa translations."
+  update_failed: "Nabigo ang pag-update: %{reason}"
+  update_completed: "Tapos na ang pag-update."
+  errors_during_update: "May %{count} na error na nangyari habang naga-update. Suriin ang mga log para sa mga detalye."
+  checking_for_updates: "Tinitignan kung may update..."
+  no_updates: "Walang update na available."
+  press_to_set_menu_key: "Pindutin ang key sa window ng laro para itakda ang hotkey ng pagbukas ng menu."
+  menu_open_key_set: "Itinakda ang hotkey ng pagbukas sa %{key}"
+  ipc_softreset_exec: "Na-execute ng IPC remote ang soft-reset"
+  atlas_workaround_reset: "Nabago ang mga atlas file. Na-disable ang workaround."
+
+first_time_setup:
+  title: "First Time Setup"
+  welcome_heading: "Maligayang Pagdating"
+  welcome_content: >-
+    Na-install na ang Hachimi! Gagabayan ka nito sa inisyal na pag-set up.
+    Kung hindi ka interesado sa translation na feature, maaari mo itong laktawan
+    sa pamamagitan ng pagsara nito.
+
+
+    DISCLAIMER: Isang proyekto na pinangungunahan ng komunidad ang Hachimi. Ginawa
+    ng mga iba't ibang mga kontribyutor ang mga translator. Hindi ito binuo o ineendorso
+    ng Cygames, Inc., at lumalabag ito sa Mga Tuntunin sa Serbisyo. Sa pamamagitan ng pagpatuloy,
+    tinatanggap mo na gagamitin mo ito sa iyong sariling peligro.
+  translation_repo_heading: "Repo ng translations"
+  select_translation_repo: "Pumili ng translations repo:"
+  no_compatible_repo: "Walang mga repo na compatible sa game version na ito."
+  skip_translation: "Laktawan ang translations"
+  complete_heading: "Tapos na!"
+  complete_content: >-
+    Pindutin ang "Tapos na" para i-save ang configuration.
+    Kung pumili ka ng translation repo, isasagawa ang pagsusuri ng update,
+    na magpo-prompt sa iyo na i-download ang bagong translation data.
+
+about:
+  title: "Tungkol"
+  view_license: "Tignan ang lisensya"
+  open_website: "Buksan ang website"
+  view_source_code: "Tignan ang source code"
+
+license:
+  title: "Lisensya"
+  gpl_v3_only_notice: "Text ng GPL-3.0-only License"
+  ofl_fonts_header: "Kasama sa software na ito ang mga sumusunod na font na nasa ilalim ng SIL Open Font License 1.1:"
+  ofl_notice: "Text ng SIL OFL 1.1 License"
+
+tl_updater:
+  title: "Ina-update..."
+  warning: "Hindi gagana ang mga translations habang ina-update."
+
+config_editor:
+  general_tab: "\uf013 Pangkalahatan"
+  gameplay_tab: "\uf11b Paglalaro"
+  language: "Wika"
+  restore_defaults: "I-restore sa mga default"
+  disable_overlay: "I-disable ang overlay (GUI)"
+  disable_overlay_warning: >-
+    Idi-disable nito ang Hachimi overlay pagkatapos mo i-restart ang laro.
+    na nangangahulugan na HINDI mo maa-access ang Config Editor pagkatpos nito.
+    Kapag hindi ito sinasadya, isara ang dialog na ito at I-DISABLE ang opsyon.
+  ipv4_only: "IPv4 na ureq lamang"
+  meta_index_url: "URL ng Translation Meta"
+  enable_file_logging: "I-enable ang logging sa file"
+  apply_atlas_workaround: "I-apply ang TL atlas workaround"
+  skip_first_time_setup: "Laktawan ang first-time setup"
+  lazy_translation_updates: "Lazy na pag-update ng translations"
+  disable_auto_update_check: "I-disable ang automatic updates"
+  disable_translations: "I-disable ang pag-translate"
+  enable_ipc: "I-enable ang IPC"
+  auto_translate_stories: "Awtomatikong i-translate ang mga kwento"
+  auto_tl_warning: >-
+    Paalala: Hindi gagana nang mag-isa ang feature na ito; kinakailangan ito ng external setup.
+    Ang pag-enable ng opsyong ito ay nangangailangan ng naka-install na compatible na translation server
+    sa iyong computer o isang cloud service na nagpapakita ng API tulad ng py3translationServer o Sugoi
+    Toolkit. Kung walang tumatakbong server, walang karagdagang pag-translate ang mangyayari at maaaring
+    maapektuhan ang gameplay. Paki-disable ang opsyong ito kung wala kang available na translation server.
+  auto_translate_ui: "Awtomatikong i-translate ang UI (BAKA MASIRA ANG MGA UI)"
+  virtual_resolution_multiplier: "Multiplier ng virtual resolution"
+  ui_scale: "Laki ng UI"
+  gui_scale: "Laki ng Overlay"
+  gui_landscape_ratio: "Overlay scale ratio sa landscape"
+  ui_animation_scale: "Biliis ng UI animation"
+  graphics_quality: "Kalidad ng graphics"
+  full_screen_mode_exclusive: "Eksklusibo"
+  block_minimize_in_full_screen: "I-block ang pag-minimize sa full screen"
+  resolution_scaling_ssize: "I-scale sa laki ng screen"
+  resolution_scaling_wsize: "I-scale sa laki ng window"
+  story_choice_auto_select_delay: "Delay ng awtomatikong pagpili ng choice sa kwento"
+  story_text_speed_multiplier: "Multiplier ng bilis ng text sa kwento"
+  force_allow_dynamic_camera: "Pwersahang payagan ang dynamic camera"
+  live_theater_allow_same_chara: "Payagan ang katulad na character sa live theater"
+  physics_update_mode: "Mode ng pag-update ng physics"
+  disable_skill_name_translation: "I-disable ang pag-translate ng mga skill name"
+  hide_ingame_ui_hotkey: "I-enable ang hotkey ng pagtago ng game UI"
+  hide_ingame_ui_hotkey_info: >-
+    Pinapayagan ng opsyong ito ang isang shortcut key sa pag-toggle ng game UI.
+    Para sa Android, kailangan mong i-double tap ang Volume Up key, o i-triple tap ang top-right ng screen.
+    Para sa PC/Android na may keyboard, ito ang Insert key at maaaring i-configure sa GUI o config.
+  discord_rpc: "Discord RPC"
+  menu_open_key: "Hotkey ng pagbukas ng menu"
+  menu_open_key_set: "Itakda"
+  live_vocals_swap: "Pagpalit ng Vocals sa Live"
+  skill_info_dialog: "Custom na dialog ng skill info"
+  homescreen_bgseason: "Panahon ng Homescreen Background"
+  shadow_resolution: "Resolution ng Shadows"
+
+theme_editor:
+  title: "Editor ng GUI Theme"
+  ui_accent_color: "Kulay ng Accent"
+  ui_window_fill: "Kulay ng Window Background"
+  ui_panel_fill: "Kulay ng Panel Background"
+  ui_extreme_bg_color: "Background Input"
+  ui_text_color: "Kulay ng Text"
+  ui_window_rounding: "Mga Rounded Corner"
+
+tl_update_dialog:
+  title: "May bagong update"
+  content: "May bagong update sa translations (%{size}). Gusto mo ba ito i-download?"
+  content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}) sa halip."
+
+update_prompt_dialog:
+  title: "May bagong update"
+  content: |
+    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    Ire-restart ang laro para ma-apply ang update.
+  android_content: |
+    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+
+    Pindutin ang "Oo" para buksan ang UmaPatcher Edge at i-patch muli ang laro.
+    (Hindi kailangang i-download muli ang laro o APK, kailangan mo lang mag-patch muli tulad ng dati mong ginamit na method dahil palaging dina-download ng UmaPatcher Edge ang pinakabagong version ng Hachimi Edge.)
+
+updating_dialog:
+  title: "Ina-update..."
+  content: "Dina-download ang update, ire-restart ang laro sa ilang sandali..."
+
+steam_overlay_conflict_dialog:
+  title: "Paalala"
+  content: >-
+    Maaaring hindi gumana ang mga pagbili kapag naka-enable ang Hachimi overlay. Kung bumukas ang Steam overlay para makabili ka,
+    huwag pansinin ang mensaheng ito at pindutin ang "Hindi". Kung hindi ito gumana, pindutin ang "Oo" para pansamantalang i-disable
+    ang Hachimi overlay. Isasara nito ang laro, at sa susunod na magsimula ang laro, hindi na ipapakita ang Hachimi overlay at
+    makakabili ka na. Pagkatapos nito, maaari mong i-restart muli ang laro para i-enable ulit ang Hachimi overlay.
