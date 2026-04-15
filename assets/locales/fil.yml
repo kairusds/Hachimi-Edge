@@ -76,7 +76,7 @@ notification:
   atlas_workaround_reset: "Nabago ang mga atlas file. Na-disable ang workaround."
 
 first_time_setup:
-  title: "Unang Beses na Pag-setup"
+  title: "First Time Setup"
   welcome_heading: "Maligayang Pagdating"
   welcome_content: >-
     Na-install na ang Hachimi! Gagabayan ka nito sa inisyal na pag-set up.
