@@ -3,7 +3,7 @@ use std::ffi::{c_char, c_void, CStr};
 use once_cell::sync::OnceCell;
 use egui::Align;
 
-use crate::{core::{gui, Hachimi, Interceptor}, il2cpp::{self, types::{il2cpp_array_size_t, FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo}}};
+use crate::{core::{Hachimi, Interceptor, gui}, il2cpp::{self, types::{FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppMethodPointer, Il2CppObject, Il2CppThread, Il2CppTypeEnum, MethodInfo, il2cpp_array_size_t}}};
 
 const VERSION: i32 = 2;
 
@@ -142,6 +142,14 @@ unsafe extern "C" fn il2cpp_find_nested_class(
         .unwrap_or(0 as _)
 }
 
+unsafe extern "C" fn il2cpp_resolve_icall(name: *const c_char) -> Il2CppMethodPointer {
+    il2cpp::api::il2cpp_resolve_icall(name)
+}
+
+unsafe extern "C" fn il2cpp_class_get_methods(klass: *mut Il2CppClass, iter: *mut *mut c_void) -> *const MethodInfo {
+    il2cpp::api::il2cpp_class_get_methods(klass, iter)
+}
+
 unsafe extern "C" fn il2cpp_get_field_from_name(
     class: *mut Il2CppClass, name: *const c_char
 ) -> *mut FieldInfo {
@@ -170,6 +178,10 @@ unsafe extern "C" fn il2cpp_set_static_field_value(
     field: *mut FieldInfo, value: *const c_void
 ) {
     il2cpp::api::il2cpp_field_static_set_value(field, value as _)
+}
+
+unsafe extern "C" fn il2cpp_object_new(klass: *const Il2CppClass) -> *mut Il2CppObject{
+    return il2cpp::api::il2cpp_object_new(klass);
 }
 
 unsafe extern "C" fn il2cpp_unbox(obj: *mut Il2CppObject) -> *mut c_void {
@@ -560,6 +572,8 @@ pub struct Vtable {
     pub il2cpp_find_nested_class: unsafe extern "C" fn(
         class: *mut Il2CppClass, name: *const c_char
     ) -> *mut Il2CppClass,
+    pub il2cpp_resolve_icall: unsafe extern "C" fn(name: *const c_char) -> Il2CppMethodPointer,
+    pub il2cpp_class_get_methods: unsafe extern "C" fn(klass: *mut Il2CppClass, iter: *mut *mut c_void) -> *const MethodInfo,
     pub il2cpp_get_field_from_name: unsafe extern "C" fn(
         class: *mut Il2CppClass, name: *const c_char
     ) -> *mut FieldInfo,
@@ -575,6 +589,7 @@ pub struct Vtable {
     pub il2cpp_set_static_field_value: unsafe extern "C" fn(
         field: *mut FieldInfo, value: *const c_void
     ),
+    pub il2cpp_object_new: unsafe extern "C" fn(klass: *const Il2CppClass) -> *mut Il2CppObject,
     pub il2cpp_unbox: unsafe extern "C" fn(obj: *mut Il2CppObject) -> *mut c_void,
     pub il2cpp_get_main_thread: unsafe extern "C" fn() -> *mut Il2CppThread,
     pub il2cpp_get_attached_threads: unsafe extern "C" fn(out_size: *mut usize) -> *mut *mut Il2CppThread,
@@ -670,11 +685,14 @@ impl Vtable {
         il2cpp_get_method_cached,
         il2cpp_get_method_addr_cached,
         il2cpp_find_nested_class,
+        il2cpp_resolve_icall,
+        il2cpp_class_get_methods,
         il2cpp_get_field_from_name,
         il2cpp_get_field_value,
         il2cpp_set_field_value,
         il2cpp_get_static_field_value,
         il2cpp_set_static_field_value,
+        il2cpp_object_new,
         il2cpp_unbox,
         il2cpp_get_main_thread,
         il2cpp_get_attached_threads,
