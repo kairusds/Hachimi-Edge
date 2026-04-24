@@ -114,61 +114,12 @@ pub fn on_LoadAsset(_bundle: *mut Il2CppObject, this: *mut Il2CppObject, name: &
     let dict_path = base_path.to_string() + ".json";
 
     let localized_data = hachimi.localized_data.load();
-    let Some(dict): Option<StoryTimelineDataDict> = localized_data.load_assets_dict(Some(&dict_path)).or_else(|| {
-        if hachimi.config.load().auto_translate_stories {
-            let Some(full_dict_path) = localized_data.get_assets_path(&dict_path) else {
-                return None;
-            };
-
-            // check if file exists
-            if std::fs::metadata(&full_dict_path).is_ok() {
-                return None;
-            }
-
-            match generate_auto_tl_dict(this) {
-                Ok(dict) => {
-                    if let Some(p) = full_dict_path.parent() {
-                        if let Err(e) = std::fs::create_dir_all(p) {
-                            error!("Failed to create story TL directory: {}", e);
-                        }
-                        else if let Err(e) = utils::write_json_file(&dict, &full_dict_path) {
-                            error!("Failed to save auto TL dict: {}", e);
-                        }
-                    }
-                    Some(dict)
-                },
-                Err(e) => {
-                    error!("Failed to auto translate: {}", e);
-                    None
-                }
-            }
-        }
-        else {
-            None
-        }
-    }) else {
-        // Clip length adjustment independent of story patching
-        // No need to adjust length if speed is faster
-        if tcps_mult < 1.0 {
-            adjust_clips_length_with_tcps(this, tcps);
-        }
-        return;
-    };
-    debug!("{}", dict_path);
 
     let is_story_view = base_path.starts_with("story/data/") && (
         base_path[11..].starts_with("02/") ||
         base_path[11..].starts_with("04/") ||
         base_path[11..].starts_with("09/")
     );
-
-    if let Some(title) = &dict.title {
-        set_Title(this, title.to_il2cpp_string());
-    }
-
-    let Some(block_list) = IList::new(get_BlockList(this)) else {
-        return;
-    };
 
     // Init wrapping parameters
     let mut line_count = CLIP_TEXT_LINE_COUNT;
@@ -184,6 +135,50 @@ pub fn on_LoadAsset(_bundle: *mut Il2CppObject, this: *mut Il2CppObject, name: &
         line_width = (line_width as f32 / mult).round() as i32;
         story_view_line_width = (story_view_line_width as f32 / mult).round() as i32;
     }
+
+    let wp = WrapParams {
+        is_story_view,
+        line_count,
+        font_size,
+        line_width,
+        story_view_line_width,
+        size: StoryTimelineTextClipData::get_Size(this),
+    };
+
+    let Some(dict): Option<StoryTimelineDataDict> = localized_data.load_assets_dict(Some(&dict_path)).or_else(|| {
+        if hachimi.config.load().auto_translate_stories {
+            let Some(full_dict_path) = localized_data.get_assets_path(&dict_path) else {
+                return None;
+            };
+
+            // check if file exists
+            if std::fs::metadata(&full_dict_path).is_ok() {
+                return None;
+            }
+
+            dispatch_auto_tl_async(this, full_dict_path, wp.clone());
+            None
+        }
+        else {
+            None
+        }
+    }) else {
+        // Clip length adjustment independent of story patching
+        // No need to adjust length if speed is faster
+        if tcps_mult < 1.0 {
+            adjust_clips_length_with_tcps(this, tcps);
+        }
+        return;
+    };
+    debug!("{}", dict_path);
+
+    if let Some(title) = &dict.title {
+        set_Title(this, title.to_il2cpp_string());
+    }
+
+    let Some(block_list) = IList::new(get_BlockList(this)) else {
+        return;
+    };
 
     let mut total_len = 0;
     let mut total_len_changed = false;
@@ -391,15 +386,21 @@ fn apply_clip_length(
     new_block_len
 }
 
-fn generate_auto_tl_dict(this: *mut Il2CppObject) -> Result<StoryTimelineDataDict, Error> {
-    let Some(block_list) = <IList>::new(get_BlockList(this)) else {
-        return Err(Error::RuntimeError("Failed to get block list".to_owned()));
-    };
-    let block_count = block_list.count() as usize - 1;
+#[derive(Clone)]
+struct WrapParams {
+    is_story_view: bool,
+    line_count: i32,
+    font_size: i32,
+    line_width: i32,
+    story_view_line_width: i32,
+    size: i32,
+}
 
-    let mut names_tmp: Vec<String> = Vec::with_capacity(block_count);
-    let mut name_indices: FnvHashMap<String, usize> = FnvHashMap::default();
-    let mut tl_batch: Vec<String> = Vec::with_capacity(block_count);
+fn dispatch_auto_tl_async(this: *mut Il2CppObject, full_dict_path: std::path::PathBuf, wp: WrapParams) {
+    let Some(block_list) = <IList>::new(get_BlockList(this)) else {
+        return;
+    };
+
     let mut dict = StoryTimelineDataDict::default();
 
     // Step 1: Prepare the tl batch and prepopulate the dict with Some()
@@ -409,8 +410,7 @@ fn generate_auto_tl_dict(this: *mut Il2CppObject) -> Result<StoryTimelineDataDic
     if !title.is_null() && unsafe { (*title).length > 0 } {
         let title_str = unsafe { (*title).as_utf16str().to_string() };
         if title_str != "0" {
-            dict.title = Some(String::new());
-            tl_batch.push(title_str);
+            dict.title = Some(title_str);
         }
     }
 
@@ -427,32 +427,23 @@ fn generate_auto_tl_dict(this: *mut Il2CppObject) -> Result<StoryTimelineDataDic
         if !name.is_null() && unsafe { (*name).length > 0 } {
             let name_str = unsafe { (*name).as_utf16str().to_string() };
             if name_str != "モノローグ" && name_str != "<username>" {
-                if !name_indices.contains_key(&name_str) {
-                    name_indices.insert(name_str.clone(), names_tmp.len());
-                    names_tmp.push(name_str.clone());
-                }
                 block_dict.name = Some(name_str);
             }
         }
 
         let text = StoryTimelineTextClipData::get_Text(clip_data);
         if !text.is_null() && unsafe { (*text).length > 0 } {
-            block_dict.text = Some(String::new());
-            tl_batch.push(unsafe { (*text).as_utf16str().to_string() });
+            block_dict.text = Some(unsafe { (*text).as_utf16str().to_string() });
         }
 
         let choice_data_list_obj = StoryTimelineTextClipData::get_ChoiceDataList(clip_data);
         if let Some(choice_data_list) = IList::new(choice_data_list_obj) {
             for choice_data in choice_data_list.iter() {
-                // always push a value so it doesn't misalign
-                block_dict.choice_data_list.push(String::new());
                 let text = StoryTimelineTextClipData::ChoiceData::get_Text(choice_data);
                 if !text.is_null() && unsafe { (*text).length > 0 } {
-                    tl_batch.push(unsafe { (*text).as_utf16str().to_string() });
-                }
-                else {
-                    // same here
-                    tl_batch.push(String::new());
+                    block_dict.choice_data_list.push(unsafe { (*text).as_utf16str().to_string() });
+                } else {
+                    block_dict.choice_data_list.push(String::new());
                 }
             }
         }
@@ -460,13 +451,11 @@ fn generate_auto_tl_dict(this: *mut Il2CppObject) -> Result<StoryTimelineDataDic
         let color_text_info_list_obj = StoryTimelineTextClipData::get_ColorTextInfoList(clip_data);
         if let Some(color_text_info_list) = IList::new(color_text_info_list_obj) {
             for color_text_info in color_text_info_list.iter() {
-                block_dict.color_text_info_list.push(String::new());
                 let text = StoryTimelineTextClipData::ColorTextInfo::get_Text(color_text_info);
                 if !text.is_null() && unsafe { (*text).length > 0 } {
-                    tl_batch.push(unsafe { (*text).as_utf16str().to_string() });
-                }
-                else {
-                    tl_batch.push(String::new());
+                    block_dict.color_text_info_list.push(unsafe { (*text).as_utf16str().to_string() });
+                } else {
+                    block_dict.color_text_info_list.push(String::new());
                 }
             }
         }
@@ -474,47 +463,113 @@ fn generate_auto_tl_dict(this: *mut Il2CppObject) -> Result<StoryTimelineDataDic
         dict.text_block_list.push(block_dict);
     }
 
-    // push name entries to the end of the batch
-    let names_count = names_tmp.len();
-    tl_batch.append(&mut names_tmp);
-
     // Step 2: Send it to the tl server
-    let mut translated = SugoiClient::instance().translate(&tl_batch)?;
-    if translated.len() != tl_batch.len() {
-        return Err(Error::RuntimeError("Server returned invalid amount of translated content".to_owned()));
-    }
-    // split off names section
-    let translated_names = translated.split_off(translated.len() - names_count);
+    std::thread::spawn(move || {
+        let sugoi = SugoiClient::instance();
+        let tx = crate::core::sugoi_client::TRANSLATION_QUEUE.0.clone();
 
-    // Step 3: Fill in dict with translated content
-    let mut tl_iter = translated.into_iter();
-    if dict.title.is_some() {
-        dict.title = tl_iter.next();
-    }
+        let save_dict = |current_dict: &StoryTimelineDataDict| {
+            if let Some(p) = full_dict_path.parent() {
+                let _ = std::fs::create_dir_all(p);
+                if let Err(e) = crate::core::utils::write_json_file(current_dict, &full_dict_path) {
+                    error!("Failed to save incremental TL dict: {}", e);
+                }
+            }
+        };
 
-    for block_dict in dict.text_block_list.iter_mut() {
-        if let Some(name) = block_dict.name.as_ref() {
-            block_dict.name = Some(translated_names[name_indices[name]].clone());
-        }
+        let no_wrap = dict.no_wrap;
 
-        if block_dict.text.is_some() {
-            block_dict.text = tl_iter.next();
-        }
+        let process_wrap = |text: &str, is_text_block: bool| -> String {
+            if no_wrap || !is_text_block {
+                return text.to_string();
+            }
+            if wp.is_story_view {
+                if let Some(wrapped) = crate::core::utils::wrap_text(text, wp.story_view_line_width) {
+                    return wrapped.join(" \n");
+                }
+            } else {
+                if wp.size == StoryTimelineTextClipData::FontSize_Default {
+                    if let Some(fitted) = crate::core::utils::wrap_fit_text(text, wp.line_width, wp.line_count, wp.font_size) {
+                        return fitted;
+                    }
+                }
+            }
+            text.to_string()
+        };
 
-        for choice_text in block_dict.choice_data_list.iter_mut() {
-            if let Some(text) = tl_iter.next() {
-                *choice_text = text;
+        let mut updates_made = 0;
+
+        if let Some(title) = &mut dict.title {
+            if !title.is_empty() {
+                let trans = sugoi.get_cached(title).or_else(|| sugoi.translate_one(title.clone()).ok());
+                if let Some(t) = trans {
+                    let _ = tx.send((title.clone(), t.clone()));
+                    *title = t;
+                    updates_made += 1;
+                }
             }
         }
 
-        for color_text in block_dict.color_text_info_list.iter_mut() {
-            if let Some(text) = tl_iter.next() {
-                *color_text = text;
+        let block_count = dict.text_block_list.len();
+        for i in 0..block_count {
+            {
+                let block = &mut dict.text_block_list[i];
+
+                if let Some(name) = &mut block.name {
+                    if !name.is_empty() {
+                        let trans = sugoi.get_cached(name).or_else(|| sugoi.translate_one(name.clone()).ok());
+                        if let Some(t) = trans {
+                            let _ = tx.send((name.clone(), t.clone()));
+                            *name = t;
+                            updates_made += 1;
+                        }
+                    }
+                }
+
+                if let Some(text) = &mut block.text {
+                    if !text.is_empty() {
+                        let trans = sugoi.get_cached(text).or_else(|| sugoi.translate_one(text.clone()).ok());
+                        if let Some(t) = trans {
+                            let final_t = process_wrap(&t, true);
+                            let _ = tx.send((text.clone(), final_t));
+                            *text = t;
+
+                            updates_made += 1;
+                        }
+                    }
+                }
+
+                for choice in block.choice_data_list.iter_mut() {
+                    if !choice.is_empty() {
+                        let trans = sugoi.get_cached(choice).or_else(|| sugoi.translate_one(choice.clone()).ok());
+                        if let Some(t) = trans {
+                            let final_t = process_wrap(&t, false);
+                            let _ = tx.send((choice.clone(), final_t));
+                            *choice = t;
+                            updates_made += 1;
+                        }
+                    }
+                }
+
+                for color_text in block.color_text_info_list.iter_mut() {
+                    if !color_text.is_empty() {
+                        let trans = sugoi.get_cached(color_text).or_else(|| sugoi.translate_one(color_text.clone()).ok());
+                        if let Some(t) = trans {
+                            let final_t = process_wrap(&t, false);
+                            let _ = tx.send((color_text.clone(), final_t));
+                            *color_text = t;
+                            updates_made += 1;
+                        }
+                    }
+                }
+            }
+
+            if updates_made > 0 {
+                save_dict(&dict);
+                updates_made = 0;
             }
         }
-    }
-
-    Ok(dict)
+    });
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
