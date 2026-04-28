@@ -587,3 +587,143 @@ impl MetaData {
         MetaData { logical_name_to_hash }
     }
 }
+
+fn get_single_column_int(sql: &str) -> Vec<i32> {
+    let mut items = Vec::new();
+    let db_path = crate::core::utils::get_masterdb_path();
+    let conn = Connection::new();
+    if Connection::Open(conn, db_path.to_il2cpp_string(), std::ptr::null_mut(), std::ptr::null_mut(), 0) {
+        let query = Connection::Query(conn, sql.to_il2cpp_string());
+        if !query.is_null() {
+            while Query::Step(query) {
+                items.push(Query::GetInt(query, 0));
+            }
+            Query::Dispose(query);
+        }
+        Connection::CloseDB(conn);
+    }
+    items
+}
+
+pub fn get_all_chara_ids() -> Vec<i32> {
+    get_single_column_int("SELECT id FROM chara_data")
+}
+
+pub fn get_all_dress_ids() -> Vec<i32> {
+    get_single_column_int("SELECT id FROM dress_data")
+}
+
+pub fn get_all_music_ids() -> Vec<i32> {
+    get_single_column_int("SELECT music_id FROM live_data")
+}
+
+pub fn get_all_mob_ids() -> Vec<i32> {
+    get_single_column_int("SELECT mob_id FROM mob_data WHERE use_live = 1")
+}
+
+pub fn get_default_dress_ids() -> Vec<i32> {
+    get_single_column_int("SELECT id FROM dress_data WHERE (condition_type = 1 OR condition_type = 4 OR condition_type = 5) AND use_live_theater = 1 AND id < 999")
+}
+
+pub fn get_all_cards() -> Vec<(i32, i32)> {
+    let mut items = Vec::new();
+    let db_path = crate::core::utils::get_masterdb_path();
+    let conn = Connection::new();
+    if Connection::Open(conn, db_path.to_il2cpp_string(), std::ptr::null_mut(), std::ptr::null_mut(), 0) {
+        let query = Connection::Query(conn, "SELECT id, default_rarity FROM card_data WHERE id <= 999999".to_il2cpp_string());
+        if !query.is_null() {
+            while Query::Step(query) {
+                items.push((Query::GetInt(query, 0), Query::GetInt(query, 1)));
+            }
+            Query::Dispose(query);
+        }
+        Connection::CloseDB(conn);
+    }
+    items
+}
+
+pub fn get_master_text(category: i32, index: i32) -> Option<String> {
+    let db_path = crate::core::utils::get_masterdb_path();
+    let conn = Connection::new();
+    if Connection::Open(conn, db_path.to_il2cpp_string(), std::ptr::null_mut(), std::ptr::null_mut(), 0) {
+        let sql = format!("SELECT text FROM text_data WHERE \"category\" = {} AND \"index\" = {}", category, index);
+        let query = Connection::Query(conn, sql.to_il2cpp_string());
+        if !query.is_null() {
+            if Query::Step(query) {
+                let text_ptr = Query::GetText(query, 0);
+                if let Some(text) = unsafe { text_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()) {
+                    Query::Dispose(query);
+                    Connection::CloseDB(conn);
+                    return Some(text);
+                }
+            }
+            Query::Dispose(query);
+        }
+        Connection::CloseDB(conn);
+    }
+    None
+}
+
+pub fn get_jobs_info(reward_id: i32) -> Option<(i32, i32)> {
+    let db_path = crate::core::utils::get_masterdb_path();
+    let conn = Connection::new();
+    if Connection::Open(conn, db_path.to_il2cpp_string(), std::ptr::null_mut(), std::ptr::null_mut(), 0) {
+        let sql = format!("SELECT place_id, genre_id FROM jobs_reward WHERE \"id\" = {}", reward_id);
+        let query = Connection::Query(conn, sql.to_il2cpp_string());
+        if !query.is_null() {
+            if Query::Step(query) {
+                let place_id = Query::GetInt(query, 0);
+                let genre_id = Query::GetInt(query, 1);
+                Query::Dispose(query);
+                Connection::CloseDB(conn);
+                return Some((place_id, genre_id));
+            }
+            Query::Dispose(query);
+        }
+        Connection::CloseDB(conn);
+    }
+    None
+}
+
+pub fn get_jobs_place_race_track_id(place_id: i32) -> Option<i32> {
+    let db_path = crate::core::utils::get_masterdb_path();
+    let conn = Connection::new();
+    if Connection::Open(conn, db_path.to_il2cpp_string(), std::ptr::null_mut(), std::ptr::null_mut(), 0) {
+        let sql = format!("SELECT race_track_id FROM jobs_place WHERE \"id\" = {}", place_id);
+        let query = Connection::Query(conn, sql.to_il2cpp_string());
+        if !query.is_null() {
+            if Query::Step(query) {
+                let track_id = Query::GetInt(query, 0);
+                Query::Dispose(query);
+                Connection::CloseDB(conn);
+                return Some(track_id);
+            }
+            Query::Dispose(query);
+        }
+        Connection::CloseDB(conn);
+    }
+    None
+}
+
+pub fn get_champions_resources() -> Vec<String> {
+    let mut items = Vec::new();
+    let db_path = crate::core::utils::get_masterdb_path();
+    let conn = Connection::new();
+    if Connection::Open(conn, db_path.to_il2cpp_string(), ptr::null_mut(), ptr::null_mut(), 0) {
+        let sql = "SELECT t.text FROM champions_schedule c LEFT OUTER JOIN text_data t on t.category = 206 AND t.\"index\" = c.id GROUP BY c.resource_id";
+        let query = Connection::Query(conn, sql.to_il2cpp_string());
+        if !query.is_null() {
+            while Query::Step(query) {
+                let text_ptr = Query::GetText(query, 0);
+                if let Some(text) = unsafe { text_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()) {
+                    items.push(text);
+                } else {
+                    items.push(rust_i18n::t!("unknown").into_owned());
+                }
+            }
+            Query::Dispose(query);
+        }
+        Connection::CloseDB(conn);
+    }
+    items
+}

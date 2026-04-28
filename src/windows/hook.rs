@@ -45,13 +45,9 @@ fn init_internal() -> Result<(), Error> {
     let hachimi = Hachimi::instance();
     if let Ok(handle) = unsafe { GetModuleHandleW(w!("GameAssembly.dll")) } {
         info!("Late loading detected");
-        if steamworks::is_overlay_conflicting(&hachimi) {
-            info!("Hooking LoadLibraryW");
-            hachimi.interceptor.hook(ffi::LoadLibraryW as *const () as usize, LoadLibraryW as *const () as usize)?;
-        }
-        else {
-            info!("Skipping LoadLibraryW hook");
-        }
+
+        info!("Hooking LoadLibraryW");
+        hachimi.interceptor.hook(ffi::LoadLibraryW as *const () as usize, LoadLibraryW as *const () as usize)?;
 
         info!("Init cri_mana_vpx.dll proxy");
         proxy::cri_mana_vpx::init();

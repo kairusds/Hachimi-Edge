@@ -336,6 +336,14 @@ impl Hachimi {
             }
         }
 
+        if hachimi_impl::is_criware_lib(filename) {
+            crate::core::criware::init(handle);
+            if !self.hooking_finished.load(atomic::Ordering::Relaxed) {
+                self.on_hooking_finished();
+            }
+            return true;
+        }
+
         // Prevent double initialization
         if self.hooking_finished.load(atomic::Ordering::Relaxed) { return false; }
 
@@ -343,10 +351,6 @@ impl Hachimi {
             info!("Got il2cpp handle");
             il2cpp::symbols::set_handle(handle);
             false
-        }
-        else if hachimi_impl::is_criware_lib(filename) {
-            self.on_hooking_finished();
-            true
         }
         else {
             false
@@ -576,6 +580,55 @@ impl Default for TlUpdateMode {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
+pub struct CaptionConfig {
+    #[serde(default)]
+    pub caption_enable: bool,
+    #[serde(default = "CaptionConfig::default_lines_char_count")]
+    pub caption_lines_char_count: i32,
+    #[serde(default = "CaptionConfig::default_font_size")]
+    pub caption_font_size: i32,
+    #[serde(default = "CaptionConfig::default_color")]
+    pub caption_color: String,
+    #[serde(default = "CaptionConfig::default_outline_size")]
+    pub caption_outline_size: String,
+    #[serde(default = "CaptionConfig::default_outline_color")]
+    pub caption_outline_color: String,
+    #[serde(default = "CaptionConfig::default_bg_alpha")]
+    pub caption_bg_alpha: f32,
+    #[serde(default = "CaptionConfig::default_pos_x")]
+    pub caption_pos_x: f32,
+    #[serde(default = "CaptionConfig::default_pos_y")]
+    pub caption_pos_y: f32,
+}
+
+impl Default for CaptionConfig {
+    fn default() -> Self {
+        Self {
+            caption_enable: false,
+            caption_lines_char_count: 26,
+            caption_font_size: 50,
+            caption_color: "White".to_owned(),
+            caption_outline_size: "L".to_owned(),
+            caption_outline_color: "Brown".to_owned(),
+            caption_bg_alpha: 0.0,
+            caption_pos_x: 0.0,
+            caption_pos_y: -3.0,
+        }
+    }
+}
+
+impl CaptionConfig {
+    fn default_lines_char_count() -> i32 { 26 }
+    fn default_font_size() -> i32 { 50 }
+    fn default_color() -> String { "White".to_owned() }
+    fn default_outline_size() -> String { "L".to_owned() }
+    fn default_outline_color() -> String { "Brown".to_owned() }
+    fn default_bg_alpha() -> f32 { 0.0 }
+    fn default_pos_x() -> f32 { 0.0 }
+    fn default_pos_y() -> f32 { -3.0 }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Config {
     #[serde(default)]
     pub debug_mode: bool,
@@ -655,6 +708,8 @@ pub struct Config {
     pub disable_skill_name_translation: bool,
     #[serde(default)]
     pub hide_ingame_ui_hotkey: bool,
+    #[serde(flatten)]
+    pub caption: CaptionConfig,
     #[serde(default)]
     pub language: Language,
     #[serde(default = "Config::default_meta_index_url")]
@@ -662,8 +717,26 @@ pub struct Config {
     #[serde(default)]
     pub ipv4_only: bool,
     pub physics_update_mode: Option<SpringUpdateMode>,
+    #[serde(default)]
+    pub cyspring_mono_uncap_frame_scale: bool,
     #[serde(default = "Config::default_ui_animation_scale")]
     pub ui_animation_scale: f32,
+    #[serde(default)]
+    pub live_slider_always_show: bool,
+    #[serde(default)]
+    pub live_playback_loop: bool,
+    #[serde(default)]
+    pub champions_live_show_text: bool,
+    #[serde(default = "Config::default_champions_live_resource_id")]
+    pub champions_live_resource_id: i32,
+    #[serde(default = "Config::default_champions_live_year")]
+    pub champions_live_year: i32,
+    #[serde(default)]
+    pub hide_now_loading: bool,
+    #[serde(default)]
+    pub replace_to_builtin_font: bool,
+    #[serde(default)]
+    pub custom_title_name: Option<String>,
     #[serde(default)]
     pub disabled_hooks: FnvHashSet<String>,
 
@@ -701,6 +774,8 @@ impl Config {
     fn default_meta_index_url() -> String { "https://gitlab.com/umatl/hachimi-meta/-/raw/main/meta.json".to_owned() }
     fn default_ui_animation_scale() -> f32 { 1.0 }
     fn default_live_vocals_swap() -> [i32; 6] { [0; 6] }
+    fn default_champions_live_resource_id() -> i32 { 15 }
+    fn default_champions_live_year() -> i32 { 2025 }
     pub fn default_ui_accent() -> egui::Color32 { egui::Color32::from_rgb(100, 150, 240) }
     pub fn default_window_fill() -> egui::Color32 { egui::Color32::from_rgba_premultiplied(27, 27, 27, 220) }
     pub fn default_panel_fill() -> egui::Color32 { egui::Color32::from_rgba_premultiplied(27, 27, 27, 220) }

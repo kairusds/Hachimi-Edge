@@ -81,6 +81,13 @@ mod StoryChoiceButton;
 mod DialogMissionListItem;
 mod PartsNamePlateBase;
 mod PartsSupportCardImproveDetail;
+mod Connecting;
+mod DownloadManager;
+mod DownloadView;
+mod DownloadErrorProcessor;
+mod TitleViewController;
+mod Director;
+mod CySpringNative;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -167,4 +174,11 @@ pub fn init() {
     DialogMissionListItem::init(image);
     PartsNamePlateBase::init(image);
     PartsSupportCardImproveDetail::init(image);
+    Connecting::init(image);
+    DownloadManager::init(image);
+    DownloadView::init(image);
+    DownloadErrorProcessor::init(image);
+    TitleViewController::init(image);
+    Director::init(image);
+    CySpringNative::init(image);
 }

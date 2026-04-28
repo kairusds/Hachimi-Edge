@@ -13,9 +13,9 @@ use windows::{core::w, Win32::{
     }
 }};
 
-use crate::{core::{game::Region, gui, Gui, Hachimi}, il2cpp::{hook::{UnityEngine_CoreModule}, symbols::Thread}, windows::utils};
+use crate::{core::{game::Region, gui, Gui, Hachimi}, il2cpp::{hook::UnityEngine_CoreModule, symbols::Thread}, windows::utils};
 
-use super::{gui_impl::input, discord};
+use super::{gui_impl::input, discord, smtc, taskbar};
 
 static TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
 pub fn get_target_hwnd() -> HWND {
@@ -55,10 +55,9 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
                     return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
                 };
-
                 gui.toggle_menu();
                 return LRESULT(0);
-            }else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
+            } else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
                 Thread::main_thread().schedule(Gui::toggle_game_ui);
             }
         },
@@ -188,6 +187,15 @@ pub fn init() {
         }
         TARGET_HWND.store(hwnd.0 as isize, atomic::Ordering::Relaxed);
 
+        let title = hachimi.config.load().custom_title_name.clone();
+        if let Some(t) = title {
+            use windows::Win32::UI::WindowsAndMessaging::SetWindowTextW;
+            use windows::core::HSTRING;
+            let _ = SetWindowTextW(hwnd, &HSTRING::from(t));
+        }
+
+        taskbar::init(hwnd);
+
         info!("Hooking WndProc");
         let wnd_proc_addr = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
         match hachimi.interceptor.hook(wnd_proc_addr as _, wnd_proc as *const () as _) {
@@ -210,6 +218,8 @@ pub fn init() {
                  error!("{}", e);
              }
         }
+
+        smtc::init(hwnd);
     }
 }
 

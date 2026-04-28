@@ -19,6 +19,8 @@ extern "C" fn Update(this: *mut Il2CppObject) {
     }
 
     if completed.is_empty() {
+        #[cfg(target_os = "windows")]
+        crate::windows::smtc::on_update();
         return;
     }
 
@@ -31,6 +33,9 @@ extern "C" fn Update(this: *mut Il2CppObject) {
 
     crate::il2cpp::hook::UnityEngine_UI::Text::apply_translations(&completed);
     crate::il2cpp::hook::UnityEngine_TextRenderingModule::TextMesh::apply_translations(&completed);
+
+    #[cfg(target_os = "windows")]
+    crate::windows::smtc::on_update();
 }
 
 pub fn init(UnityEngine_UI: *const Il2CppImage) {

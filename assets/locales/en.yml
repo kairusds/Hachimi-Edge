@@ -165,6 +165,8 @@ config_editor:
     Please leave this option disabled if you do not have a translation
     server available.
   auto_translate_ui: "Auto translate UI (MIGHT BREAK UIs)"
+  taskbar_show_progress_on_download: "Taskbar progress on download"
+  taskbar_show_progress_on_connecting: "Taskbar progress on connecting"
   target_fps: "Target FPS"
   virtual_resolution_multiplier: "Virtual resolution multiplier"
   ui_scale: "UI scale"
@@ -188,6 +190,7 @@ config_editor:
   force_allow_dynamic_camera: "Force allow dynamic camera"
   live_theater_allow_same_chara: "Live theater allow same chara"
   physics_update_mode: "Physics update mode"
+  cyspring_mono_uncap_frame_scale: "CySpring Mono Frame Scale Uncap"
   disable_skill_name_translation: "Disable skill name translation"
   hide_ingame_ui_hotkey: "Hide ingame UI hotkey"
   hide_ingame_ui_hotkey_info: >-
@@ -195,7 +198,23 @@ config_editor:
     For Android, you can triple tap the top right of the screen.
     For PC/Android with keyboard, it's the Insert key by default and can be configured in the gui or config.
   hide_ingame_ui_hotkey_bind: "Hide ingame UI keybind"
+  live_slider_always_show: "Always Show Live Slider"
+  live_playback_loop: "Loop Live Performances"
+  champions_live_show_text: "Override Champions Meeting Live Text"
+  champions_live_resource_id: "Champions Meeting Title"
+  champions_live_year: "Champions Meeting Year"
+  captions: "Captions"
+  caption_lines_char_count: "Characters per line"
+  caption_font_size: "Font Size"
+  caption_bg_alpha: "Background Opacity"
+  caption_pos_x: "Position X"
+  caption_pos_y: "Position Y"
+  caption_color: "Text Color"
+  caption_outline_color: "Outline Color"
+  caption_outline_size: "Outline Size"
+  enable_keyboard_shortcuts: "Enable In-Game Keyboard Shortcuts"
   discord_rpc: "Discord RPC"
+  enable_smtc: "Enable Windows Media Controls"
   menu_open_key: "Open menu hotkey"
   msaa: "MSAA"
   render_scale: "Render Scale"
