@@ -927,6 +927,19 @@ pub struct LocalizedData {
     pub wrapper_penalties: Penalties
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct CustomRubyBlock {
+    pub block_index: i32,
+    pub rubies: Vec<CustomRubyDef>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct CustomRubyDef {
+    pub char_x: f32,
+    pub char_y: f32,
+    pub ruby_text: String,
+}
+
 impl LocalizedData {
     fn new(config: &Config, ld_path: Option<PathBuf>) -> Result<LocalizedData, Error> {
         if config.disable_translations {
@@ -1063,6 +1076,23 @@ impl LocalizedData {
         let mut path = rel_path.as_ref().to_owned();
         path.set_extension("json");
         self.load_assets_dict(Some(path)).unwrap_or_else(|| AssetInfo::default())
+    }
+
+    pub fn load_custom_story_ruby(&self, ast_ruby_name: &str) -> Option<Vec<CustomRubyBlock>> {
+        let filename = ast_ruby_name.split('/').last().unwrap_or(ast_ruby_name);
+
+        let filename_no_ext = filename.strip_suffix(".asset").unwrap_or(filename);
+
+        let id_str = filename_no_ext.strip_prefix("ast_ruby_")?;
+
+        if id_str.len() < 6 { return None; }
+
+        let category_id = &id_str[0..2];
+        let story_id = &id_str[2..6];
+
+        let path = format!("story/data/{}/{}/{}.json", category_id, story_id, filename_no_ext);
+
+        self.load_assets_dict(Some(path))
     }
 }
 
