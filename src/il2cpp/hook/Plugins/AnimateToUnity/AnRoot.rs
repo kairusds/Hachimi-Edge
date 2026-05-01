@@ -7,7 +7,7 @@ use widestring::Utf16Str;
 use crate::{
     core::{ext::Utf16StringExt, hachimi::AssetInfo, Hachimi},
     il2cpp::{
-        api::{il2cpp_class_get_type, il2cpp_type_get_object}, ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_AssetBundleModule::AssetBundle, UnityEngine_CoreModule::Object}, symbols::{get_field_from_name, get_field_object_value, IList}, types::*, utils::replace_texture_with_diff
+        api::{il2cpp_class_get_type, il2cpp_type_get_object}, ext::{Il2CppStringExt, StringExt}, hook::{Plugins::AnimateToUnity::AnKeyParameter, UnityEngine_AssetBundleModule::AssetBundle, UnityEngine_CoreModule::Object}, symbols::{IList, get_field_from_name, get_field_object_value}, types::*, utils::replace_texture_with_diff
     }
 };
 
@@ -69,7 +69,8 @@ struct AnTextParameterData {
 #[derive(Deserialize)]
 struct AnPlaneParameterData {
     #[serde(flatten)]
-    base: AnObjectParameterBaseData
+    base: AnObjectParameterBaseData,
+    anim_pos_offset_adj: Option<Vector2_t>
 }
 
 pub fn on_LoadAsset(bundle: *mut Il2CppObject, this: *mut Il2CppObject, name: &Utf16Str) {
@@ -192,9 +193,24 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
                     if let Some(position_offset) = &plane_param_data.base.position_offset {
                         AnObjectParameterBase::set__positionOffset(plane_param, position_offset);
                     }
-                                                                        
                     if let Some(scale) = &plane_param_data.base.scale {
                         AnObjectParameterBase::set__scale(plane_param, scale);
+                    }
+                    if let Some(anim_pos_offset) = &plane_param_data.anim_pos_offset_adj {
+                        if let Some(pos_offset_keyparam_list) = IList::new(AnObjectParameterBase::get__positionOffsetKeyParamList(plane_param)) {
+                            for keyparam_list in pos_offset_keyparam_list.iter() {
+                                if let Some(pos_offset_key_list) = IList::<Vector2_t>::new(AnKeyParameter::get__keyList(keyparam_list)) {
+                                    for k in 0..pos_offset_key_list.count() {
+                                        let mut key_param = pos_offset_key_list.get(k).unwrap();
+                                        key_param.y += anim_pos_offset.y;
+                                        pos_offset_key_list.set(k, key_param);
+                                    }
+                                }
+                            }
+                        }
+                        else {
+                            warn!("Failed to get pos_offset_keyparams for plane param {} of motion param {}", *j, *i);
+                        }
                     }
                 }
             }
