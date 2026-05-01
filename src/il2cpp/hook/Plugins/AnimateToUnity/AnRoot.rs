@@ -196,14 +196,24 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
                     if let Some(scale) = &plane_param_data.base.scale {
                         AnObjectParameterBase::set__scale(plane_param, scale);
                     }
-                    if let Some(anim_pos_offset) = &plane_param_data.anim_pos_offset_adj {
+                    if let Some(anim_pos_offset) = &plane_param_data.anim_pos_offset {
+                        // Count should be 3 if present, representing XYZ axes. We ignore Z.
                         if let Some(pos_offset_keyparam_list) = IList::new(AnObjectParameterBase::get__positionOffsetKeyParamList(plane_param)) {
-                            for keyparam_list in pos_offset_keyparam_list.iter() {
-                                if let Some(pos_offset_key_list) = IList::<Vector2_t>::new(AnKeyParameter::get__keyList(keyparam_list)) {
-                                    for k in 0..pos_offset_key_list.count() {
-                                        let mut key_param = pos_offset_key_list.get(k).unwrap();
-                                        key_param.y += anim_pos_offset.y;
-                                        pos_offset_key_list.set(k, key_param);
+                            if pos_offset_keyparam_list.count() > 1 {
+                                let x_axis_key_param = pos_offset_keyparam_list.get(0).unwrap();
+                                if let Some(x_axis_key_list) = IList::<Vector2_t>::new(AnKeyParameter::get__keyList(x_axis_key_param)) {
+                                    for k in 0..x_axis_key_list.count() {
+                                        let mut key_values = x_axis_key_list.get(k).unwrap();
+                                        key_values.y += anim_pos_offset.x;
+                                        x_axis_key_list.set(k, key_values);
+                                    }
+                                }
+                                let y_axis_key_param = pos_offset_keyparam_list.get(1).unwrap();
+                                if let Some(y_axis_key_list) = IList::<Vector2_t>::new(AnKeyParameter::get__keyList(y_axis_key_param)) {
+                                    for k in 0..y_axis_key_list.count() {
+                                        let mut key_values = y_axis_key_list.get(k).unwrap();
+                                        key_values.y += anim_pos_offset.y;
+                                        y_axis_key_list.set(k, key_values);
                                     }
                                 }
                             }
