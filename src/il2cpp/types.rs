@@ -2925,7 +2925,7 @@ impl Color32_t {
     }
 }
 #[repr(C)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize)]
 pub struct Vector2_t {
     pub x: f32,
     pub y: f32,
