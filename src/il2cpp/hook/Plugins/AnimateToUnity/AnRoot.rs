@@ -157,7 +157,7 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
                     warn!("Failed to get text_param_list for motion param {}", *i);
                      continue;
                  };
-                
+
                 for (j, text_param_data) in motion_param_data.text_param_list.iter() {
                     let Some(text_param) = text_param_list.get(*j) else {
                         warn!("text param {} of motion param {} out of range (max {})", *j, *i, text_param_list.count());
@@ -171,7 +171,7 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
                     if let Some(position_offset) = &text_param_data.base.position_offset {
                         AnObjectParameterBase::set__positionOffset(text_param, position_offset);
                     }
-                                                                        
+
                     if let Some(scale) = &text_param_data.base.scale {
                         AnObjectParameterBase::set__scale(text_param, scale);
                     }
@@ -196,7 +196,7 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
                     if let Some(scale) = &plane_param_data.base.scale {
                         AnObjectParameterBase::set__scale(plane_param, scale);
                     }
-                    if let Some(anim_pos_offset) = &plane_param_data.anim_pos_offset {
+                    if let Some(anim_pos_offset) = &plane_param_data.anim_pos_offset_adj {
                         // Count should be 3 if present, representing XYZ axes. We ignore Z.
                         if let Some(pos_offset_keyparam_list) = IList::new(AnObjectParameterBase::get__positionOffsetKeyParamList(plane_param)) {
                             if pos_offset_keyparam_list.count() > 1 {
