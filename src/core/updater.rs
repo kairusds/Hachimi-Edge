@@ -3,7 +3,7 @@ use std::{sync::{Arc, Mutex}};
 use rust_i18n::t;
 use serde::Deserialize;
 
-use crate::core::{gui::SimpleYesNoDialog, hachimi::{REPO_PATH, CODEBERG_API, GITHUB_API}, http, Error, Gui, Hachimi};
+use crate::core::{gui::{NotificationGuard, SimpleYesNoDialog}, hachimi::{REPO_PATH, CODEBERG_API, GITHUB_API}, http, Error, Gui, Hachimi};
 
 #[derive(Default)]
 pub struct Updater {
@@ -28,9 +28,12 @@ impl Updater {
             return Ok(false);
         };
 
-        if let Some(mutex) = Gui::instance() {
-            mutex.lock().unwrap().show_notification(&t!("notification.checking_for_updates"));
-        }
+        let checking_notif_id = if let Some(mutex) = Gui::instance() {
+            Some(mutex.lock().unwrap().show_persistent_notification(&t!("notification.checking_for_updates")))
+        } else {
+            None
+        };
+        let _guard = checking_notif_id.map(NotificationGuard);
 
         let latest = match http::get_json::<Release>(&format!("{}/{}/releases/latest", GITHUB_API, REPO_PATH)) {
             Ok(res) => res,
