@@ -70,7 +70,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
 
                 gui.toggle_menu();
                 return LRESULT(0);
-            }else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind {
+            }else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
                 Thread::main_thread().schedule(Gui::toggle_game_ui);
             }
         },
