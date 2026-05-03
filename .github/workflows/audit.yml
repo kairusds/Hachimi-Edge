@@ -1,0 +1,60 @@
+name: Daily Cargo Audit
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  cargo_audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --features=fix
+
+      - name: Audit and fix
+        id: audit_run
+        run: |
+          cargo audit fix | tee audit_output.txt || true
+          RAW_IDS=$(grep -o "RUSTSEC-[0-9]\{4\}-[0-9]\{4\}" audit_output.txt | sort | uniq | xargs)
+          PR_FORMAT=$(echo $RAW_IDS | sed 's/[^ ]*/`&`/g' | sed 's/ /, /g')
+          COMMIT_FORMAT=$(echo $RAW_IDS | awk '{for(i=1;i<=NF;i++) print "* " $i}')
+
+          echo "PR_IDS=$PR_FORMAT" >> $GITHUB_ENV
+          {
+            echo "COMMIT_IDS<<EOF"
+            echo "$COMMIT_FORMAT"
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain Cargo.toml Cargo.lock)" ]; then
+            echo "Changes detected, pushing to branch..."
+            git checkout -b auto-security-fix
+
+            git add Cargo.toml Cargo.lock
+            git commit -m "Security patch" -m "$COMMIT_IDS"
+            git push origin auto-security-fix --force
+
+            gh pr create \
+              --title "Automated Security Patch" \
+              --body "RUSTSEC IDS: $PR_IDS" \
+              --head auto-security-fix \
+              --base main
+          else
+            echo "No vulnerabilities found. Everything is clean."
+          fi
