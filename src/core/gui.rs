@@ -55,6 +55,78 @@ macro_rules! add_font {
 
 static PENDING_THEME: Mutex<Option<hachimi::Config>> = Mutex::new(None);
 
+struct ComboMenuChoice<'a, T> {
+    value: T,
+    selected_label: &'a str,
+    display_label: &'a str,
+    display_sub_label: Option<&'a str>,
+    search_terms: &'a [String]
+}
+
+fn normalize_search_text(text: &str) -> String {
+    text.chars()
+        .flat_map(|c| c.to_lowercase())
+        .filter(|c| c.is_alphanumeric())
+        .collect()
+}
+
+fn combo_choice_matches<T>(choice: &ComboMenuChoice<T>, search_lower: &str, search_normalized: &str) -> bool {
+    choice.search_terms.iter().any(|term| {
+        term.contains(search_lower) ||
+        (!search_normalized.is_empty() && term.contains(search_normalized))
+    })
+}
+
+fn combo_choice_display_text<T>(ui: &egui::Ui, choice: &ComboMenuChoice<T>, wrap_width: f32) -> egui::WidgetText {
+    let Some(sub_label) = choice.display_sub_label else {
+        return choice.display_label.into();
+    };
+
+    let mut job = egui::text::LayoutJob::default();
+    job.wrap.max_width = wrap_width;
+    job.append(
+        choice.display_label,
+        0.0,
+        egui::TextFormat::simple(egui::TextStyle::Button.resolve(ui.style()), ui.visuals().text_color())
+    );
+    job.append(
+        "\n",
+        0.0,
+        egui::TextFormat::simple(egui::TextStyle::Button.resolve(ui.style()), ui.visuals().text_color())
+    );
+    job.append(
+        sub_label,
+        0.0,
+        egui::TextFormat::simple(egui::TextStyle::Small.resolve(ui.style()), ui.visuals().weak_text_color())
+    );
+    job.into()
+}
+
+fn push_combo_search_term(search_terms: &mut Vec<String>, text: &str) {
+    let lower = text.to_lowercase();
+    if !lower.is_empty() && !search_terms.contains(&lower) {
+        search_terms.push(lower);
+    }
+
+    let normalized = normalize_search_text(text);
+    if !normalized.is_empty() && !search_terms.contains(&normalized) {
+        search_terms.push(normalized);
+    }
+}
+
+fn is_likely_english_text(text: &str) -> bool {
+    let mut has_ascii_alphabetic = false;
+    for c in text.chars() {
+        if c.is_alphabetic() {
+            if !c.is_ascii() {
+                return false;
+            }
+            has_ascii_alphabetic = true;
+        }
+    }
+    has_ascii_alphabetic
+}
+
 pub fn enqueue_theme_preview(config: hachimi::Config) {
     if let Ok(mut lock) = PENDING_THEME.lock() {
         *lock = Some(config);
@@ -1114,12 +1186,12 @@ impl Gui {
         ui: &mut egui::Ui,
         id_salt: impl std::hash::Hash,
         value: &mut T,
-        choices: &[(T, &str)],
+        choices: &[ComboMenuChoice<T>],
         search_term: &mut String,
     ) -> bool {
         let mut changed = false;
         let scale = get_scale(ui.ctx());
-        let fixed_width = 145.0 * scale;
+        let fixed_width = 200.0 * scale;
         let row_height = 24.0 * scale;
         let padding = ui.spacing().button_padding;
 
@@ -1127,8 +1199,8 @@ impl Gui {
         let popup_id = button_id.with("popup");
 
         let selected_text = choices.iter()
-            .find(|(v, _)| v == value)
-            .map(|(_, s)| *s)
+            .find(|choice| choice.value == *value)
+            .map(|choice| choice.selected_label)
             .unwrap_or("Unknown");
 
         let (rect, _) = ui.allocate_exact_size(egui::vec2(fixed_width, row_height), egui::Sense::hover());
@@ -1192,6 +1264,9 @@ impl Gui {
 
             ui.separator();
 
+            let search_lower = search_term.to_lowercase();
+            let search_normalized = normalize_search_text(search_term);
+
             egui::ScrollArea::vertical()
             .max_height(250.0 * scale)
             .hscroll(false)
@@ -1200,14 +1275,15 @@ impl Gui {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
 
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
-                    for (choice_val, label) in choices {
-                        if !search_term.is_empty() && !label.to_lowercase().contains(&search_term.to_lowercase()) {
+                    for choice in choices {
+                        if !search_term.is_empty() && !combo_choice_matches(choice, &search_lower, &search_normalized) {
                             continue;
                         }
     
-                        let is_selected = value == choice_val;
-                        if ui.add(egui::Button::selectable(is_selected, *label)).clicked() {
-                            *value = *choice_val;
+                        let is_selected = *value == choice.value;
+                        let choice_text = combo_choice_display_text(ui, choice, fixed_width - padding.x * 2.0);
+                        if ui.add(egui::Button::selectable(is_selected, choice_text).wrap()).clicked() {
+                            *value = choice.value;
                             changed = true;
                             egui::Popup::close_id(ui.ctx(), popup_id);
                             search_term.clear();
@@ -2466,21 +2542,61 @@ impl Window for FirstTimeSetupWindow {
 struct LiveVocalsSwapWindow {
     id: egui::Id,
     config: hachimi::Config,
-    chara_choices: Vec<(i32, String)>,
+    chara_choices: Vec<LiveVocalsSwapCharaChoice>,
     search_term: String
+}
+
+struct LiveVocalsSwapCharaChoice {
+    id: i32,
+    selected_label: String,
+    display_label: String,
+    display_sub_label: Option<String>,
+    search_terms: Vec<String>
+}
+
+impl LiveVocalsSwapCharaChoice {
+    fn new(id: i32, localized_name: String, japanese_name: Option<String>, english_name: Option<String>) -> Self {
+        let mut search_terms = Vec::new();
+        push_combo_search_term(&mut search_terms, &localized_name);
+        if let Some(name) = japanese_name.as_ref() {
+            push_combo_search_term(&mut search_terms, name);
+        }
+        if let Some(name) = english_name.as_ref() {
+            push_combo_search_term(&mut search_terms, name);
+        }
+
+        let display_sub_label = english_name.filter(|name| {
+            !name.is_empty() &&
+            name != &localized_name &&
+            !is_likely_english_text(&localized_name)
+        });
+
+        Self {
+            id,
+            selected_label: localized_name.clone(),
+            display_label: localized_name,
+            display_sub_label,
+            search_terms
+        }
+    }
 }
 
 impl LiveVocalsSwapWindow {
     fn new() -> LiveVocalsSwapWindow {
         let hachimi = Hachimi::instance();
-        let mut chara_choices: Vec<(i32, String)> = Vec::new();
-        chara_choices.push((0, t!("default").into_owned()));
+        let mut chara_choices: Vec<LiveVocalsSwapCharaChoice> = Vec::new();
+        chara_choices.push(LiveVocalsSwapCharaChoice::new(0, t!("default").into_owned(), None, None));
 
         let data = hachimi.chara_data.load();
         for &id in &data.chara_ids {
-            chara_choices.push((id, data.get_name(id)));
+            chara_choices.push(LiveVocalsSwapCharaChoice::new(
+                id,
+                data.get_name(id),
+                data.get_japanese_name(id).map(|name| name.to_string()),
+                data.get_english_name(id).map(|name| name.to_string())
+            ));
         }
-        chara_choices.sort_by_key(|choice| choice.0);
+        chara_choices.sort_by_key(|choice| choice.id);
 
         LiveVocalsSwapWindow {
             id: random_id(),
@@ -2498,9 +2614,15 @@ impl Window for LiveVocalsSwapWindow {
         let mut open2 = true;
         let mut save_clicked = false;
 
-        let combo_items: Vec<(i32, &str)> = self.chara_choices
+        let combo_items: Vec<ComboMenuChoice<'_, i32>> = self.chara_choices
             .iter()
-            .map(|&(id, ref name)| (id, name.as_str()))
+            .map(|choice| ComboMenuChoice {
+                value: choice.id,
+                selected_label: choice.selected_label.as_str(),
+                display_label: choice.display_label.as_str(),
+                display_sub_label: choice.display_sub_label.as_deref(),
+                search_terms: choice.search_terms.as_slice()
+            })
             .collect();
 
         new_window(ctx, self.id, t!("config_editor.live_vocals_swap"))

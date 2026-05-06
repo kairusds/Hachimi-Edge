@@ -10,29 +10,40 @@ use crate::{
 #[derive(Default)]
 pub struct CharacterData {
     pub chara_ids: FnvHashSet<i32>,
-    pub chara_names: FnvHashMap<i32, String>
+    pub chara_names: FnvHashMap<i32, String>,
+    pub chara_english_names: FnvHashMap<i32, String>
 }
 
 impl CharacterData {
     pub fn load_from_db() -> Self {
         let mut chara_ids = FnvHashSet::default();
         let mut chara_names = FnvHashMap::default();
+        let mut chara_english_names = FnvHashMap::default();
 
         let db_path = get_masterdb_path();
         let conn = Connection::new();
 
         if Connection::Open(conn, db_path.to_il2cpp_string(), ptr::null_mut(), ptr::null_mut(), 0) {
-            let sql = "SELECT C.id, T.text FROM chara_data AS C JOIN text_data AS T ON C.id = T.\"index\" WHERE T.id = 6";
+            let sql = "SELECT C.id, JP.text, EN.text \
+                FROM chara_data AS C \
+                JOIN text_data AS JP ON C.id = JP.\"index\" AND JP.id = 6 \
+                LEFT JOIN text_data AS EN ON C.id = EN.\"index\" AND EN.id = 372";
             let query = Connection::Query(conn, sql.to_il2cpp_string());
 
             if !query.is_null() {
                 while Query::Step(query) {
                     let id = Query::GetInt(query, 0);
                     let name_ptr = Query::GetText(query, 1);
+                    let english_name_ptr = Query::GetText(query, 2);
 
                     if let Some(name) = unsafe { name_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()) {
                         chara_ids.insert(id);
                         chara_names.insert(id, name);
+                    }
+                    if let Some(name) = unsafe { english_name_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()) {
+                        if name.chars().any(|c| c.is_ascii_alphabetic()) {
+                            chara_english_names.insert(id, name);
+                        }
                     }
                 }
                 Query::Dispose(query);
@@ -40,11 +51,19 @@ impl CharacterData {
             Connection::CloseDB(conn);
         }
 
-        CharacterData { chara_ids, chara_names }
+        CharacterData { chara_ids, chara_names, chara_english_names }
     }
 
     pub fn exists(&self, id: i32) -> bool {
         self.chara_ids.contains(&id)
+    }
+
+    pub fn get_japanese_name(&self, id: i32) -> Option<&str> {
+        self.chara_names.get(&id).map(|s| s.as_str())
+    }
+
+    pub fn get_english_name(&self, id: i32) -> Option<&str> {
+        self.chara_english_names.get(&id).map(|s| s.as_str())
     }
 
     pub fn get_name(&self, id: i32) -> String {
