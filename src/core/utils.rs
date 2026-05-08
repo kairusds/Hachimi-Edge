@@ -17,7 +17,7 @@ pub struct SendPtr(pub *mut Il2CppObject);
 unsafe impl Send for SendPtr {}
 unsafe impl Sync for SendPtr {}
 
-static LOCALIZE_ID_CACHE: Lazy<Mutex<FnvHashMap<String, i32>>> = 
+static LOCALIZE_ID_CACHE: Lazy<Mutex<FnvHashMap<String, i32>>> =
     Lazy::new(|| Mutex::new(FnvHashMap::default()));
 
 pub fn get_localized_string(id_name: &str) -> String {
@@ -61,7 +61,7 @@ pub fn char_to_utf16_index(text: &str, char_idx: usize) -> i32 {
 pub fn utf16_to_char_index(text: &str, utf16_idx: usize) -> usize {
     let mut current_utf16_pos = 0;
     let mut char_pos = 0;
-    
+
     for c in text.chars() {
         if current_utf16_pos >= utf16_idx {
             break;
@@ -448,7 +448,13 @@ pub fn wrap_fit_text(string: &str, base_line_width: i32, mut max_line_count: i32
     loop {
         let wrapped = wrap_text_internal(string, line_width.round() as i32, line_width_multiplier);
         if wrapped.len() as i32 <= max_line_count {
-            return Some(add_size_tag(&wrapped.join("\n"), font_size.round() as i32));
+            let new_size = font_size.round() as i32;
+            let new_text = wrapped.join("\n");
+            return Some(if new_size != base_font_size {
+                add_size_tag(&new_text, new_size)
+            } else {
+                new_text
+            });
         }
 
         let prev_max_line_count = max_line_count;
