@@ -23,6 +23,8 @@ static mut _BGBUTTON_FIELD: *mut FieldInfo = 0 as _;
 pub fn get__bgButton(this: *mut Il2CppObject) -> *mut Il2CppObject {
     get_field_object_value(this, unsafe { _BGBUTTON_FIELD })
 }
+static mut set_skill_name_text_addr: usize = 0;
+impl_addr_wrapper_fn!(set_skill_name_text, set_skill_name_text_addr, (), this: *mut Il2CppObject);
 
 // PartsSingleModeSkillListItem.Info
 static mut get_IsDrawDesc_addr: usize = 0;
@@ -109,7 +111,7 @@ extern "C" fn UpdateItemOther(this: *mut Il2CppObject, skill_info: *mut Il2CppOb
     });
 }
 
-fn get_skill_text(skill_id: i32) -> (String, String) {    
+fn get_skill_text(skill_id: i32) -> (String, String) {
     let to_s = |opt_ptr: Option<*mut Il2CppString>| unsafe {
         opt_ptr.and_then(|p| p.as_ref()).map(|s| s.as_utf16str().to_string())
     };
@@ -190,6 +192,7 @@ pub fn init(umamusume: *const Il2CppImage) {
         NAMETEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_nameText");
         DESCTEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_descText");
         _BGBUTTON_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_bgButton");
+        set_skill_name_text_addr = get_method_addr(PartsSingleModeSkillListItem, c"SetSkillNameText", 0);
 
         // PartsSingleModeSkillListItem.Info
         get_IsDrawDesc_addr = get_method_addr(Info, c"get_IsDrawDesc", 0);
