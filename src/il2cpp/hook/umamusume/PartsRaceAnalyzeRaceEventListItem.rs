@@ -13,7 +13,7 @@ type SetupFn = extern "C" fn(this: *mut Il2CppObject, list_item_model: *mut Il2C
 fn Setup(this: *mut Il2CppObject, list_item_model: *mut Il2CppObject) {
     get_orig_fn!(Setup, SetupFn)(this, list_item_model);
     let skill_item = get_skill_item(this);
-    if !skill_item.is_null() {
+    if !skill_item.is_null() && !PartsSingleModeSkillListItem::get_info(skill_item).is_null() {
         PartsSingleModeSkillListItem::set_skill_name_text(skill_item);
     }
 }

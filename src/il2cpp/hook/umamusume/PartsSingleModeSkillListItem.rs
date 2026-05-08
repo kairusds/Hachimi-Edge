@@ -23,6 +23,12 @@ static mut _BGBUTTON_FIELD: *mut FieldInfo = 0 as _;
 pub fn get__bgButton(this: *mut Il2CppObject) -> *mut Il2CppObject {
     get_field_object_value(this, unsafe { _BGBUTTON_FIELD })
 }
+
+static mut INFO_FIELD: *mut FieldInfo = 0 as _;
+pub fn get_info(this: *mut Il2CppObject) -> *mut Il2CppObject {
+    get_field_object_value(this, unsafe { INFO_FIELD })
+}
+
 static mut set_skill_name_text_addr: usize = 0;
 impl_addr_wrapper_fn!(set_skill_name_text, set_skill_name_text_addr, (), this: *mut Il2CppObject);
 
@@ -192,6 +198,7 @@ pub fn init(umamusume: *const Il2CppImage) {
         NAMETEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_nameText");
         DESCTEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_descText");
         _BGBUTTON_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_bgButton");
+        INFO_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_info");
         set_skill_name_text_addr = get_method_addr(PartsSingleModeSkillListItem, c"SetSkillNameText", 0);
 
         // PartsSingleModeSkillListItem.Info
