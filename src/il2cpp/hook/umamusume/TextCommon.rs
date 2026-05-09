@@ -20,6 +20,13 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
         Text::set_horizontalOverflow(this, 1);
         Text::set_verticalOverflow(this, 1);
     }
+
+    if localized_data.config.text_common_best_fit {
+        let cur_size = Text::get_fontSize(this);
+        Text::set_best_fit_min_size(this, cur_size.min(10));
+        Text::set_best_fit_max_size(this, cur_size);
+        Text::set_best_fit(this, true);
+    }
 }
 
 // We make the assumption the basic process of these functions is to call

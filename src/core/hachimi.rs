@@ -740,6 +740,8 @@ pub struct LocalizedDataConfig {
     #[serde(default)]
     pub text_common_allow_overflow: bool,
     #[serde(default)]
+    pub text_common_best_fit: bool,
+    #[serde(default)]
     pub now_loading_comic_title_ellipsis: bool,
 
     #[serde(default)]

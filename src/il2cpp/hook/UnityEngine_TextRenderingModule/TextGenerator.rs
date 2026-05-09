@@ -65,6 +65,7 @@ impl<'a> template::Context for TemplateContext<'a> {
             "nb" => {
                 self.settings.horizontalOverflow = TextOverflow_Allow;
                 self.settings.generateOutOfBounds = true;
+                self.settings.resizeTextForBestFit = false;
             }
 
             "anchor" => {
@@ -91,6 +92,7 @@ impl<'a> template::Context for TemplateContext<'a> {
                     return None;
                 };
                 self.settings.fontSize = (self.settings.fontSize as f64 * (percentage / 100.0)) as i32;
+                self.settings.resizeTextForBestFit = false;
             }
 
             "ho" => {
@@ -131,6 +133,12 @@ impl<'a> template::Context for TemplateContext<'a> {
                 self.settings.updateBounds = true;
             }
 
+            "afit" => {
+                self.settings.resizeTextForBestFit = true;
+                self.settings.generateOutOfBounds = false;
+                self.settings.resizeTextMaxSize = self.settings.fontSize
+            }
+
             _ => return None
         }
 
@@ -144,7 +152,7 @@ pub struct IgnoreTGFiltersContext();
 impl template::Context for IgnoreTGFiltersContext {
     fn on_filter_eval(&mut self, _name: &str, _args: &[template::Token]) -> Option<String> {
         match _name {
-            "nb" | "anchor" | "scale" | "ho" | "vo" | "ls" | "ub" => Some(String::new()),
+            "nb" | "anchor" | "scale" | "ho" | "vo" | "ls" | "ub" | "afit" => Some(String::new()),
             _ => None
         }
     }
