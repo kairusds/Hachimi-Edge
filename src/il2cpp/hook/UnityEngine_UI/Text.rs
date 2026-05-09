@@ -42,6 +42,13 @@ impl_addr_wrapper_fn!(set_best_fit_min_size, SET_BEST_FIT_MIN_SIZE_ADDR, (), thi
 static mut SET_BEST_FIT_MAX_SIZE_ADDR: usize = 0;
 impl_addr_wrapper_fn!(set_best_fit_max_size, SET_BEST_FIT_MAX_SIZE_ADDR, (), this: *mut Il2CppObject, value: i32);
 
+pub fn set_best_fit_downscale(this: *mut Il2CppObject) {
+    let cur_size = get_fontSize(this);
+    set_best_fit_min_size(this, cur_size.min(10));
+    set_best_fit_max_size(this, cur_size);
+    set_best_fit(this, true);
+}
+
 pub fn init(UnityEngine_UI: *const Il2CppImage) {
     get_class_or_return!(UnityEngine_UI, "UnityEngine.UI", Text);
 

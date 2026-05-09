@@ -74,6 +74,8 @@ mod PartsSingleModeChoiceRewardTextElementViewModel;
 mod PartsCommonHeaderTitle;
 pub mod StoryParamChangeEffect;
 mod PartsRaceAnalyzeRaceEventListItem;
+pub mod PartsNickNameRibbon;
+mod PartsNickNameListItem;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -153,4 +155,6 @@ pub fn init() {
     PartsCommonHeaderTitle::init(image);
     StoryParamChangeEffect::init(image);
     PartsRaceAnalyzeRaceEventListItem::init(image);
+    PartsNickNameRibbon::init(image);
+    PartsNickNameListItem::init(image);
 }
