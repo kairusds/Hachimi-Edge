@@ -139,6 +139,29 @@ impl<'a> template::Context for TemplateContext<'a> {
                 self.settings.resizeTextMaxSize = self.settings.fontSize
             }
 
+            "minw" => {
+                let value = args.get(0)?;
+                let template::Token::NumberLit(minwidth_num) = *value else {
+                    return None;
+                };
+                let minwidth = minwidth_num as f32;
+                if minwidth > self.settings.generationExtents.x {
+                    self.settings.generationExtents.x = minwidth;
+                }
+            }
+
+            "minh" => {
+                let value = args.get(0)?;
+                let template::Token::NumberLit(minheight_num) = *value else {
+                    return None;
+                };
+                // let extents = &mut self.settings.generationExtents;
+                let minheight = minheight_num as f32;
+                if minheight > self.settings.generationExtents.y {
+                    self.settings.generationExtents.y = minheight;
+                }
+            }
+
             _ => return None
         }
 
@@ -152,7 +175,7 @@ pub struct IgnoreTGFiltersContext();
 impl template::Context for IgnoreTGFiltersContext {
     fn on_filter_eval(&mut self, _name: &str, _args: &[template::Token]) -> Option<String> {
         match _name {
-            "nb" | "anchor" | "scale" | "ho" | "vo" | "ls" | "ub" | "afit" => Some(String::new()),
+            "nb" | "anchor" | "scale" | "ho" | "vo" | "ls" | "ub" | "afit" | "minw" | "minh" => Some(String::new()),
             _ => None
         }
     }
