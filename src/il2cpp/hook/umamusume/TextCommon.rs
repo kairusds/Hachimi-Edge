@@ -22,6 +22,10 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
     }
 
     if localized_data.config.text_common_best_fit {
+        // Do not touch game-set instances as they likely use special values.
+        if Text::get_best_fit(this) {
+            return;
+        }
         let cur_size = Text::get_fontSize(this);
         Text::set_best_fit_min_size(this, cur_size.min(10));
         Text::set_best_fit_max_size(this, cur_size);

@@ -33,6 +33,9 @@ impl_addr_wrapper_fn!(set_alignment, SET_ALIGNMENT_ADDR, (), this: *mut Il2CppOb
 static mut GET_PREFERREDHEIGHT_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_preferredHeight, GET_PREFERREDHEIGHT_ADDR, f32, this: *mut Il2CppObject);
 
+static mut GET_BEST_FIT_ADDR: usize = 0;
+impl_addr_wrapper_fn!(get_best_fit, GET_BEST_FIT_ADDR, bool, this: *mut Il2CppObject);
+
 static mut SET_BEST_FIT_ADDR: usize = 0;
 impl_addr_wrapper_fn!(set_best_fit, SET_BEST_FIT_ADDR, (), this: *mut Il2CppObject, value: bool);
 
@@ -64,6 +67,7 @@ pub fn init(UnityEngine_UI: *const Il2CppImage) {
         SET_TEXT_ADDR = get_method_addr(Text, c"set_text", 1);
         SET_ALIGNMENT_ADDR = get_method_addr(Text, c"set_alignment", 1);
         GET_PREFERREDHEIGHT_ADDR = get_method_addr(Text, c"get_preferredHeight", 0);
+        GET_BEST_FIT_ADDR = get_method_addr(Text, c"get_resizeTextForBestFit", 0);
         SET_BEST_FIT_ADDR = get_method_addr(Text, c"set_resizeTextForBestFit", 1);
         SET_BEST_FIT_MIN_SIZE_ADDR = get_method_addr(Text, c"set_resizeTextMinSize", 1);
         SET_BEST_FIT_MAX_SIZE_ADDR = get_method_addr(Text, c"set_resizeTextMaxSize", 1);
