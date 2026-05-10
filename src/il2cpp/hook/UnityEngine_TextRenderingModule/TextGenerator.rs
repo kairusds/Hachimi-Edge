@@ -136,7 +136,19 @@ impl<'a> template::Context for TemplateContext<'a> {
             "afit" => {
                 self.settings.resizeTextForBestFit = true;
                 self.settings.generateOutOfBounds = false;
-                self.settings.resizeTextMaxSize = self.settings.fontSize
+                self.settings.resizeTextMaxSize = self.settings.fontSize;
+
+                // Optional args.
+                if let Some(template::Token::NumberLit(min_size)) = args.get(0) {
+                    if *min_size > 0.0 {
+                        self.settings.resizeTextMinSize = *min_size as _;
+                    }
+                }
+                if let Some(template::Token::NumberLit(max_size)) = args.get(1) {
+                    if *max_size > 0.0 {
+                        self.settings.resizeTextMaxSize = *max_size as _;
+                    }
+                }
             }
 
             "minw" => {
