@@ -134,19 +134,26 @@ impl<'a> template::Context for TemplateContext<'a> {
             }
 
             "afit" => {
-                self.settings.resizeTextForBestFit = true;
-                self.settings.generateOutOfBounds = false;
-                self.settings.resizeTextMaxSize = self.settings.fontSize;
+                let value = args.get(0)?;
+                let template::Token::NumberLit(state) = *value else {
+                    return None;
+                };
+                self.settings.resizeTextForBestFit = state != 0.0;
 
-                // Optional args.
-                if let Some(template::Token::NumberLit(min_size)) = args.get(0) {
-                    if *min_size > 0.0 {
-                        self.settings.resizeTextMinSize = *min_size as _;
+                if self.settings.resizeTextForBestFit {
+                    self.settings.generateOutOfBounds = false;
+                    self.settings.resizeTextMaxSize = self.settings.fontSize;
+
+                    // Optional args.
+                    if let Some(template::Token::NumberLit(min_size)) = args.get(1) {
+                        if *min_size > 0.0 {
+                            self.settings.resizeTextMinSize = *min_size as _;
+                        }
                     }
-                }
-                if let Some(template::Token::NumberLit(max_size)) = args.get(1) {
-                    if *max_size > 0.0 {
-                        self.settings.resizeTextMaxSize = *max_size as _;
+                    if let Some(template::Token::NumberLit(max_size)) = args.get(2) {
+                        if *max_size > 0.0 {
+                            self.settings.resizeTextMaxSize = *max_size as _;
+                        }
                     }
                 }
             }
