@@ -1,4 +1,14 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use crate::{core::{game::Region, utils, Hachimi}, il2cpp::{symbols::get_method_addr, types::*}};
+
+pub static NO_WRAP: AtomicBool = AtomicBool::new(false);
+
+pub fn without_text_wrap(callback: impl FnOnce()) {
+    NO_WRAP.store(true, Ordering::Relaxed);
+    callback();
+    NO_WRAP.store(false, Ordering::Relaxed);
+}
 
 type LineHeadWrapCommonFnJP = extern "C" fn(
     s: *mut Il2CppString, line_char_count: i32, handling_type: i32, is_match_delegate: *mut Il2CppDelegate
@@ -6,8 +16,8 @@ type LineHeadWrapCommonFnJP = extern "C" fn(
 extern "C" fn LineHeadWrapCommonJP(
     s: *mut Il2CppString, line_char_count: i32, handling_type: i32, is_match_delegate: *mut Il2CppDelegate
 ) -> *mut Il2CppString {
-    // Don't wrap prewrapped text.
-    if utils::game_str_has_newline(s) {
+    // Don't wrap text if prewrapped or requested.
+    if NO_WRAP.load(Ordering::Relaxed) || utils::game_str_has_newline(s) {
         return s;
     }
 

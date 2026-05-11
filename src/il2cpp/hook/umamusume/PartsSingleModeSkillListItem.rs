@@ -1,6 +1,6 @@
 use crate::{
-    core::{Hachimi, game::Region, utils::{mul_int, str_visual_len}},
-    il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_CoreModule::{Component, Object, UnityAction}, UnityEngine_UI::{EventSystem, Text}}, sql::{self, TextDataQuery}, symbols::{create_delegate, get_field_from_name, get_field_object_value, get_method_addr}, types::*}
+    core::{Hachimi, game::Region, utils::str_visual_len},
+    il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_CoreModule::{Component, Object, UnityAction}, UnityEngine_UI::{EventSystem, Text}, umamusume::GallopUtil::without_text_wrap}, sql::TextDataQuery, symbols::{create_delegate, get_field_from_name, get_field_object_value, get_method_addr}, types::*}
 };
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
@@ -40,67 +40,18 @@ impl_addr_wrapper_fn!(get_IsDrawNeedSkillPoint, get_IsDrawNeedSkillPoint_addr, b
 static mut get_Id_addr: usize = 0;
 impl_addr_wrapper_fn!(get_Id, get_Id_addr, i32, this: *mut Il2CppObject);
 
-fn UpdateItemCommon(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, orig_fn_cb: impl FnOnce()) {
-    let skill_cfg = &Hachimi::instance().localized_data.load().config.skill_formatting;
-    let mut txt_cfg = sql::SkillTextFormatting::default();
-
+fn UpdateItemCommon(this: *mut Il2CppObject, _skill_info: *mut Il2CppObject, orig_fn_cb: impl FnOnce()) {
     let name = get__nameText(this);
     let desc = get__descText(this);
 
-    // Name should always exist, but let's be sure.
     if !name.is_null() {
-        let mut name_len = skill_cfg.name_length;
-        let mut name_lines = 1;
-
-        // Uma info, "short ver".
-        if !get_IsDrawDesc(skill_info) {
-            name_len = mul_int(name_len, skill_cfg.name_short_mult);
-            name_lines = skill_cfg.name_short_lines;
-        }
-        // "Draw Skill Pt" is also true on the short ver, even though it doesn't show there.
-        // So, apply only when desc shows.
-        else if get_IsDrawNeedSkillPoint(skill_info) {
-            name_len = mul_int(name_len, skill_cfg.name_sp_mult);
-        }
-        // todo: When lvl display!?
-        // if get_IsDrawUniqSkillInfo(skill_info) || get_Level(skill_info) > 1 {
-        //     name_len = mul_int(name_len, skill_cfg.name_lvl_mult);
-        // }
-
-        txt_cfg.name = Some(sql::TextFormatting {
-            line_len: name_len,
-            line_count: name_lines,
-            font_size: Text::get_fontSize(name)
-        });
+        Text::set_best_fit_downscale(name);
+    }
+    if !desc.is_null() {
+        Text::set_best_fit_downscale(desc);
     }
 
-    if get_IsDrawDesc(skill_info) && !desc.is_null() {
-        let desc_len = skill_cfg.desc_length;
-        // todo: When conditions button!?
-        // if get_IsDisplayUpgradeSkill(skill_info) {
-        //     desc_len = mul_int(desc_len, skill_cfg.desc_btn_mult);
-        // }
-
-        txt_cfg.desc = Some(sql::TextFormatting {
-            line_len: desc_len,
-            line_count: 4,
-            font_size: Text::get_fontSize(desc)
-        });
-    }
-
-    TextDataQuery::with_skill_query(&txt_cfg, orig_fn_cb);
-
-    if txt_cfg.is_localized {
-        if !name.is_null() {
-            Text::set_horizontalOverflow(name, 1);
-            if txt_cfg.name.map(|opts| opts.line_count).unwrap_or(1) > 1 {
-                Text::set_verticalOverflow(name, 1);
-            }
-        }
-        if !desc.is_null() {
-            Text::set_horizontalOverflow(desc, 1);
-        }
-    }
+    without_text_wrap(orig_fn_cb);
 }
 
 type UpdateItemJpFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32);
