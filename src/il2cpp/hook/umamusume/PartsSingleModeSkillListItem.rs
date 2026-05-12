@@ -1,6 +1,6 @@
 use crate::{
     core::{Hachimi, game::Region, utils::str_visual_len},
-    il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_CoreModule::{Component, Object, UnityAction}, UnityEngine_UI::{EventSystem, Text}, umamusume::GallopUtil::without_text_wrap}, sql::TextDataQuery, symbols::{create_delegate, get_field_from_name, get_field_object_value, get_method_addr}, types::*}
+    il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_CoreModule::{Component, GameObject, Object, RectTransform, UnityAction}, UnityEngine_UI::{EventSystem, Text}, umamusume::{GallopUtil::without_text_wrap, TextCommon}}, sql::TextDataQuery, symbols::{create_delegate, get_field_from_name, get_field_object_value, get_method_addr}, types::*}
 };
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
@@ -29,6 +29,16 @@ pub fn get_info(this: *mut Il2CppObject) -> *mut Il2CppObject {
     get_field_object_value(this, unsafe { INFO_FIELD })
 }
 
+static mut LEVELTEXT_FIELD: *mut FieldInfo = 0 as _;
+pub fn get_levelText(this: *mut Il2CppObject) -> *mut Il2CppObject {
+    get_field_object_value(this, unsafe { LEVELTEXT_FIELD })
+}
+
+static mut NEED_SKILL_POINT_ROOT_FIELD: *mut FieldInfo = 0 as _;
+pub fn get_needSkillPointRoot(this: *mut Il2CppObject) -> *mut Il2CppObject {
+    get_field_object_value(this, unsafe { NEED_SKILL_POINT_ROOT_FIELD })
+}
+
 static mut set_skill_name_text_addr: usize = 0;
 impl_addr_wrapper_fn!(set_skill_name_text, set_skill_name_text_addr, (), this: *mut Il2CppObject);
 
@@ -41,17 +51,44 @@ static mut get_Id_addr: usize = 0;
 impl_addr_wrapper_fn!(get_Id, get_Id_addr, i32, this: *mut Il2CppObject);
 
 fn UpdateItemCommon(this: *mut Il2CppObject, _skill_info: *mut Il2CppObject, orig_fn_cb: impl FnOnce()) {
+    //! Must be called first to init the hierarchy correctly.
+    without_text_wrap(orig_fn_cb);
+
     let name = get__nameText(this);
     let desc = get__descText(this);
 
     if !name.is_null() {
+        // Adjust layout width for right-side elements, because they sometimes are full width. WHY.
+        let name_transform = Component::get_transform(name);
+        let mut right_offset:f32 = 0.0;
+
+        let skill_lvl = get_levelText(this); // Component
+        if TextCommon::get_IsActiveInHierarchy(skill_lvl) {
+            let lvl_transform = Component::get_transform(skill_lvl);
+            right_offset -= RectTransform::get_offsetMax(lvl_transform).x.abs() + Text::get_preferredWidth(skill_lvl);
+        }
+
+        let skill_pts = get_needSkillPointRoot(this); // GameObject
+        if GameObject::get_activeSelf(skill_pts) {
+            let pts_transform = GameObject::get_transform(skill_pts);
+            right_offset -= RectTransform::get_rect(pts_transform).width;
+        }
+
+        // Set new size if needed.
+        if right_offset < 0.0 {
+            let mut offset_max = RectTransform::get_offsetMax(name_transform);
+            // Remember I said sometimes? Try to detect when.
+            if offset_max.x > right_offset {
+                offset_max.x = right_offset;
+                RectTransform::set_offsetMax(name_transform, offset_max);
+            }
+        }
+
         Text::set_best_fit_downscale(name);
     }
     if !desc.is_null() {
         Text::set_best_fit_downscale(desc);
     }
-
-    without_text_wrap(orig_fn_cb);
 }
 
 type UpdateItemJpFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32);
@@ -148,7 +185,9 @@ pub fn init(umamusume: *const Il2CppImage) {
         // PartsSingleModeSkillListItem
         NAMETEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_nameText");
         DESCTEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_descText");
+        LEVELTEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_levelText");
         _BGBUTTON_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_bgButton");
+        NEED_SKILL_POINT_ROOT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_needSkillPointRoot");
         INFO_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_info");
         set_skill_name_text_addr = get_method_addr(PartsSingleModeSkillListItem, c"SetSkillNameText", 0);
 

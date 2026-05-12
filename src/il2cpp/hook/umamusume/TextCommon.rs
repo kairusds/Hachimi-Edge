@@ -5,6 +5,9 @@ pub fn type_object() -> *mut Il2CppObject {
     unsafe { TYPE_OBJECT }
 }
 
+static mut GET_IS_ACTIVE_IN_HIERARCHY_ADDR: usize = 0;
+impl_addr_wrapper_fn!(get_IsActiveInHierarchy, GET_IS_ACTIVE_IN_HIERARCHY_ADDR, bool, this: *mut Il2CppObject);
+
 type AwakeFn = extern "C" fn(this: *mut Il2CppObject);
 extern "C" fn Awake(this: *mut Il2CppObject) {
     get_orig_fn!(Awake, AwakeFn)(this);
@@ -79,5 +82,6 @@ pub fn init(umamusume: *const Il2CppImage) {
 
     unsafe {
         TYPE_OBJECT = il2cpp_type_get_object(il2cpp_class_get_type(TextCommon));
+        GET_IS_ACTIVE_IN_HIERARCHY_ADDR = get_method_addr(TextCommon, c"get_IsActiveInHierarchy", 0);
     }
 }
