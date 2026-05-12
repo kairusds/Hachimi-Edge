@@ -1,0 +1,78 @@
+use crate::il2cpp::{
+    ext::Il2CppObjectExt,
+    hook::{
+        UnityEngine_CoreModule::{
+            Behaviour, Component,
+            RectTransform::{self, Axis},
+        },
+        UnityEngine_UI::Text,
+    },
+    symbols::{get_field_from_name, get_field_object_value, get_method_addr},
+    types::*,
+};
+
+static mut CLASS: *mut Il2CppClass = 0 as _;
+pub fn class() -> *mut Il2CppClass {
+    unsafe { CLASS }
+}
+
+static mut NAME_CONTENTS_SIZE_FITTER_FIELD: *mut FieldInfo = 0 as _;
+pub fn get_nameContentsSizeFitter(this: *mut Il2CppObject) -> *mut Il2CppObject {
+    get_field_object_value(this, unsafe { NAME_CONTENTS_SIZE_FITTER_FIELD })
+}
+
+static mut NAME_TEXT_FIELD: *mut FieldInfo = 0 as _;
+pub fn get_nameText(this: *mut Il2CppObject) -> *mut Il2CppObject {
+    get_field_object_value(this, unsafe { NAME_TEXT_FIELD })
+}
+
+// Class handily provides a value. That isn't used…
+const SKILL_TEXT_MAX_WIDTH: f32 = 330.0;
+
+type StartFn = extern "C" fn(this: *mut Il2CppObject);
+extern "C" fn Start(this: *mut Il2CppObject) {
+    get_orig_fn!(Start, StartFn)(this);
+    if unsafe { (*this).klass() } != class() {
+        return;
+    }
+
+    let fitter = get_nameContentsSizeFitter(this);
+    if !fitter.is_null() {
+        Behaviour::set_enabled(fitter, false);
+    }
+}
+
+type SetUpCharacterLimitBreakSkillFn =
+    extern "C" fn(this: *mut Il2CppObject, cardRairtyData: *mut Il2CppObject, nextCardRairtyData: *mut Il2CppObject, atlas: *mut Il2CppObject);
+extern "C" fn SetUpCharacterLimitBreakSkill(
+    this: *mut Il2CppObject,
+    cardRairtyData: *mut Il2CppObject,
+    nextCardRairtyData: *mut Il2CppObject,
+    atlas: *mut Il2CppObject,
+) {
+    get_orig_fn!(SetUpCharacterLimitBreakSkill, SetUpCharacterLimitBreakSkillFn)(this, cardRairtyData, nextCardRairtyData, atlas);
+
+    let text = get_nameText(this);
+    if !text.is_null() {
+        let text_transform = Component::get_transform(text);
+        RectTransform::SetSizeWithCurrentAnchors(text_transform, Axis::Horizontal, SKILL_TEXT_MAX_WIDTH);
+        Text::set_best_fit_downscale(text);
+    }
+}
+
+pub fn init(umamusume: *const Il2CppImage) {
+    get_class_or_return!(umamusume, Gallop, PartsGetSkillPlate);
+    get_class_or_return!(umamusume, Gallop, PartsGetStatusPlate); // Base class
+
+    let Start_addr = get_method_addr(PartsGetStatusPlate, c"Start", 0);
+    new_hook!(Start_addr, Start);
+
+    let SetUpCharacterLimitBreakSkill_addr = get_method_addr(PartsGetSkillPlate, c"SetUpCharacterLimitBreakSkill", 3);
+    new_hook!(SetUpCharacterLimitBreakSkill_addr, SetUpCharacterLimitBreakSkill);
+
+    unsafe {
+        CLASS = PartsGetSkillPlate;
+        NAME_CONTENTS_SIZE_FITTER_FIELD = get_field_from_name(PartsGetSkillPlate, c"_nameContentsSizeFitter");
+        NAME_TEXT_FIELD = get_field_from_name(PartsGetStatusPlate, c"_nameText");
+    }
+}

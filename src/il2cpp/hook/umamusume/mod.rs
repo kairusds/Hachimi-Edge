@@ -76,6 +76,7 @@ pub mod StoryParamChangeEffect;
 mod PartsRaceAnalyzeRaceEventListItem;
 pub mod PartsNickNameRibbon;
 mod PartsNickNameListItem;
+mod PartsGetSkillPlate;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -157,4 +158,5 @@ pub fn init() {
     PartsRaceAnalyzeRaceEventListItem::init(image);
     PartsNickNameRibbon::init(image);
     PartsNickNameListItem::init(image);
+    PartsGetSkillPlate::init(image);
 }
