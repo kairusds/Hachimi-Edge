@@ -77,6 +77,7 @@ mod PartsRaceAnalyzeRaceEventListItem;
 pub mod PartsNickNameRibbon;
 mod PartsNickNameListItem;
 mod PartsGetSkillPlate;
+mod StoryChoiceButton;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -159,4 +160,5 @@ pub fn init() {
     PartsNickNameRibbon::init(image);
     PartsNickNameListItem::init(image);
     PartsGetSkillPlate::init(image);
+    StoryChoiceButton::init(image);
 }
