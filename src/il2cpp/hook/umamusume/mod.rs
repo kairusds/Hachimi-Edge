@@ -23,6 +23,7 @@ pub mod FlashActionPlayer;
 pub mod TextRubyData;
 pub mod TextDotData;
 pub mod GameSystem;
+pub mod StoryViewTextControllerBase;
 mod StoryViewTextControllerLandscape;
 mod StoryViewTextControllerSingleMode;
 mod JikkyoDisplay;
@@ -106,6 +107,7 @@ pub fn init() {
     TextRubyData::init(image);
     TextDotData::init(image);
     GameSystem::init(image);
+    StoryViewTextControllerBase::init(image);
     StoryViewTextControllerLandscape::init(image);
     StoryViewTextControllerSingleMode::init(image);
     JikkyoDisplay::init(image);
