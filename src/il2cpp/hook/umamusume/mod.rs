@@ -14,7 +14,6 @@ pub mod SingleModeStartResultCharaViewer;
 pub mod WebViewManager;
 pub mod DialogCommon;
 mod PartsSingleModeSkillLearningListItem;
-mod MasterMissionData;
 mod TrainingParamChangeA2U;
 pub mod WebViewDefine;
 pub mod TextFrame;
@@ -79,6 +78,7 @@ pub mod PartsNickNameRibbon;
 mod PartsNickNameListItem;
 mod PartsGetSkillPlate;
 mod StoryChoiceButton;
+mod DialogMissionListItem;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -99,7 +99,6 @@ pub fn init() {
     WebViewManager::init(image);
     DialogCommon::init(image);
     PartsSingleModeSkillLearningListItem::init(image);
-    MasterMissionData::init(image);
     TrainingParamChangeA2U::init(image);
     TextFrame::init(image);
     PartsSingleModeSkillListItem::init(image);
@@ -163,4 +162,5 @@ pub fn init() {
     PartsNickNameListItem::init(image);
     PartsGetSkillPlate::init(image);
     StoryChoiceButton::init(image);
+    DialogMissionListItem::init(image);
 }
