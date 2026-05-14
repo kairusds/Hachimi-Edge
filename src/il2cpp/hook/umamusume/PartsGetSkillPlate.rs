@@ -1,14 +1,9 @@
 use crate::il2cpp::{
     ext::Il2CppObjectExt,
-    hook::{
-        UnityEngine_CoreModule::{
-            Behaviour, Component,
-            RectTransform::{self, Axis},
-        },
-        UnityEngine_UI::Text,
-    },
+    hook::{UnityEngine_CoreModule::Behaviour, UnityEngine_UI::Text},
     symbols::{get_field_from_name, get_field_object_value, get_method_addr},
     types::*,
+    utils,
 };
 
 static mut CLASS: *mut Il2CppClass = 0 as _;
@@ -28,6 +23,8 @@ pub fn get_nameText(this: *mut Il2CppObject) -> *mut Il2CppObject {
 
 // Class handily provides a value. That isn't used…
 const SKILL_TEXT_MAX_WIDTH: f32 = 330.0;
+// Custom value for this part.
+const SKILL_TEXT_MAX_HEIGHT: f32 = 65.0;
 
 type StartFn = extern "C" fn(this: *mut Il2CppObject);
 extern "C" fn Start(this: *mut Il2CppObject) {
@@ -54,8 +51,7 @@ extern "C" fn SetUpCharacterLimitBreakSkill(
 
     let text = get_nameText(this);
     if !text.is_null() {
-        let text_transform = Component::get_transform(text);
-        RectTransform::SetSizeWithCurrentAnchors(text_transform, Axis::Horizontal, SKILL_TEXT_MAX_WIDTH);
+        utils::adjust_transform_size(text, SKILL_TEXT_MAX_WIDTH, SKILL_TEXT_MAX_HEIGHT);
         Text::set_best_fit_downscale(text);
     }
 }
