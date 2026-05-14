@@ -80,6 +80,7 @@ mod PartsGetSkillPlate;
 mod StoryChoiceButton;
 mod DialogMissionListItem;
 mod PartsNamePlateBase;
+mod PartsSupportCardImproveDetail;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -165,4 +166,5 @@ pub fn init() {
     StoryChoiceButton::init(image);
     DialogMissionListItem::init(image);
     PartsNamePlateBase::init(image);
+    PartsSupportCardImproveDetail::init(image);
 }
