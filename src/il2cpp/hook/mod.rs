@@ -66,6 +66,31 @@ macro_rules! impl_addr_wrapper_fn {
     };
 }
 
+macro_rules! def_field_value_accessors {
+    ($get_name:ident, $set_name:ident, $field:ident, $t:ty) => {
+        static mut $field: *mut FieldInfo = 0 as _;
+        pub fn $get_name(this: *mut Il2CppObject) -> $t {
+            crate::il2cpp::symbols::get_field_value(this, unsafe { $field })
+        }
+
+        pub fn $set_name(this: *mut Il2CppObject, value: $t) {
+            crate::il2cpp::symbols::set_field_value(this, unsafe { $field }, &value)
+        }
+    };
+    (get $get_name:ident, $field:ident, $t:ty) => {
+        static mut $field: *mut FieldInfo = 0 as _;
+        pub fn $get_name(this: *mut Il2CppObject) -> $t {
+            crate::il2cpp::symbols::get_field_value(this, unsafe { $field })
+        }
+    };
+    (set $set_name:ident, $field:ident, $t:ty) => {
+        static mut $field: *mut FieldInfo = 0 as _;
+        pub fn $set_name(this: *mut Il2CppObject, value: $t) {
+            crate::il2cpp::symbols::set_field_value(this, unsafe { $field }, &value)
+        }
+    };
+}
+
 pub mod mscorlib;
 
 pub mod UnityEngine_CoreModule;
