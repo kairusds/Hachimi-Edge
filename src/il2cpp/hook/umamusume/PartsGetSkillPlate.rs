@@ -1,15 +1,9 @@
 use crate::il2cpp::{
-    ext::Il2CppObjectExt,
     hook::{UnityEngine_CoreModule::Behaviour, UnityEngine_UI::Text},
     symbols::{get_field_from_name, get_field_object_value, get_method_addr},
     types::*,
     utils,
 };
-
-static mut CLASS: *mut Il2CppClass = 0 as _;
-pub fn class() -> *mut Il2CppClass {
-    unsafe { CLASS }
-}
 
 static mut NAME_CONTENTS_SIZE_FITTER_FIELD: *mut FieldInfo = 0 as _;
 pub fn get_nameContentsSizeFitter(this: *mut Il2CppObject) -> *mut Il2CppObject {
@@ -26,19 +20,6 @@ const SKILL_TEXT_MAX_WIDTH: f32 = 330.0;
 // Custom value for this part.
 const SKILL_TEXT_MAX_HEIGHT: f32 = 65.0;
 
-type StartFn = extern "C" fn(this: *mut Il2CppObject);
-extern "C" fn Start(this: *mut Il2CppObject) {
-    get_orig_fn!(Start, StartFn)(this);
-    if unsafe { (*this).klass() } != class() {
-        return;
-    }
-
-    let fitter = get_nameContentsSizeFitter(this);
-    if !fitter.is_null() {
-        Behaviour::set_enabled(fitter, false);
-    }
-}
-
 type SetUpCharacterLimitBreakSkillFn =
     extern "C" fn(this: *mut Il2CppObject, cardRairtyData: *mut Il2CppObject, nextCardRairtyData: *mut Il2CppObject, atlas: *mut Il2CppObject);
 extern "C" fn SetUpCharacterLimitBreakSkill(
@@ -51,6 +32,10 @@ extern "C" fn SetUpCharacterLimitBreakSkill(
 
     let text = get_nameText(this);
     if !text.is_null() {
+        let fitter = get_nameContentsSizeFitter(this);
+        if !fitter.is_null() {
+            Behaviour::set_enabled(fitter, false);
+        }
         utils::adjust_transform_size(text, SKILL_TEXT_MAX_WIDTH, SKILL_TEXT_MAX_HEIGHT);
         Text::set_best_fit_downscale(text);
     }
@@ -60,14 +45,10 @@ pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, PartsGetSkillPlate);
     get_class_or_return!(umamusume, Gallop, PartsGetStatusPlate); // Base class
 
-    let Start_addr = get_method_addr(PartsGetStatusPlate, c"Start", 0);
-    new_hook!(Start_addr, Start);
-
     let SetUpCharacterLimitBreakSkill_addr = get_method_addr(PartsGetSkillPlate, c"SetUpCharacterLimitBreakSkill", 3);
     new_hook!(SetUpCharacterLimitBreakSkill_addr, SetUpCharacterLimitBreakSkill);
 
     unsafe {
-        CLASS = PartsGetSkillPlate;
         NAME_CONTENTS_SIZE_FITTER_FIELD = get_field_from_name(PartsGetSkillPlate, c"_nameContentsSizeFitter");
         NAME_TEXT_FIELD = get_field_from_name(PartsGetStatusPlate, c"_nameText");
     }
