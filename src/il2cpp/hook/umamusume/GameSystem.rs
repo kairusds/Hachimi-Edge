@@ -27,6 +27,14 @@ pub fn on_game_initialized() {
     crate::android::utils::set_audio_capture_policy_all();
     #[cfg(target_os = "windows")]
     super::UIManager::apply_ui_scale();
+
+    // Invoke plugin callbacks
+    let hachimi = Hachimi::instance();
+    let callbacks = hachimi.plugin_init_callbacks.lock().unwrap();
+    for (callback, userdata) in callbacks.iter() {
+        let callback: unsafe extern "C" fn(*mut std::ffi::c_void) = unsafe { std::mem::transmute(*callback) };
+        unsafe { callback(*userdata as *mut std::ffi::c_void); }
+    }
 }
 
 extern "C" fn InitializeGame_MoveNext(enumerator: *mut Il2CppObject) -> bool {

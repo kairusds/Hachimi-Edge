@@ -52,6 +52,14 @@ type PresentFn = extern "C" fn(this: *mut c_void, sync_interval: c_uint, flags: 
 extern "C" fn IDXGISwapChain_Present(this: *mut c_void, sync_interval: c_uint, flags: c_uint) -> HRESULT {
     let orig_fn: PresentFn = unsafe { std::mem::transmute(PRESENT_ADDR) };
 
+    // Call plugin present callbacks FIRST, before any checks
+    let hachimi = Hachimi::instance();
+    let callbacks = hachimi.present_callbacks.lock().unwrap();
+    for (callback, userdata) in callbacks.iter() {
+        let callback: unsafe extern "C" fn(*mut c_void, *mut c_void) = unsafe { std::mem::transmute(*callback) };
+        unsafe { callback(this, *userdata as *mut c_void); }
+    }
+
     let hwnd = check_hwnd(this);
     if hwnd.0 == std::ptr::null_mut() {
         return orig_fn(this, sync_interval, flags);

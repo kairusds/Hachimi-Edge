@@ -232,7 +232,7 @@ fn get_scale_salt(ctx: &egui::Context) -> f32 {
     ctx.data(|d| d.get_temp::<f32>(egui::Id::new("gui_scale_salt"))).unwrap_or(1.0)
 }
 
-fn get_scale(ctx: &egui::Context) -> f32 {
+pub fn get_scale(ctx: &egui::Context) -> f32 {
     ctx.data(|d| d.get_temp::<f32>(egui::Id::new("gui_scale"))).unwrap_or(1.0)
 }
 
@@ -1195,18 +1195,19 @@ impl Gui {
             ui.set_width(fixed_width);
             ui.set_max_width(fixed_width);
 
-            ui.horizontal(|ui| {
-                let _res = ui.add_sized(
-                    [ui.available_width() - 30.0 * scale, row_height],
-                    egui::TextEdit::singleline(search_term).hint_text(t!("search_filter"))
-                );
-                #[cfg(target_os = "android")]
-                handle_android_keyboard(&_res, search_term);
+        ui.horizontal(|ui| {
+            let res = ui.add_sized(
+                [ui.available_width() - 30.0 * scale, row_height],
+                egui::TextEdit::singleline(search_term).hint_text(t!("search_filter"))
+            );
+            #[cfg(target_os = "android")]
+            handle_android_keyboard(&res, search_term);
 
-                if ui.button("X").clicked() {
-                    search_term.clear();
-                }
-            });
+            if ui.button("X").clicked() {
+                search_term.clear();
+                res.surrender_focus();
+            }
+        });
 
             ui.separator();
 
@@ -1239,7 +1240,7 @@ impl Gui {
     }
 
     // egui's code originally (https://github.com/emilk/egui/blob/main/crates/egui/src/containers/combo_box.rs)
-    fn down_triangle_icon(painter: &egui::Painter, rect: egui::Rect, visuals: &egui::style::WidgetVisuals) {
+    pub fn down_triangle_icon(painter: &egui::Painter, rect: egui::Rect, visuals: &egui::style::WidgetVisuals) {
         let rect = egui::Rect::from_center_size(
             rect.center(),
             egui::vec2(rect.width() * 0.7, rect.height() * 0.45)
