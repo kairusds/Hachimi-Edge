@@ -168,7 +168,7 @@ config_editor:
   hide_ingame_ui_hotkey: "隐藏游戏内 UI 的快捷键"
   hide_ingame_ui_hotkey_info: >-
     此选项允许使用快捷键切换游戏内 UI 界面的显示。
-    Android 端，您需要双击“音量上键”，或连续三次点击屏幕右上角。
+    Android 端，可连续三次点击屏幕右上角。
     对于配备键盘的 PC/Android 设备，默认按键为 Insert，并可在 GUI 或配置文件中进行更改。
   menu_open_key: "打开菜单按键"
   menu_open_key_set: "按下以设置"

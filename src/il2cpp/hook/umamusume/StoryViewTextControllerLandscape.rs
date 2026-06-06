@@ -10,7 +10,7 @@ use crate::{
 use super::TextFrame;
 
 static mut _TEXTFRAME_FIELD: *mut FieldInfo = 0 as _;
-fn get__textFrame(this: *mut Il2CppObject) -> *mut Il2CppObject {
+pub fn get__textFrame(this: *mut Il2CppObject) -> *mut Il2CppObject {
     get_field_object_value(this, unsafe { _TEXTFRAME_FIELD })
 }
 

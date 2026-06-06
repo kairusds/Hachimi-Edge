@@ -46,6 +46,8 @@ tiny_http = "0.12"
 rust-i18n = "3.1"
 sys-locale = "0.3.2"
 simplelog = "0.12.2"
+crossbeam-channel = "0.5"
+egui_commonmark = { version = "0.22", features = ["better_syntax_highlighting"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 libc = "0.2"
@@ -89,7 +91,7 @@ tauri-winres = "0.1"
 cc = "1.1"
 
 [package.metadata.tauri-winres]
-ProductName = "Hachimi"
+ProductName = "Hachimi Edge"
 FileDescription = "Game enhancement and translation mod"
 
 [patch.crates-io]

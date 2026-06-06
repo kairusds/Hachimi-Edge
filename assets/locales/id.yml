@@ -29,6 +29,7 @@ confirm_dialog_title: "Konfirmasi"
 soft_restart_confirm_content: "Apa kamu yakin ingin memulai ulang ringan game?"
 in_game_browser_confirm_content: "Apa kamu yakin ingin buka browser dalam game?"
 browser_dialog_title: "Browser"
+bind_key: "Atur tombol"
 
 menu:
   check_for_updates: "\uf0aa Cek pembaruan"
@@ -69,8 +70,6 @@ notification:
   errors_during_update: "%{count} error terjadi ketika pembaruan. Mohon periksa log untuk info lanjutan."
   checking_for_updates: "Memeriksa pembaruan..."
   no_updates: "Tidak ada pembaruan."
-  press_to_set_menu_key: "Tekan tombol di jendela game untuk atur hotkey."
-  menu_open_key_set: "Hotkey buka menu diatur ke %{key}"
   ipc_softreset_exec: "Kendali IPC soft-reset dijalankan"
 
 first_time_setup:
@@ -166,13 +165,13 @@ config_editor:
   physics_update_mode: "Mode update fisik"
   disable_skill_name_translation: "Matikan translasi nama skill"
   hide_ingame_ui_hotkey: "Sembunyikan hotkey UI dalam game"
+  hide_ingame_ui_hotkey_bind: "Sembunyikan tombol dalam UI in-game"
   hide_ingame_ui_hotkey_info: >-
     Opsi ini memungkinkan tombol pintas untuk mengaktifkan/menonaktifkan UI di dalam game.
-    Untuk Android, Anda perlu mengetuk dua kali tombol Volume Atas, atau mengetuk tiga kali di bagian kanan atas layar.
+    Untuk Android, Anda dapat mengetuk tiga kali di bagian kanan atas layar.
     Untuk PC/Android dengan keyboard, tombolnya adalah Insert dan dapat dikonfigurasi di GUI atau config.
   discord_rpc: "RPC Discord"
   menu_open_key: "Buka menu hotkey"
-  menu_open_key_set: "Atur"
   msaa: "MSAA"
   render_scale: "Skala render"
   aniso_level: "Filter Anisotropik"
@@ -190,6 +189,11 @@ theme_editor:
   ui_extreme_bg_color: "Latar Input"
   ui_text_color: "Warna Teks"
   ui_window_rounding: "Sudut Membulat"
+
+set_keybind:
+  title: "Atur Tombol"
+  press_any_key: "Tekan tombol apapun…"
+  bound_key: "Tombol yang diatur: %{key}"
 
 tl_update_dialog:
   title: "Pembaruan Translasi Tersedia"
@@ -244,6 +248,16 @@ key_names:
   alt: "Alt"
   ctrl: "Ctrl"
   shift: "Shift"
+  back: "Kembali"
+  dpad_up: "D-Pad Atas"
+  dpad_down: "D-Pad Bawah"
+  dpad_left: "D-Pad Kiri"
+  dpad_right: "D-Pad Kanan"
+  volume_up: "Volume Atas"
+  volume_down: "Volume Bawah"
+  copy: "Salin"
+  cut: "Potong"
+  paste: "Tempel"
   numpad_0: "Numpad 0"
   numpad_1: "Numpad 1"
   numpad_2: "Numpad 2"
@@ -259,3 +273,4 @@ key_names:
   numpad_multiply: "Numpad *"
   numpad_divide: "Numpad /"
   numpad_decimal: "Numpad ."
+  unknown: "Tombol %{code}"

@@ -14,7 +14,6 @@ pub mod SingleModeStartResultCharaViewer;
 pub mod WebViewManager;
 pub mod DialogCommon;
 mod PartsSingleModeSkillLearningListItem;
-mod MasterMissionData;
 mod TrainingParamChangeA2U;
 pub mod WebViewDefine;
 pub mod TextFrame;
@@ -23,6 +22,7 @@ pub mod FlashActionPlayer;
 pub mod TextRubyData;
 pub mod TextDotData;
 pub mod GameSystem;
+pub mod StoryViewTextControllerBase;
 mod StoryViewTextControllerLandscape;
 mod StoryViewTextControllerSingleMode;
 mod JikkyoDisplay;
@@ -74,6 +74,13 @@ mod PartsSingleModeChoiceRewardTextElementViewModel;
 mod PartsCommonHeaderTitle;
 pub mod StoryParamChangeEffect;
 mod PartsRaceAnalyzeRaceEventListItem;
+pub mod PartsNickNameRibbon;
+mod PartsNickNameListItem;
+mod PartsGetSkillPlate;
+mod StoryChoiceButton;
+mod DialogMissionListItem;
+mod PartsNamePlateBase;
+mod PartsSupportCardImproveDetail;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "umamusume.dll");
@@ -94,7 +101,6 @@ pub fn init() {
     WebViewManager::init(image);
     DialogCommon::init(image);
     PartsSingleModeSkillLearningListItem::init(image);
-    MasterMissionData::init(image);
     TrainingParamChangeA2U::init(image);
     TextFrame::init(image);
     PartsSingleModeSkillListItem::init(image);
@@ -102,6 +108,7 @@ pub fn init() {
     TextRubyData::init(image);
     TextDotData::init(image);
     GameSystem::init(image);
+    StoryViewTextControllerBase::init(image);
     StoryViewTextControllerLandscape::init(image);
     StoryViewTextControllerSingleMode::init(image);
     JikkyoDisplay::init(image);
@@ -153,4 +160,11 @@ pub fn init() {
     PartsCommonHeaderTitle::init(image);
     StoryParamChangeEffect::init(image);
     PartsRaceAnalyzeRaceEventListItem::init(image);
+    PartsNickNameRibbon::init(image);
+    PartsNickNameListItem::init(image);
+    PartsGetSkillPlate::init(image);
+    StoryChoiceButton::init(image);
+    DialogMissionListItem::init(image);
+    PartsNamePlateBase::init(image);
+    PartsSupportCardImproveDetail::init(image);
 }

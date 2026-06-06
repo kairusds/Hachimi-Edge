@@ -29,6 +29,11 @@ confirm_dialog_title: "Confirm"
 soft_restart_confirm_content: "Are you sure you want to soft restart the game?"
 in_game_browser_confirm_content: "Are you sure you want to open the in-game browser?"
 browser_dialog_title: "Browser"
+bind_key: "Bind key"
+edit: "Edit"
+remove: "Remove"
+add: "Add"
+save_changes: "Save changes?"
 
 menu:
   check_for_updates: "\uf0aa Check for updates"
@@ -56,6 +61,8 @@ menu:
   open_in_game_browser: "\uf0ac Open in-game browser"
   toggle_game_ui: "\uf06e Toggle game UI"
   discord_rpc: "Discord RPC"
+  edit_excludes: "\uf040 Edit Excludes"
+  change_translation_repo: "\uf0c1 Change Translation Repo"
 
 notification:
   saved_localize_dump: "Saved to localize_dump.json"
@@ -70,10 +77,10 @@ notification:
   errors_during_update: "%{count} errors occurred during update. Check logs for more info."
   checking_for_updates: "Checking for updates..."
   no_updates: "No updates available."
-  press_to_set_menu_key: "Press a key in the game window to set the open-menu hotkey."
-  menu_open_key_set: "Open-menu hotkey set to %{key}"
   ipc_softreset_exec: "IPC remote soft-reset executed"
   atlas_workaround_reset: "Atlas files modified: workaround disabled."
+  tl_repo_changed: "Translation repository changed. Localized data reloaded."
+  tl_repo_folder_missing: "Translation data folder is missing. Please check for updates to restore translations."
 
 first_time_setup:
   title: "First Time Setup"
@@ -99,9 +106,10 @@ first_time_setup:
 about:
   title: "About"
   copyright: "© 2024-%{year} LeadRDRK, kairusds and contributors"
-  view_license: "View license"
-  open_website: "Open website"
-  view_source_code: "View source code"
+  view_license: "View License"
+  open_website: "Open Website"
+  view_source_code: "View Source Code"
+  view_contributors: "View Contributors"
 
 license:
   title: "License"
@@ -178,11 +186,11 @@ config_editor:
   hide_ingame_ui_hotkey: "Hide ingame UI hotkey"
   hide_ingame_ui_hotkey_info: >-
     This option allows a shortcut key to toggle the ingame UI.
-    For Android, you need to double tap the Volume Up key, or triple tap the top right of the screen.
-    For PC/Android with keyboard, it's the Insert key and can be configured in the gui or config.
+    For Android, you can triple tap the top right of the screen.
+    For PC/Android with keyboard, it's the Insert key by default and can be configured in the gui or config.
+  hide_ingame_ui_hotkey_bind: "Hide ingame UI keybind"
   discord_rpc: "Discord RPC"
   menu_open_key: "Open menu hotkey"
-  menu_open_key_set: "Press to set"
   msaa: "MSAA"
   render_scale: "Render Scale"
   aniso_level: "Anisotropic Filtering"
@@ -201,10 +209,48 @@ theme_editor:
   ui_text_color: "Text Color"
   ui_window_rounding: "Rounded Corners"
 
+set_keybind:
+  title: "Set Keybind"
+  press_any_key: "Press any key…"
+  bound_key: "Bound key: %{key}"
+
+excludes_editor:
+  title: "Excludes Editor"
+  no_paths_available: "No available paths to exclude"
+  saved: "Excludes saved successfully"
+  confirm_remove: "Are you sure you want to remove the exclude \"%{path}\"?"
+
+change_translation_repo:
+  title: "Change Translation Repo"
+  no_repos: "No translation repos downloaded yet."
+  browse_repositories: "Browse Repositories"
+  active: "Active"
+  available: "Available"
+  confirm_remove: "Are you sure you want to remove \"%{name}\"?"
+  cannot_remove_active: "Cannot remove the currently active repo. Switch to another repo first."
+
+add_translation_repo:
+  title: "Add Translation Repository"
+  select_translation_repo: "Select a translation repo:"
+  already_downloaded: "(already downloaded)"
+
+translation_repo_info:
+  details_suffix: "Details"
+  details_title: "Translation Repo Details"
+  homepage: "Homepage"
+  maintainer: "Maintainer"
+  contributors: "Contributors"
+  view_contributors: "View Contributors"
+  links: "Links"
+
 tl_update_dialog:
   title: "New update available"
   content: "A new translation update is available (%{size}). Do you want to download it?"
   content_zip_warning: "A new translation update is available (%{changed_size}). This update will download the full archive (%{download_size}) instead."
+  show_changelog: "Show Changelog"
+  changelog_title: "Changelog"
+  changelog_fetch_failed: "Failed to fetch changelog"
+  changelog_invalid: "Changelog content is not valid plaintext"
 
 update_prompt_dialog:
   title: "New update available"
@@ -229,11 +275,13 @@ steam_overlay_conflict_dialog:
     to temporarily disable the Hachimi overlay. It will close the game, and the next time the game starts up,
     the Hachimi overlay will be disabled and you will be able to make a purchase. After that, you may restart
     the game again to re-enable the Hachimi overlay.
+
 key_names:
   left: "Left arrow"
   right: "Right arrow"
   up: "Up arrow"
   down: "Down arrow"
+  back: "Back"
   insert: "Insert"
   delete: "Delete"
   home: "Home"
@@ -257,6 +305,26 @@ key_names:
   alt: "Alt"
   ctrl: "Ctrl"
   shift: "Shift"
+  dpad_up: "D-Pad Up"
+  dpad_down: "D-Pad Down"
+  dpad_left: "D-Pad Left"
+  dpad_right: "D-Pad Right"
+  volume_up: "Volume Up"
+  volume_down: "Volume Down"
+  copy: "Copy"
+  cut: "Cut"
+  paste: "Paste"
+  semicolon: ";"
+  comma: ","
+  backslash: "\\"
+  slash: "/"
+  left_bracket: "["
+  right_bracket: "]"
+  grave: "`"
+  minus: "-"
+  period: "."
+  plus: "+"
+  equals: "="
   numpad_0: "Numpad 0"
   numpad_1: "Numpad 1"
   numpad_2: "Numpad 2"
@@ -272,3 +340,4 @@ key_names:
   numpad_multiply: "Numpad *"
   numpad_divide: "Numpad /"
   numpad_decimal: "Numpad ."
+  unknown: "Key %{code}"

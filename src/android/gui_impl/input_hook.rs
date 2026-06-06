@@ -9,7 +9,7 @@ use jni::{
 
 use crate::{
     android::utils::{BACK_BUTTON_PRESSED, IS_IME_VISIBLE, get_activity, get_screen_dimensions},
-    core::{Error, Gui, Hachimi},
+    core::{gui, Error, Gui, Hachimi},
     il2cpp::symbols::Thread
 };
 
@@ -75,12 +75,10 @@ impl MultiTapState {
 }
 
 const CORNER_TAP_LIMIT: usize = 3;
-const VOLUME_TAP_LIMIT: usize = 2;
 const RESET_GUI_CONSUMING_TAP_LIMIT: usize = 4;
 const TAP_WINDOW_MS: i64 = 300;
 const CORNER_ZONE_RATIO: f32 = 0.12; // 12% screen size
 
-static VOLUME_UP_STATE: MultiTapState = MultiTapState::new();
 static CORNER_TAP_STATE: MultiTapState = MultiTapState::new();
 static TOGGLE_GAME_UI_TAP_STATE: MultiTapState = MultiTapState::new();
 static RESET_GUI_CONSUMING_STATE: MultiTapState = MultiTapState::new();
@@ -115,17 +113,7 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
 
         match key_code {
             keymap::KEYCODE_VOLUME_UP => {
-                VOLUME_UP_PRESSED.store(pressed, Ordering::Relaxed);
-
-                if pressed && repeat_count == 0 {
-                    if VOLUME_UP_STATE.register_tap(VOLUME_TAP_LIMIT, TAP_WINDOW_MS) {
-                        if Hachimi::instance().config.load().hide_ingame_ui_hotkey {
-                            Thread::main_thread().schedule(Gui::toggle_game_ui);
-                            return JNI_TRUE;
-                        }
-                    }
-                }
-
+                VOLUME_UP_PRESSED.store(pressed, Ordering::Relaxed);                
                 if pressed && VOLUME_DOWN_PRESSED.load(Ordering::Relaxed) {
                     if let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) {
                         gui.toggle_menu();
@@ -151,6 +139,14 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
             }
 
             _ => {
+                if gui::is_keybind_capture_active() {
+                    if pressed && repeat_count == 0 {
+                        let display = keymap::keycode_display_label(key_code);
+                        gui::report_keybind_capture(key_code, display);
+                        return JNI_TRUE;
+                    }
+                }
+
                 if pressed && key_code == Hachimi::instance().config.load().android.menu_open_key {
                     let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
                         return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);

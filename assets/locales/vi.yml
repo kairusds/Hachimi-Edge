@@ -155,7 +155,7 @@ config_editor:
   hide_ingame_ui_hotkey: "Phím tắt ẩn giao diện trong game"
   hide_ingame_ui_hotkey_info: >-
     Tùy chọn này cho phép sử dụng phím tắt để ẩn/hiện giao diện (UI) trong trò chơi.
-    Đối với Android, bạn cần nhấn đúp phím Tăng âm lượng, hoặc nhấn ba lần vào góc trên bên phải màn hình.
+    Đối với Android, bạn có thể nhấn ba lần vào góc trên bên phải màn hình.
     Đối với PC/Android có bàn phím, đó là phím Insert và có thể được cấu hình trong GUI hoặc tệp config.
   menu_open_key: "Phím tắt mở menu"
   menu_open_key_set: "Nhấn để thiết lập"

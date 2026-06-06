@@ -1,5 +1,6 @@
 use egui::Key;
 use jni::sys::jint;
+use rust_i18n::t;
 
 pub const KEYCODE_DPAD_UP: jint = 19;
 pub const KEYCODE_DPAD_DOWN: jint = 20;
@@ -167,5 +168,62 @@ pub fn get_key(key_code: jint) -> Option<Key> {
         KEYCODE_F11 => Some(Key::F11),
         KEYCODE_F12 => Some(Key::F12),
         _ => None
+    }
+}
+
+pub fn keycode_display_label(keycode: i32) -> String {
+    let name_map: &[(i32, &str)] = &[
+        (KEYCODE_DPAD_UP, "key_names.dpad_up"),
+        (KEYCODE_DPAD_DOWN, "key_names.dpad_down"),
+        (KEYCODE_DPAD_LEFT, "key_names.dpad_left"),
+        (KEYCODE_DPAD_RIGHT, "key_names.dpad_right"),
+        (KEYCODE_ESCAPE, "key_names.escape"),
+        (KEYCODE_TAB, "key_names.tab"),
+        (KEYCODE_DEL, "key_names.backspace"),
+        (KEYCODE_ENTER, "key_names.enter"),
+        (KEYCODE_SPACE, "key_names.space"),
+        (KEYCODE_INSERT, "key_names.insert"),
+        (KEYCODE_FORWARD_DEL, "key_names.delete"),
+        (KEYCODE_MOVE_HOME, "key_names.home"),
+        (KEYCODE_MOVE_END, "key_names.end"),
+        (KEYCODE_PAGE_UP, "key_names.page_up"),
+        (KEYCODE_PAGE_DOWN, "key_names.page_down"),
+        (KEYCODE_BACK, "key_names.back"),
+        (KEYCODE_VOLUME_UP, "key_names.volume_up"),
+        (KEYCODE_VOLUME_DOWN, "key_names.volume_down"),
+        (KEYCODE_COPY, "key_names.copy"),
+        (KEYCODE_CUT, "key_names.cut"),
+        (KEYCODE_PASTE, "key_names.paste"),
+        (KEYCODE_SEMICOLON, "key_names.semicolon"),
+        (KEYCODE_COMMA, "key_names.comma"),
+        (KEYCODE_BACKSLASH, "key_names.backslash"),
+        (KEYCODE_SLASH, "key_names.slash"),
+        (KEYCODE_LEFT_BRACKET, "key_names.left_bracket"),
+        (KEYCODE_RIGHT_BRACKET, "key_names.right_bracket"),
+        (KEYCODE_GRAVE, "key_names.grave"),
+        (KEYCODE_MINUS, "key_names.minus"),
+        (KEYCODE_PERIOD, "key_names.period"),
+        (KEYCODE_PLUS, "key_names.plus"),
+        (KEYCODE_EQUALS, "key_names.equals"),
+    ];
+
+    if let Some((_, key_translation_str)) = name_map.iter().find(|(k, _)| *k == keycode) {
+        return t!(*key_translation_str).into_owned();
+    }
+
+    match keycode {
+        KEYCODE_0..=KEYCODE_9 => {
+            format!("{}", keycode - KEYCODE_0)
+        }
+        KEYCODE_A..=KEYCODE_Z => {
+            let c = (b'A' + (keycode - KEYCODE_A) as u8) as char;
+            c.to_string()
+        }
+        KEYCODE_F1..=KEYCODE_F12 => {
+            format!("F{}", keycode - KEYCODE_F1 + 1)
+        }
+        other => {
+            t!("key_names.unknown", code = other).into_owned()
+        }
     }
 }

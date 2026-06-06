@@ -29,6 +29,7 @@ confirm_dialog_title: "Confirmar"
 soft_restart_confirm_content: "Você tem certeza que deseja realizar um soft-restart do jogo?"
 in_game_browser_confirm_content: "Você tem certeza que deseja abrir o navegador do jogo?"
 browser_dialog_title: "Navegador"
+bind_key: "Definir atalho"
 
 menu:
   check_for_updates: "\uf0aa Buscar atualizações"
@@ -70,8 +71,6 @@ notification:
   errors_during_update: "%{count} erros aconteceram durante a atualização. Verifique os registros para mais detalhes."
   checking_for_updates: "Procurando atualizações..."
   no_updates: "Nenhuma atualização encontrada."
-  press_to_set_menu_key: "Pressione uma tecla para definir um atalho para o menu."
-  menu_open_key_set: "Tecla definida para abrir o menu: %{key}"
   ipc_softreset_exec: "Soft-restart remoto (IPC) realizado."
   atlas_workaround_reset: "Arquivos de atlas modificados: solução temporária desabilitada."
 
@@ -169,13 +168,13 @@ config_editor:
   physics_update_mode: "Modo de atualização das físicas"
   disable_skill_name_translation: "Desabilitar tradução dos nomes das habilidades"
   hide_ingame_ui_hotkey: "Atalho para esconder a UI do jogo"
+  hide_ingame_ui_hotkey_bind: "Atalho para esconder a UI do jogo"
   hide_ingame_ui_hotkey_info: >-
     Esta opção permite que um atalho seja utilizado para alternar a visualização da UI do jogo.
-    No Android, você pode pressionar rapidamente duas vezes o botão de volume para cima, ou tocar três vezes rapidamente no canto superior direito da tela.
+    No Android, você pode tocar três vezes rapidamente no canto superior direito da tela.
     No PC/Android com um teclado conectado, você pode pressionar a tecla Insert ou definir outra tecla nas configurações.
   discord_rpc: "Discord RPC"
   menu_open_key: "Atalho para abrir o menu"
-  menu_open_key_set: "Pressione para definir"
   msaa: "MSAA"
   render_scale: "Escala de Renderização"
   aniso_level: "Filtragem Anisotrópica"
@@ -193,6 +192,11 @@ theme_editor:
   ui_extreme_bg_color: "Cor dos campos de texto"
   ui_text_color: "Cor do texto"
   ui_window_rounding: "Cantos arrendondados"
+
+set_keybind:
+  title: "Definir atalho"
+  press_any_key: "Pressione qualquer tecla…"
+  bound_key: "Tecla definida: %{key}"
 
 tl_update_dialog:
   title: "Uma nova atualização está disponível."
@@ -250,6 +254,16 @@ key_names:
   alt: "Alt"
   ctrl: "Ctrl"
   shift: "Shift"
+  back: "Voltar"
+  dpad_up: "D-Pad cima"
+  dpad_down: "D-Pad baixo"
+  dpad_left: "D-Pad esquerda"
+  dpad_right: "D-Pad direita"
+  volume_up: "Volume cima"
+  volume_down: "Volume baixo"
+  copy: "Copiar"
+  cut: "Cortar"
+  paste: "Colar"
   numpad_0: "Numpad 0"
   numpad_1: "Numpad 1"
   numpad_2: "Numpad 2"
@@ -265,3 +279,4 @@ key_names:
   numpad_multiply: "Numpad *"
   numpad_divide: "Numpad /"
   numpad_decimal: "Numpad ."
+  unknown: "Tecla %{code}"

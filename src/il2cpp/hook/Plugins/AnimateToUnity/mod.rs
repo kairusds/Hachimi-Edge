@@ -1,6 +1,6 @@
 use crate::il2cpp::types::Il2CppImage;
 
-mod AnText;
+pub mod AnText;
 mod AnMeshInfoParameterGroup;
 mod AnMeshParameter;
 pub mod AnRoot;

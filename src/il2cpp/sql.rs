@@ -1,8 +1,8 @@
-use std::{ptr, sync::atomic::{self, AtomicPtr}};
+use std::ptr;
 use fnv::{FnvHashMap, FnvHashSet};
 use sqlparser::ast;
 use crate::{
-    core::{utils::{get_masterdb_path, fit_text, wrap_fit_text}, Hachimi},
+    core::{utils::get_masterdb_path, Hachimi},
     il2cpp::{ext::{StringExt, Il2CppStringExt}, hook::LibNative_Runtime::Sqlite3::{Connection, Query}, types::{Il2CppObject, Il2CppString}}
 };
 
@@ -129,17 +129,17 @@ impl SkillInfo {
 // All of this add column/param stuff could be simplified to two hash maps, but that's overkill.
 pub trait SelectQueryState {
     /// Adds a column to the query.
-    /// 
+    ///
     /// Implementers are expected to only track the index of columns that they need.
     fn add_column(&mut self, idx: i32, name: &str);
 
     /// Adds a placeholder parameter to the query (WHERE param = ?).
-    /// 
+    ///
     /// Index starts at 1.
     fn add_param(&mut self, idx: i32, name: &str);
 
     /// Bind an int value to a placeholder.
-    /// 
+    ///
     /// Index starts at 1.
     fn bind_int(&mut self, idx: i32, value: i32);
 
@@ -150,12 +150,12 @@ pub trait SelectQueryState {
 #[derive(Default)]
 struct Column {
     /// Index of the column in the SELECT statement.
-    /// 
+    ///
     /// Can be used to query the value later if needed.
     select_idx: Option<i32>,
 
     /// Index of the placeholder param for this column.
-    /// 
+    ///
     /// If this column's value is already binded as a param in the query, we won't need to query it later.
     param_idx: Option<i32>,
 
@@ -220,38 +220,8 @@ pub struct TextDataQuery {
     category: Column,
     index: Column
 }
-pub struct TextFormatting {
-    pub line_len: i32,
-    pub line_count: i32,
-    pub font_size: i32
-}
-
-#[derive(Default)]
-pub struct SkillTextFormatting {
-    pub name: Option<TextFormatting>,
-    pub desc: Option<TextFormatting>,
-    pub is_localized: bool
-}
-
-pub static TDQ_SKILL_TEXT_FORMAT:AtomicPtr<SkillTextFormatting> = AtomicPtr::new(ptr::null_mut());
 
 impl TextDataQuery {
-    pub fn with_skill_query(text_cfg: &SkillTextFormatting, callback: impl FnOnce()) {
-        let cfg_ptr = (text_cfg as *const SkillTextFormatting).cast_mut();
-        TDQ_SKILL_TEXT_FORMAT.store(cfg_ptr, atomic::Ordering::Relaxed);
-        callback();
-        TDQ_SKILL_TEXT_FORMAT.store(ptr::null_mut(), atomic::Ordering::Relaxed);
-    }
-
-    // Abuse static lifetime for our funky not-really static pointer because we like living on the Edge :>
-    fn requested_skill_format() -> Result<&'static mut SkillTextFormatting, ()> {
-        let cfg_ptr = TDQ_SKILL_TEXT_FORMAT.load(atomic::Ordering::Relaxed);
-        if cfg_ptr.is_null() {
-            return Err(());
-        }
-        Ok(unsafe{&mut *cfg_ptr})
-    }
-
     pub fn get_skill_name(index: i32) -> Option<*mut Il2CppString> {
         // Return None if skill name translation is disabled
         if Hachimi::instance().config.load().disable_skill_name_translation {
@@ -259,58 +229,19 @@ impl TextDataQuery {
         }
 
         let localized_data = Hachimi::instance().localized_data.load();
-        let text_opt = localized_data
-            .text_data_dict
+        localized_data.text_data_dict
             .get(&47)
-            .map(|c| c.get(&index))
-            .unwrap_or_default();
-
-        if let Some(text) = text_opt {
-            // Fit text if and as requested.
-            Self::requested_skill_format().ok()
-                .and_then(|cfg| {
-                    cfg.is_localized = true;
-                    cfg.name.as_ref()
-                })
-                .and_then(|name| { match name.line_count {
-                    1 => fit_text(text, name.line_len, name.font_size),
-                    _ => wrap_fit_text(text, name.line_len, name.line_count, name.font_size)
-                    }
-                })
-                .map_or_else(
-                    || Some(text.to_il2cpp_string()),
-                    |fitted| Some(fitted.to_il2cpp_string()),
-                )
-        }
-        else {
-            None
-        }
+            .and_then(|c| c.get(&index))
+            .map(|t| t.to_il2cpp_string())
     }
 
     pub fn get_skill_desc(index: i32) -> Option<*mut Il2CppString> {
         let localized_data = Hachimi::instance().localized_data.load();
-        let text_opt = localized_data
+        localized_data
             .text_data_dict
             .get(&48)
-            .map(|c| c.get(&index))
-            .unwrap_or_default();
-
-        if let Some(text) = text_opt {
-            // Fit text if and as requested.
-            Self::requested_skill_format().ok()
-                .and_then(|cfg| {
-                    cfg.is_localized = true;
-                    cfg.desc.as_ref()
-                })
-                .and_then(|desc| wrap_fit_text(text, desc.line_len, desc.line_count, desc.font_size))
-                .map_or_else(
-                    || Some(text.to_il2cpp_string()),
-                    |fitted| Some(fitted.to_il2cpp_string()),
-                )
-        }
-        else {
-            None
-        }
+            .and_then(|c| c.get(&index))
+            .map(|t| t.to_il2cpp_string())
     }
 }
 
@@ -344,7 +275,6 @@ impl SelectQueryState for TextDataQuery {
                 // specialized handlers
                 match category {
                     47 => return Self::get_skill_name(index),
-                    48 => return Self::get_skill_desc(index),
                     _ => ()
                 };
 

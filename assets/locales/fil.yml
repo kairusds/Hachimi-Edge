@@ -149,7 +149,7 @@ config_editor:
   hide_ingame_ui_hotkey: "I-enable ang hotkey ng pagtago ng game UI"
   hide_ingame_ui_hotkey_info: >-
     Pinapayagan ng opsyong ito ang isang shortcut key sa pag-toggle ng game UI.
-    Para sa Android, kailangan mong i-double tap ang Volume Up key, o i-triple tap ang top-right ng screen.
+    Para sa Android, maaari mong i-triple tap ang top-right ng screen.
     Para sa PC/Android na may keyboard, ito ang Insert key at maaaring i-configure sa GUI o config.
   discord_rpc: "Discord RPC"
   menu_open_key: "Hotkey ng pagbukas ng menu"
@@ -167,6 +167,11 @@ theme_editor:
   ui_extreme_bg_color: "Background Input"
   ui_text_color: "Kulay ng Text"
   ui_window_rounding: "Mga Rounded Corner"
+
+set_keybind:
+  title: "I-set ang Keybind"
+  press_any_key: "Pindutin ang key..."
+  bound_key: "Naka-bind na key: %{key}"
 
 tl_update_dialog:
   title: "May bagong update"

@@ -1,6 +1,6 @@
 use std::{io::Write, path::{Path, PathBuf}};
 
-use crate::{core::utils::{get_file_modified_time, load_rgba_png_file}, il2cpp::{ext::Il2CppStringExt, types::*}};
+use crate::{core::utils::{get_file_modified_time, load_rgba_png_file}, il2cpp::{ext::{Il2CppObjectExt, Il2CppStringExt}, hook::UnityEngine_CoreModule::{Component, RectTransform}, types::*}};
 
 use super::{
     hook::{mscorlib, UnityEngine_CoreModule::{Texture, Texture2D},
@@ -69,7 +69,7 @@ pub fn replace_texture_with_diff_ex<P1: AsRef<Path>, P2: AsRef<Path>>(
     let new_texture = Texture2D::render_to_texture(texture);
     let orig_pixels_array = Texture2D::GetPixels32(new_texture, 0);
     let orig_pixels = unsafe { orig_pixels_array.as_slice() };
-    
+
     // Apply diff (reuse/write directly into diff pixels buffer)
     for y in 0..height {
         for x in 0..width {
@@ -147,4 +147,18 @@ pub fn replace_texture_with_diff_ex<P1: AsRef<Path>, P2: AsRef<Path>>(
     ImageConversion::LoadImage(texture, png_array.this, mark_non_readable);
 
     true
+}
+
+/// Changes the "active area" of the GameObject a Component is part of.
+/// Numbers <=0 skip that axis.
+pub fn adjust_transform_size(component: *mut Il2CppObject, width: f32, height: f32) {
+    let transform = Component::get_transform(component);
+    if unsafe { (*transform).klass() } == RectTransform::class() {
+        if width > 0.0 {
+            RectTransform::SetSizeWithCurrentAnchors(transform, RectTransform::Axis::Horizontal, width);
+        }
+        if height > 0.0 {
+            RectTransform::SetSizeWithCurrentAnchors(transform, RectTransform::Axis::Vertical, height);
+        }
+    }
 }

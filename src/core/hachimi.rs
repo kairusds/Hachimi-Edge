@@ -5,7 +5,7 @@ use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use textwrap::wrap_algorithms::Penalties;
 
-use crate::{core::{plugin_api::Plugin, updater}, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}, sql::{CharacterData, SkillInfo}}};
+use crate::{core::{gui, plugin_api::Plugin, updater}, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}, sql::{CharacterData, SkillInfo}}};
 
 use super::{game::{Game, Region}, ipc, plurals, template, template_filters, tl_repo, utils, Error, Interceptor};
 
@@ -16,8 +16,6 @@ pub const WEBSITE_URL: &str = "https://hachimi.noccu.art";
 pub const UMAPATCHER_PACKAGE_NAME: &str = "com.leadrdrk.umapatcher.edge";
 pub const UMAPATCHER_INSTALL_URL: &str = "https://github.com/kairusds/UmaPatcher-Edge/releases/latest";
 
-pub static CONFIG_LOAD_ERROR: AtomicBool = AtomicBool::new(false);
-
 pub struct Hachimi {
     // Hooking stuff
     pub interceptor: Interceptor,
@@ -26,6 +24,9 @@ pub struct Hachimi {
     pub plugin_init_callbacks: Mutex<Vec<(usize, usize)>>,
     #[cfg(target_os = "windows")]
     pub present_callbacks: Mutex<Vec<(usize, usize)>>,
+
+    // Translation repo manager
+    pub tl_repo_manager: Mutex<tl_repo::RepoList>,
 
     // Localized data
     pub localized_data: ArcSwap<LocalizedData>,
@@ -88,6 +89,11 @@ impl Hachimi {
 
         info!("Hachimi {}", env!("HACHIMI_DISPLAY_VERSION"));
         info!("Game region: {}", instance.game.region);
+
+        if let Err(e) = instance.repair_tl_repo_state() {
+            error!("TL repo repair failed: {}", e);
+        }
+
         instance.load_localized_data();
 
         INSTANCE.set(Arc::new(instance)).is_ok()
@@ -117,6 +123,8 @@ impl Hachimi {
             plugin_init_callbacks: Mutex::default(),
             #[cfg(target_os = "windows")]
             present_callbacks: Mutex::default(),
+
+            tl_repo_manager: Mutex::new(tl_repo::RepoList::default()),
 
             // Don't load localized data initially since it might fail, logging the error is not possible here
             localized_data: ArcSwap::default(),
@@ -155,7 +163,7 @@ impl Hachimi {
                 Ok(config) => Ok(config),
                 Err(e) => {
                     eprintln!("Failed to parse config: {}", e);
-                    CONFIG_LOAD_ERROR.store(true, std::sync::atomic::Ordering::Release);
+                    gui::request_notification(gui::NotificationRequest::ConfigLoadError);
                     Ok(Config::default())
                 }
             }
@@ -186,11 +194,24 @@ impl Hachimi {
     }
 
     pub fn save_and_reload_config(&self, config: Config) -> Result<(), Error> {
+        let old_id = self.config.load().selected_tl_repo_id;
         self.save_config(&config)?;
 
         config.language.set_locale();
         self.config.store(Arc::new(config));
+
+        let new_config = self.config.load();
+        if new_config.selected_tl_repo_id != old_id {
+            self.load_localized_data();
+            gui::request_notification(gui::NotificationRequest::TLRepoChanged);
+        }
+
         Ok(())
+    }
+
+    pub fn get_active_tl_dir(&self) -> Option<PathBuf> {
+        let id = self.config.load().selected_tl_repo_id?;
+        Some(self.get_repo_dir(id))
     }
 
     pub fn load_localized_data(&self) {
@@ -198,7 +219,13 @@ impl Hachimi {
             warn!("Update in progress, not loading localized data");
             return;
         }
-        let new_data = match LocalizedData::new(&self.config.load(), &self.game.data_dir) {
+
+        let config = self.config.load();
+        let ld_path = self.get_active_tl_dir().or_else(|| {
+            config.localized_data_dir.as_ref().map(|p| self.game.data_dir.join(p))
+        });
+
+        let new_data = match LocalizedData::new(&self.config.load(), ld_path) {
             Ok(v) => v,
             Err(e) => {
                 error!("Failed to load localized data: {}", e);
@@ -276,6 +303,121 @@ impl Hachimi {
         self.game.data_dir.join(rel_path)
     }
 
+    pub fn get_repo_dir(&self, id: u32) -> PathBuf {
+        if id == 1 {
+            let legacy = self.game.data_dir.join("localized_data");
+            if legacy.is_dir() {
+                return legacy;
+            }
+        }
+        self.game.data_dir.join(format!("localized_data_{id}"))
+    }
+
+    fn repair_tl_repo_state(&self) -> Result<(), Error> {
+        let repos_path = self.get_data_path(".tl_repos");
+        let old_data_dir = self.game.data_dir.join("localized_data");
+        let mut manager = self.tl_repo_manager.lock().unwrap();
+
+        if !repos_path.exists() && old_data_dir.is_dir() {
+            info!("Found legacy 'localized_data' folder and no .tl_repos; migrating…");
+
+            let config = self.config.load();
+            if let Some(index) = &config.translation_repo_index {
+                let id = manager.add(index.clone());
+                manager.save(&repos_path)?;
+
+                let mut new_config = (**config).clone();
+                new_config.selected_tl_repo_id = Some(id);
+                self.save_and_reload_config(new_config)?;
+            } else {
+                manager.save(&repos_path)?;
+            }
+        }
+
+        *manager = if repos_path.exists() {
+            tl_repo::RepoList::load(&repos_path).unwrap_or_else(|e| {
+                warn!("Failed to load .tl_repos ({e}); starting fresh");
+                tl_repo::RepoList::default()
+            })
+        } else {
+            tl_repo::RepoList::default()
+        };
+
+        let config = self.config.load();
+        let index = config.translation_repo_index.clone();
+        let current_id = config.selected_tl_repo_id;
+
+        let mut manager_dirty = false;
+
+        match current_id {
+            Some(id) => {
+                if manager.find_by_id(id) != index.as_deref() {
+                    warn!("TL repo ID {id} does not match index {index:?}; re-resolving");
+
+                    let mut cleared = (**config).clone();
+                    cleared.selected_tl_repo_id = None;
+                    self.save_config(&cleared)?;
+                    self.config.store(Arc::new(cleared));
+
+                    if let Some(ref idx) = index {
+                        let new_id = match manager.find_by_index(idx) {
+                            Some(existing) => existing,
+                            None => {
+                                let nid = manager.add(idx.clone());
+                                manager_dirty = true;
+                                nid
+                            }
+                        };
+
+                        let mut new_config = self.config.load().as_ref().clone();
+                        new_config.selected_tl_repo_id = Some(new_id);
+                        self.save_and_reload_config(new_config)?;
+                    } else {
+                        let data_dir = self.get_repo_dir(id);
+                        if !data_dir.is_dir() {
+                            warn!("TL repo data folder '{}' is missing, clearing localised data until next update...", data_dir.display());
+                            self.localized_data.store(Arc::new(LocalizedData::default()));
+                            gui::request_notification(gui::NotificationRequest::TLFolderMissing);
+                        }
+                    }
+                }
+            }
+
+            None => {
+                if let Some(ref idx) = index {
+                    let id = match manager.find_by_index(idx) {
+                        Some(existing) => existing,
+                        None => {
+                            let nid = manager.add(idx.clone());
+                            manager_dirty = true;
+                            nid
+                        }
+                    };
+                    let mut new_config = (**config).clone();
+                    new_config.selected_tl_repo_id = Some(id);
+                    self.save_and_reload_config(new_config)?;
+                }
+            }
+        }
+
+        if manager_dirty {
+            manager.save(&repos_path)?;
+        }
+
+        if let Some(id) = self.config.load().selected_tl_repo_id {
+            let old_cache = self.get_data_path(".tl_repo_cache");
+            if old_cache.exists() {
+                let new_cache = self.get_data_path(format!(".tl_repo_cache_{}", id));
+                info!("Migrating standalone legacy tl repo cache file to {}", new_cache.display());
+                if let Err(e) = fs::rename(&old_cache, &new_cache) {
+                    warn!("Failed to rename legacy tp repo cache file: {e}");
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn run_auto_update_check(&self) {
         if !self.config.load().disable_auto_update_check {
             // Check for hachimi updates first, then translations
@@ -310,12 +452,16 @@ pub struct Config {
     pub disable_gui: bool,
     #[serde(default)]
     pub disable_gui_once: bool,
+    // legacy fallback path. populated by old versions, new code uses selected_tl_repo_id + get_active_tl_dir() exclusively
+    // do NOT write this in new code
     pub localized_data_dir: Option<String>,
     pub target_fps: Option<i32>,
     #[serde(default = "Config::default_open_browser_url")]
     pub open_browser_url: String,
     #[serde(default = "Config::default_virtual_res_mult")]
     pub virtual_res_mult: f32,
+    #[serde(default)]
+    pub selected_tl_repo_id: Option<u32>,
     pub translation_repo_index: Option<String>,
     #[serde(default)]
     pub skip_first_time_setup: bool,
@@ -563,22 +709,18 @@ pub struct LocalizedData {
 }
 
 impl LocalizedData {
-    fn new(config: &Config, data_dir: &Path) -> Result<LocalizedData, Error> {
+    fn new(config: &Config, ld_path: Option<PathBuf>) -> Result<LocalizedData, Error> {
         if config.disable_translations {
             return Ok(LocalizedData::default());
         }
 
-        let path: Option<PathBuf>;
-        let config: LocalizedDataConfig = if let Some(ld_dir) = &config.localized_data_dir {
-            let ld_path = Path::new(data_dir).join(ld_dir);
-
+        let path = ld_path;
+        let config: LocalizedDataConfig = if let Some(ref p) = path {
             // Create .nomedia
             #[cfg(target_os = "android")]
-            { _ = fs::OpenOptions::new().create_new(true).write(true).open(ld_path.join(".nomedia")); }
+            { _ = fs::OpenOptions::new().create_new(true).write(true).open(p.join(".nomedia")); }
 
-            let ld_config_path = ld_path.join("config.json");
-            path = Some(ld_path);
-
+            let ld_config_path = p.join("config.json");
             if fs::metadata(&ld_config_path).is_ok() {
                 let json = fs::read_to_string(&ld_config_path)?;
                 serde_json::from_str(&json)?
@@ -589,7 +731,6 @@ impl LocalizedData {
             }
         }
         else {
-            path = None;
             LocalizedDataConfig::default()
         };
 
@@ -741,10 +882,13 @@ pub struct LocalizedDataConfig {
     pub story_line_count_offset: Option<i32>,
     pub text_frame_line_spacing_multiplier: Option<f32>,
     pub text_frame_font_size_multiplier: Option<f32>,
+    pub choice_btn_line_spacing_multiplier: Option<f32>,
     #[serde(default)]
     pub skill_formatting: SkillFormatting,
     #[serde(default)]
     pub text_common_allow_overflow: bool,
+    #[serde(default)]
+    pub text_common_best_fit: bool,
     #[serde(default)]
     pub now_loading_comic_title_ellipsis: bool,
 

@@ -65,6 +65,7 @@ impl<'a> template::Context for TemplateContext<'a> {
             "nb" => {
                 self.settings.horizontalOverflow = TextOverflow_Allow;
                 self.settings.generateOutOfBounds = true;
+                self.settings.resizeTextForBestFit = false;
             }
 
             "anchor" => {
@@ -91,6 +92,7 @@ impl<'a> template::Context for TemplateContext<'a> {
                     return None;
                 };
                 self.settings.fontSize = (self.settings.fontSize as f64 * (percentage / 100.0)) as i32;
+                self.settings.resizeTextForBestFit = false;
             }
 
             "ho" => {
@@ -131,6 +133,54 @@ impl<'a> template::Context for TemplateContext<'a> {
                 self.settings.updateBounds = true;
             }
 
+            "afit" => {
+                let value = args.get(0)?;
+                let template::Token::NumberLit(state) = *value else {
+                    return None;
+                };
+                self.settings.resizeTextForBestFit = state != 0.0;
+
+                if self.settings.resizeTextForBestFit {
+                    self.settings.generateOutOfBounds = false;
+                    self.settings.resizeTextMaxSize = self.settings.fontSize;
+
+                    // Optional args.
+                    if let Some(template::Token::NumberLit(min_size)) = args.get(1) {
+                        if *min_size > 0.0 {
+                            self.settings.resizeTextMinSize = *min_size as _;
+                        }
+                    }
+                    if let Some(template::Token::NumberLit(max_size)) = args.get(2) {
+                        if *max_size > 0.0 {
+                            self.settings.resizeTextMaxSize = *max_size as _;
+                        }
+                    }
+                }
+            }
+
+            "minw" => {
+                let value = args.get(0)?;
+                let template::Token::NumberLit(minwidth_num) = *value else {
+                    return None;
+                };
+                let minwidth = minwidth_num as f32;
+                if minwidth > self.settings.generationExtents.x {
+                    self.settings.generationExtents.x = minwidth;
+                }
+            }
+
+            "minh" => {
+                let value = args.get(0)?;
+                let template::Token::NumberLit(minheight_num) = *value else {
+                    return None;
+                };
+                // let extents = &mut self.settings.generationExtents;
+                let minheight = minheight_num as f32;
+                if minheight > self.settings.generationExtents.y {
+                    self.settings.generationExtents.y = minheight;
+                }
+            }
+
             _ => return None
         }
 
@@ -144,7 +194,7 @@ pub struct IgnoreTGFiltersContext();
 impl template::Context for IgnoreTGFiltersContext {
     fn on_filter_eval(&mut self, _name: &str, _args: &[template::Token]) -> Option<String> {
         match _name {
-            "nb" | "anchor" | "scale" | "ho" | "vo" | "ls" | "ub" => Some(String::new()),
+            "nb" | "anchor" | "scale" | "ho" | "vo" | "ls" | "ub" | "afit" | "minw" | "minh" => Some(String::new()),
             _ => None
         }
     }

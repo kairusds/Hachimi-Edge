@@ -29,6 +29,7 @@ confirm_dialog_title: "Confirmar"
 soft_restart_confirm_content: "¿Seguro que quieres realizar un reinicio suave del juego?"
 in_game_browser_confirm_content: "¿Seguro que quieres abrir el navegador del juego?"
 browser_dialog_title: "Navegador"
+bind_key: "Asignar tecla"
 
 menu:
   check_for_updates: "\uf0aa Buscar actualizaciones"
@@ -69,8 +70,6 @@ notification:
   errors_during_update: "Se produjeron errores al actualizar (%{count}). Comprueba los registros para más detalles."
   checking_for_updates: "Buscando actualizaciones..."
   no_updates: "No hay actualizaciones."
-  press_to_set_menu_key: "Pulsa una tecla para establecer la tecla que abre el menú."
-  menu_open_key_set: "Tecla para abrir el menú: %{key}"
   ipc_softreset_exec: "Reinicio suave remoto (IPC) ejecutado con éxito."
   atlas_workaround_reset: "Archivos de Atlas modificados: arreglo temporal desactivado."
 
@@ -170,13 +169,13 @@ config_editor:
   physics_update_mode: "Modo de actualización de físicas"
   disable_skill_name_translation: "No traducir habilidades"
   hide_ingame_ui_hotkey: "Atajo para ocultar UI del juego"
+  hide_ingame_ui_hotkey_bind: "Atajo para ocultar la interfaz del juego"
   hide_ingame_ui_hotkey_info: >-
     Esta opción te permite asignar una tecla para alternar el UI del juego.
-    En Android, tendrás que pulsar dos veces el botón de Volumen +, ó tocando tres veces la parte superior derecha de la pantalla.
+    En Android, puedes tocar tres veces la parte superior derecha de la pantalla.
     En PC/Android con teclado será la tecla Insertar y podrá ser cambiada desde el GUI o en la configuración.
   discord_rpc: "Discord RPC"
   menu_open_key: "Tecla para abrir menú"
-  menu_open_key_set: "Establecer"
   render_scale: "Escala de renderizado"
   aniso_level: "Filtrado anisotrópico"
   live_vocals_swap: "Cambiar vocalistas"
@@ -193,6 +192,11 @@ theme_editor:
   ui_extreme_bg_color: "Fondo de los campos de texto"
   ui_text_color: "Color del texto"
   ui_window_rounding: "Radio de los bordes"
+
+set_keybind:
+  title: "Asignar tecla"
+  press_any_key: "Pulsa cualquier tecla…"
+  bound_key: "Tecla asignada: %{key}"
 
 tl_update_dialog:
   title: "Nueva actualización disponible"
@@ -251,6 +255,16 @@ key_names:
   alt: "Alt"
   ctrl: "Ctrl"
   shift: "Mayús."
+  back: "Atrás"
+  dpad_up: "Cruceta arriba"
+  dpad_down: "Cruceta abajo"
+  dpad_left: "Cruceta izquierda"
+  dpad_right: "Cruceta derecha"
+  volume_up: "Subir volumen"
+  volume_down: "Bajar volumen"
+  copy: "Copiar"
+  cut: "Cortar"
+  paste: "Pegar"
   numpad_0: "Num 0"
   numpad_1: "Num 1"
   numpad_2: "Num 2"
@@ -266,3 +280,4 @@ key_names:
   numpad_multiply: "Num *"
   numpad_divide: "Num /"
   numpad_decimal: "Num ."
+  unknown: "Tecla %{code}"
