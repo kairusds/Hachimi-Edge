@@ -196,8 +196,7 @@ pub fn get_activity(mut env: JNIEnv<'_>) -> Option<JObject<'_>> {
         .iter(&mut env)
         .ok()?
         .next(&mut env)
-        .ok()??
-        ;
+        .ok()??;
     let activity = env
         .get_field(activity_record, "activity", "Landroid/app/Activity;")
         .ok()?
@@ -283,3 +282,28 @@ pub fn get_game_dir() -> PathBuf {
     game_impl::get_data_dir(&package_name)
 }
 
+pub fn get_available_disk_space() -> Option<u64> {
+    let vm = java_vm().expect("JavaVM not initialized");
+    let mut env = vm.attach_current_thread().expect("Failed to attach thread");
+
+    let result = (|| -> jni::errors::Result<u64> {
+        let activity = get_activity(unsafe { env.unsafe_clone() })
+            .ok_or(jni::errors::Error::JavaException)?;
+
+        // activity.getDataDir()
+        let data_dir = env.call_method(&activity, "getDataDir", "()Ljava/io/File;", &[])?.l()?;
+
+        // dataDir.getFreeSpace()
+        let free_bytes = env.call_method(&data_dir, "getFreeSpace", "()J", &[])?.j()?;
+
+        Ok(free_bytes as u64)
+    })();
+
+    match result {
+        Ok(bytes) => Some(bytes),
+        Err(e) => {
+            info!("get_available_disk_space: JNI Error: {:?}", e);
+            None
+        }
+    }
+}

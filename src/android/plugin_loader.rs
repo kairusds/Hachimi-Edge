@@ -65,20 +65,36 @@ fn try_load_library(name_or_path: &str) -> Option<Plugin> {
         return None;
     }
 
-    let init_addr = unsafe { libc::dlsym(handle, c"hachimi_init".as_ptr()) };
-    if init_addr.is_null() {
-        warn!("Library loaded but missing hachimi_init: {}", name_or_path);
-        unsafe {
-            libc::dlclose(handle);
+    let init_enum = {
+        let v3_addr = unsafe { libc::dlsym(handle, c"hachimi_init_v3".as_ptr()) };
+        if !v3_addr.is_null() {
+            Some(crate::core::plugin_api::PluginInit::V3(unsafe { std::mem::transmute(v3_addr) }))
+        } else {
+            let v2_addr = unsafe { libc::dlsym(handle, c"hachimi_init".as_ptr()) };
+            if !v2_addr.is_null() {
+                Some(crate::core::plugin_api::PluginInit::V2(unsafe { std::mem::transmute(v2_addr) }))
+            } else {
+                None
+            }
         }
-        return None;
-    }
+    };
 
-    info!("Loaded library: {}", name_or_path);
-    Some(Plugin {
-        name: name_or_path.to_string(),
-        init_fn: unsafe { std::mem::transmute(init_addr) },
-    })
+    match init_enum {
+        Some(init_fn) => {
+            info!("Loaded library: {}", name_or_path);
+            Some(Plugin {
+                name: name_or_path.to_string(),
+                init_fn,
+            })
+        }
+        None => {
+            warn!("Library loaded but missing hachimi_init: {}", name_or_path);
+            unsafe {
+                libc::dlclose(handle);
+            }
+            None
+        }
+    }
 }
 
 fn find_native_lib_dir() -> Option<PathBuf> {

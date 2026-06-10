@@ -8,7 +8,7 @@ use crate::{core::{ext::Utf16StringExt, hachimi::AssetMetadata}, il2cpp::{
     api::il2cpp_resolve_icall, ext::{Il2CppObjectExt, Il2CppStringExt}, hook::{
         umamusume::{StoryParamChangeEffect, StoryRaceTextAsset, StoryTimelineData, TextDotData, TextRubyData},
         Cute_UI_Assembly::AtlasReference,
-        UnityEngine_CoreModule::{GameObject, Texture2D}
+        UnityEngine_CoreModule::{GameObject, Texture2D, Object}
     }, symbols::GCHandle, types::*
 }};
 
@@ -25,20 +25,25 @@ impl RequestInfo {
 }
 pub static REQUEST_INFOS: Lazy<Mutex<FnvHashMap<usize, RequestInfo>>> = Lazy::new(|| Mutex::default());
 
-static BUNDLE_PATHS: Lazy<Mutex<FnvHashMap<usize, GCHandle>>> = Lazy::new(|| Mutex::default());
-pub fn get_bundle_path(this: *mut Il2CppObject) -> Option<*mut Il2CppString> {
-    Some(BUNDLE_PATHS.lock().unwrap().get(&(this as usize))?.target() as _)
-}
-
 pub fn check_asset_bundle_name(this: *mut Il2CppObject, metadata: &AssetMetadata) -> bool {
     if let Some(meta_bundle_name) = &metadata.bundle_name {
-        if let Some(bundle_path) = get_bundle_path(this) {
-            let bundle_name = unsafe { (*bundle_path).as_utf16str().path_filename() };
-            if !bundle_name.str_eq(&meta_bundle_name) {
-                warn!("Expected bundle {}, got {}", meta_bundle_name, bundle_name);
-                return false;
+        let name_ptr = Object::get_name(this);
+        if !name_ptr.is_null() {
+            let logical_name = unsafe { (*name_ptr).as_utf16str().path_filename() };
+
+            if let Some(real_hash) = crate::il2cpp::sql::MetaData::get_hash(&logical_name.to_string()) {
+                if real_hash == *meta_bundle_name {
+                    return true;
+                } else {
+                    warn!("Expected bundle {}, got {}", meta_bundle_name, real_hash);
+                    return false;
+                }
             }
+
+            return false;
         }
+
+        warn!("Failed to resolve bundle path for metadata check!");
     }
 
     true
@@ -104,21 +109,11 @@ pub fn on_LoadAsset(bundle: *mut Il2CppObject, asset: *mut Il2CppObject, name: *
 
 type LoadFromFileInternalFn = extern "C" fn(path: *mut Il2CppString, crc: u32, offset: u64) -> *mut Il2CppObject;
 extern "C" fn LoadFromFile_Internal(path: *mut Il2CppString, crc: u32, offset: u64) -> *mut Il2CppObject {
-    let bundle = get_orig_fn!(LoadFromFile_Internal, LoadFromFileInternalFn)(path, crc, offset);
-    if !bundle.is_null() {
-        BUNDLE_PATHS.lock().unwrap().insert(bundle as usize, GCHandle::new(path as _, false));
-    }
-    bundle
-}
-
-pub fn LoadFromFile_Internal_orig(path: *mut Il2CppString, crc: u32, offset: u64) -> *mut Il2CppObject {
     get_orig_fn!(LoadFromFile_Internal, LoadFromFileInternalFn)(path, crc, offset)
 }
 
-type UnloadFn = extern "C" fn(this: *mut Il2CppObject, unload_all_loaded_objects: bool);
-extern "C" fn Unload(this: *mut Il2CppObject, unload_all_loaded_objects: bool) {
-    BUNDLE_PATHS.lock().unwrap().remove(&(this as usize));
-    get_orig_fn!(Unload, UnloadFn)(this, unload_all_loaded_objects);
+pub fn LoadFromFile_Internal_orig(path: *mut Il2CppString, crc: u32, offset: u64) -> *mut Il2CppObject {
+    LoadFromFile_Internal(path, crc, offset)
 }
 
 pub fn init(_UnityEngine_AssetBundleModule: *const Il2CppImage) {
@@ -133,12 +128,8 @@ pub fn init(_UnityEngine_AssetBundleModule: *const Il2CppImage) {
     let LoadFromFile_Internal_addr = il2cpp_resolve_icall(
         c"UnityEngine.AssetBundle::LoadFromFile_Internal(System.String,System.UInt32,System.UInt64)".as_ptr()
     );
-    let Unload_addr = il2cpp_resolve_icall(
-        c"UnityEngine.AssetBundle::Unload(System.Boolean)".as_ptr()
-    );
 
     new_hook!(LoadAsset_Internal_addr, LoadAsset_Internal);
     new_hook!(LoadAssetAsync_Internal_addr, LoadAssetAsync_Internal);
     new_hook!(LoadFromFile_Internal_addr, LoadFromFile_Internal);
-    new_hook!(Unload_addr, Unload);
 }

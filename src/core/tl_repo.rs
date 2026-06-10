@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs, io::{Read, Write, Cursor}, path::{Path, PathBuf}, sync::{atomic::{self, AtomicUsize, AtomicBool, AtomicU64}, Arc, Mutex}, thread, cmp::max};
+use std::{collections::HashSet, fs, io::{Read, Write, Cursor}, path::{Path, PathBuf}, sync::{atomic::{self, AtomicUsize, AtomicBool, AtomicU64}, Arc, Mutex}, thread, cmp::{min, max}};
 
 use arc_swap::ArcSwap;
 use crossbeam_channel::unbounded;
@@ -203,7 +203,8 @@ struct UpdateInfo {
     #[allow(dead_code)]
     total_size: usize,       // Total size of all files (for ZIP downloads)
     will_use_zip: bool,      // Whether ZIP download will be used
-    modifies_atlas: bool     // Whether file updates include atlases
+    modifies_atlas: bool,     // Whether file updates include atlases
+    index_etag: Option<String>,
 }
 
 #[derive(Default, Clone)]
@@ -225,6 +226,8 @@ impl UpdateProgress {
 #[derive(Serialize, Deserialize, Default)]
 struct RepoCache {
     base_url: String,
+    #[serde(default)]
+    index_etag: Option<String>,
     files: FnvHashMap<String, String> // path: hash
 }
 pub const REPO_EXCLUDES_FILENAME: &str = "excludes.txt";
@@ -232,16 +235,17 @@ pub const REPO_EXCLUDES_FILENAME: &str = "excludes.txt";
 #[derive(Default)]
 pub struct Updater {
     update_check_mutex: Mutex<()>,
+    run_mutex: Mutex<()>,
     new_update: ArcSwap<Option<UpdateInfo>>,
     progress: ArcSwap<Option<UpdateProgress>>,
-    last_progress_ms: AtomicU64
+    last_progress_ms: AtomicU64,
+    skipped_etag: Mutex<Option<String>>
 }
 
-// const LOCALIZED_DATA_DIR: &str = "localized_data";
 const CHUNK_SIZE: usize = 8192; // 8KiB
 static NUM_THREADS: Lazy<usize> = Lazy::new(|| {
     let parallelism = thread::available_parallelism().unwrap().get();
-    max(1, parallelism / 2)
+    max(1, min(parallelism / 2, 4))
 });
 
 const INCREMENTAL_UPDATE_LIMIT_GITHUB: usize = 55;
@@ -286,12 +290,86 @@ fn store_progress(
     }
 }
 
+/// RAII guard that ensures a temporary ZIP file is cleaned up, even if the function returns early via `?` or panics
+struct ZipCleanupGuard<'a>(&'a Path);
+impl Drop for ZipCleanupGuard<'_> {
+    fn drop(&mut self) {
+        if self.0.exists() {
+            if let Err(e) = fs::remove_file(self.0) {
+                error!("Failed to clean up temporary ZIP file '{}': {}", self.0.display(), e);
+            }
+        }
+    }
+}
+
+fn check_available_disk_space(_path: &Path, required_bytes: u64) -> Result<(), Error> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::ffi::OsStrExt;
+
+        let wide: Vec<u16> = _path.as_os_str().encode_wide().chain(std::iter::once(0u16)).collect();
+        let mut free_bytes: u64 = 0;
+
+        extern "system" {
+            fn GetDiskFreeSpaceExW(
+                lpDirectoryName: *const u16,
+                lpFreeBytesAvailableToCaller: *mut u64,
+                lpTotalNumberOfBytes: *mut u64,
+                lpTotalNumberOfFreeBytes: *mut u64,
+            ) -> i32;
+        }
+
+        // SAFETY: GetDiskFreeSpaceExW is a stable Windows API since Windows 2000
+        let result = unsafe {
+            GetDiskFreeSpaceExW(
+                wide.as_ptr(),
+                &mut free_bytes,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        };
+
+        if result != 0 && free_bytes < required_bytes {
+            return Err(Error::OutOfDiskSpace);
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    {
+        if let Some(free_bytes) = crate::android::utils::get_available_disk_space() {
+            if free_bytes < required_bytes {
+                return Err(Error::OutOfDiskSpace);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 impl Updater {
-    pub fn check_for_updates(self: Arc<Self>, pedantic: bool) {
+    pub fn skip_update(&self, etag: Option<String>) {
+        *self.skipped_etag.lock().unwrap() = etag;
+    }
+
+    pub fn has_pending_update(&self) -> bool {
+        self.new_update.load().is_some()
+    }
+
+    pub fn clear_pending_update(&self) {
+        self.new_update.store(Arc::new(None));
+    }
+
+    pub fn is_updating(&self) -> bool {
+        self.progress.load().is_some()
+    }
+
+    pub fn check_for_updates(self: Arc<Self>, pedantic: bool, silent: bool) {
         std::thread::spawn(move || {
-            if let Err(e) = self.check_for_updates_internal(pedantic) {
+            if let Err(e) = self.check_for_updates_internal(pedantic, silent) {
                 if let Some(mutex) = Gui::instance() {
-                    mutex.lock().unwrap().show_notification(&format!("{}", e));
+                    if !silent {
+                        mutex.lock().unwrap().show_notification(&format!("{}", e));
+                    }
                 }
                 info!("{}", e);
             }
@@ -332,11 +410,15 @@ impl Updater {
         Hachimi::instance().get_data_path(format!(".tl_repo_cache_{}", id))
     }
 
-    fn check_for_updates_internal(&self, pedantic: bool) -> Result<(), Error> {
+    fn check_for_updates_internal(&self, pedantic: bool, silent: bool) -> Result<(), Error> {
         // Prevent multiple update checks running at the same time
         let Ok(_guard) = self.update_check_mutex.try_lock() else {
             return Ok(());
         };
+
+        if self.has_pending_update() {
+            return Ok(());
+        }
 
         let hachimi = Hachimi::instance();
         let config = hachimi.config.load();
@@ -344,14 +426,16 @@ impl Updater {
             return Ok(());
         };
 
-        let checking_notif_id = if let Some(mutex) = Gui::instance() {
-            Some(mutex.lock().unwrap().show_persistent_notification(&t!("notification.checking_for_tl_updates")))
+        let checking_notif_id = if !silent {
+            if let Some(mutex) = Gui::instance() {
+                Some(mutex.lock().unwrap().show_persistent_notification(&t!("notification.checking_for_tl_updates")))
+            } else {
+                None
+            }
         } else {
             None
         };
         let _guard = checking_notif_id.map(NotificationGuard);
-
-        let index: RepoIndex = http::get_json(index_url)?;
 
         let repo_id = if let Some(id) = config.selected_tl_repo_id {
             id
@@ -365,7 +449,7 @@ impl Updater {
                 manager.save(&repos_path)?;
                 new_id
             };
-        
+
             let mut new_config = (**config).clone();
             new_config.selected_tl_repo_id = Some(id);
             hachimi.save_and_reload_config(new_config)?;
@@ -378,10 +462,76 @@ impl Updater {
         let cache_path = Self::get_repo_cache_path(repo_id);
         let repo_cache = if fs::metadata(&cache_path).is_ok() {
             let json = fs::read_to_string(&cache_path)?;
-            serde_json::from_str(&json)?
+            serde_json::from_str(&json).unwrap_or_default()
         }
         else {
             RepoCache::default()
+        };
+
+        let mut new_etag: Option<String> = None;
+
+        // conditional GET: send If-None-Match with the current best ETag.
+        // server replies 304 if nothing changed, 200 + body if it has.
+        let etag_for_request = if !pedantic && config.etag_translation_updates {
+            repo_cache.index_etag.clone()
+                .or_else(|| self.skipped_etag.lock().unwrap().clone())
+        } else {
+            None
+        };
+
+        let mut request = ureq::agent().get(index_url);
+        if let Some(etag) = &etag_for_request {
+            request = request.header("If-None-Match", etag);
+        }
+
+        let index: RepoIndex = match request.call() {
+            Ok(res) => {
+                if let Some(etag_val) = res.headers().get("ETag") {
+                    if let Ok(etag_str) = etag_val.to_str() {
+                        let etag_string = etag_str.to_string();
+
+                        // user previously dismissed this exact version
+                        if !pedantic && config.etag_translation_updates {
+                            if let Some(skipped) = &*self.skipped_etag.lock().unwrap() {
+                                if skipped == &etag_string {
+                                    debug!("Server ETag matches the skipped ETag. Ignoring update.");
+                                    return Ok(());
+                                }
+                            }
+                        }
+
+                        // fallback for servers that ignore If-None-Match
+                        if !pedantic && config.etag_translation_updates {
+                            if let Some(cached) = &repo_cache.index_etag {
+                                if cached == &etag_string {
+                                    info!("Server ETag matches cached ETag (server may not support conditional requests). No translation updates available.");
+                                    if !silent {
+                                        if let Some(mutex) = Gui::instance() {
+                                            mutex.lock().unwrap().show_notification(&t!("notification.no_tl_updates"));
+                                        }
+                                    }
+                                    return Ok(());
+                                }
+                            }
+                        }
+
+                        new_etag = Some(etag_string);
+                    }
+                }
+                serde_json::from_reader(res.into_body().into_reader())?
+            }
+            Err(ureq::Error::StatusCode(code)) if code == ureq::http::StatusCode::NOT_MODIFIED => {
+                info!("Server returned 304 Not Modified. No translation updates available.");
+                if !silent {
+                    if let Some(mutex) = Gui::instance() {
+                        mutex.lock().unwrap().show_notification(&t!("notification.no_tl_updates"));
+                    }
+                }
+                return Ok(());
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
         };
 
         let excludes_path = hachimi.get_data_path(REPO_EXCLUDES_FILENAME);
@@ -401,10 +551,17 @@ impl Updater {
         let mut update_files: Vec<RepoFile> = Vec::new();
         let mut update_size: usize = 0;
         let mut total_size: usize = 0;
-        
+
+        let total_files = index.files.len();
+        if let Some(mutex) = Gui::instance() {
+            mutex.lock().unwrap().update_progress_visible = true;
+        }
+
         if is_new_repo {
             // skip all filesystem checks, the directory will be wiped anyway
-            for file in &index.files {
+            for (i, file) in index.files.iter().enumerate() {
+                store_progress(&self.progress, &self.last_progress_ms, i, total_files);
+
                 if file.path.contains("..") || Path::new(&file.path).has_root() {
                     warn!("File path '{}' sanitized", file.path);
                     continue;
@@ -417,7 +574,9 @@ impl Updater {
                 total_size += file.size;
             }
         } else {
-            for file in index.files.iter() {
+            for (i, file) in index.files.iter().enumerate() {
+                store_progress(&self.progress, &self.last_progress_ms, i, total_files);
+
                 if file.path.contains("..") || Path::new(&file.path).has_root() {
                     warn!("File path '{}' sanitized", file.path);
                     continue;
@@ -472,6 +631,11 @@ impl Updater {
             }
         }
 
+        self.progress.store(Arc::new(None));
+        if let Some(mutex) = Gui::instance() {
+            mutex.lock().unwrap().update_progress_visible = false;
+        }
+
         if !update_files.is_empty() {
             // Determine download strategy
             let will_use_zip = Self::should_use_zip_download(
@@ -496,10 +660,18 @@ impl Updater {
                 update_size,
                 total_size,
                 will_use_zip,
-                modifies_atlas
+                modifies_atlas,
+                index_etag: new_etag.clone(),
             })));
 
-            if let Some(mutex) = Gui::instance() {
+            if silent {
+                // don't auto-apply while another update is already in progress
+                if self.progress.load().is_some() {
+                    info!("Silent update skipped, another update is already in progress.");
+                } else {
+                    Hachimi::instance().tl_updater.clone().run();
+                }
+            } else if let Some(mutex) = Gui::instance() {
                 // Determine the dialog message based on download strategy
                 let dialog_message = if will_use_zip && update_size > 0 {
                     let size_ratio = total_size as f64 / update_size.max(1) as f64;
@@ -527,6 +699,9 @@ impl Updater {
                     t!("tl_update_dialog.content", size = Size::from_bytes(actual_download_size))
                 };
 
+                let updater = Hachimi::instance().tl_updater.clone();
+                let etag_to_skip = new_etag.clone();
+
                 // Check if the active repo has a valid changelog URL
                 let repo_info = LocalRepoInfo::load(repo_id)
                     .ok()
@@ -539,25 +714,43 @@ impl Updater {
                         &dialog_message,
                         info.changelog_url.as_str(),
                         info.is_markdown_changelog(),
-                        |ok| {
-                            if !ok { return; }
-                            Hachimi::instance().tl_updater.clone().run();
+                        move |ok| {
+                            if !ok {
+                                updater.skip_update(etag_to_skip);
+                                updater.clear_pending_update();
+                                return;
+                            }
+                            updater.run();
                         }
                     )));
                 } else {
                     mutex.lock().unwrap().show_window(Box::new(SimpleYesNoDialog::new(
                         &t!("tl_update_dialog.title"),
                         &dialog_message,
-                        |ok| {
-                            if !ok { return; }
-                            Hachimi::instance().tl_updater.clone().run();
+                        move |ok| {
+                            if !ok {
+                                updater.skip_update(etag_to_skip);
+                                updater.clear_pending_update();
+                                return;
+                            }
+                            updater.run();
                         }
                     )));
                 }
             }
         }
-        else if let Some(mutex) = Gui::instance() {
-            mutex.lock().unwrap().show_notification(&t!("notification.no_tl_updates"));
+        else {
+            if let Some(etag) = new_etag {
+                let mut updated_cache = repo_cache;
+                updated_cache.index_etag = Some(etag);
+                let _ = utils::write_json_file(&updated_cache, &cache_path);
+            }
+
+            if !silent {
+                if let Some(mutex) = Gui::instance() {
+                    mutex.lock().unwrap().show_notification(&t!("notification.no_tl_updates"));
+                }
+            }
         }
 
         Ok(())
@@ -595,6 +788,10 @@ impl Updater {
     }
 
     fn run_internal(self: Arc<Self>) -> Result<(), Error> {
+        let Ok(_run_guard) = self.run_mutex.try_lock() else {
+            info!("Update already in progress, skipping.");
+            return Ok(());
+        };
         let Some(mut update_info) = (**self.new_update.load()).clone() else {
             return Ok(());
         };
@@ -611,6 +808,8 @@ impl Updater {
         hachimi.localized_data.store(Arc::new(LocalizedData::default()));
 
         let localized_data_dir = hachimi.get_active_tl_dir().expect("Active TL repo directory not set.");
+        let disk_check_path = localized_data_dir.parent().unwrap_or(Path::new("."));
+        check_available_disk_space(disk_check_path, update_info.size as u64)?;
 
         if update_info.is_new_repo {
             Self::create_dir(&localized_data_dir, true)?;
@@ -646,11 +845,14 @@ impl Updater {
         // Save the repo cache (done last so if any of the previous fails, the entire update would be voided)
         let repo_cache = RepoCache {
             base_url: update_info.base_url.clone(),
+            index_etag: update_info.index_etag.clone(),
             files: cached_files.lock().unwrap().clone()
         };
         let repo_id = hachimi.config.load().selected_tl_repo_id.expect("TL repo ID not set after update");
         let cache_path = Self::get_repo_cache_path(repo_id);
         utils::write_json_file(&repo_cache, &cache_path)?;
+
+        *self.skipped_etag.lock().unwrap() = None;
 
         if let Some(mutex) = Gui::instance() {
             let mut gui = mutex.lock().unwrap();
@@ -772,6 +974,7 @@ impl Updater {
         cached_files: Arc<Mutex<FnvHashMap<String, String>>>
     ) -> Result<usize, Error> {
         let zip_path = localized_data_dir.join(".tmp.zip");
+        let _zip_cleanup = ZipCleanupGuard(&zip_path);
         // idk compiler going monkey mode unless i add this
         #[allow(unused_assignments)]
         let mut error_count = 0;
@@ -823,7 +1026,14 @@ impl Updater {
             );
 
             let zip_file = fs::File::open(&zip_path)?;
+            let file_len = zip_file.metadata()?.len();
+            if file_len == 0 {
+                return Err(Error::RuntimeError("Downloaded ZIP file is empty".to_string()));
+            }
             let mmap = Arc::new(unsafe { memmap2::Mmap::map(&zip_file)? });
+            if mmap.is_empty() {
+                return Err(Error::RuntimeError("Failed to memory-map the downloaded ZIP file".to_string()));
+            }
 
             let zip_len = zip::ZipArchive::new(Cursor::new(&mmap[..]))?.len();
 

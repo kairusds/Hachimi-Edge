@@ -75,8 +75,20 @@ pub struct Config {
     pub window_always_on_top: bool,
     #[serde(default = "Config::default_true")]
     pub discord_rpc: bool,
+    #[serde(default)]
+    pub taskbar_show_progress_on_download: bool,
+    #[serde(default)]
+    pub taskbar_show_progress_on_connecting: bool,
+    #[serde(default = "Config::default_true")]
+    pub enable_smtc: bool,
+    #[serde(default = "Config::default_true")]
+    pub ui_loading_show_orientation_guide: bool,
+    #[serde(default = "Config::default_true")]
+    pub enable_gui_landscape_ratio: bool,
     #[serde(default = "Config::default_gui_landscape_ratio")]
-    pub gui_landscape_ratio: f32
+    pub gui_landscape_ratio: f32,
+    #[serde(default)]
+    pub custom_title_name: Option<String>,
 }
 
 impl Config {

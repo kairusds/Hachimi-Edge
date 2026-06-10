@@ -83,6 +83,12 @@ pub fn get_Height_orig() -> i32 {
     get_orig_fn!(get_Height, GetHeightFn)()
 }
 
+static mut GET_ISSPLITWINDOW_ADDR: usize = 0;
+impl_addr_wrapper_fn!(get_IsSplitWindow, GET_ISSPLITWINDOW_ADDR, bool,);
+
+static mut GET_ISVERTICAL_ADDR: usize = 0;
+impl_addr_wrapper_fn!(get_IsVertical, GET_ISVERTICAL_ADDR, bool,);
+
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, Screen);
 
@@ -102,5 +108,10 @@ pub fn init(umamusume: *const Il2CppImage) {
 
         new_hook!(get_Width_addr, get_Width);
         new_hook!(get_Height_addr, get_Height);
+    }
+
+    unsafe {
+        GET_ISSPLITWINDOW_ADDR = get_method_addr(Screen, c"get_IsSplitWindow", 0);
+        GET_ISVERTICAL_ADDR = get_method_addr(Screen, c"get_IsVertical", 0);
     }
 }

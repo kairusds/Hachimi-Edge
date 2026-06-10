@@ -48,8 +48,12 @@ pub extern "C" fn Get(id: i32) -> *mut Il2CppString {
         }
         if hachimi.config.load().auto_translate_localize && !str.is_null() && unsafe { (*str).length > 0 } {
             let s = unsafe { (*str).as_utf16str().to_string() };
-            if let Ok(res) = SugoiClient::instance().translate_one(s) {
-                return res.to_il2cpp_string();
+
+            let sugoi = SugoiClient::instance();
+            if let Some(translated) = sugoi.get_cached(&s) {
+                return translated.to_il2cpp_string();
+            } else {
+                sugoi.translate_async(s);
             }
         }
         str

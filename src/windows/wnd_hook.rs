@@ -1,21 +1,22 @@
 use std::{os::raw::c_uint, ptr, sync::{atomic::{self, AtomicIsize}}};
 
-use windows::{core::w, Win32::{
+use windows::{core::{w, HSTRING}, Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     System::Threading::GetCurrentThreadId,
     UI::{
         Input::Ime::ISC_SHOWUICOMPOSITIONWINDOW,
         WindowsAndMessaging::{
             CallNextHookEx, DefWindowProcW, FindWindowW, GetWindowLongPtrW, SetWindowsHookExW, UnhookWindowsHookEx,
+            SetWindowTextW,
             GWLP_WNDPROC, HCBT_MINMAX, HHOOK, SW_RESTORE, WH_CBT, WM_CLOSE, WM_KEYDOWN, WM_SYSKEYDOWN, WNDPROC,
             WM_IME_SETCONTEXT, WM_IME_NOTIFY, WM_ACTIVATE, WA_INACTIVE
         },
     }
 }};
 
-use crate::{core::{game::Region, gui, Gui, Hachimi}, il2cpp::{hook::{UnityEngine_CoreModule}, symbols::Thread}, windows::utils};
+use crate::{core::{game::Region, gui, Gui, Hachimi}, il2cpp::{hook::UnityEngine_CoreModule, symbols::Thread}, windows::utils};
 
-use super::{gui_impl::input, discord};
+use super::{gui_impl::input, discord, smtc, taskbar};
 
 static TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
 pub fn get_target_hwnd() -> HWND {
@@ -55,10 +56,9 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
                     return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
                 };
-
                 gui.toggle_menu();
                 return LRESULT(0);
-            }else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
+            } else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
                 Thread::main_thread().schedule(Gui::toggle_game_ui);
             }
         },
@@ -147,6 +147,10 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         return LRESULT(0);
     }
 
+    if !Gui::wants_input_atomic() {
+        return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
+    }
+
     LRESULT(0)
 }
 
@@ -184,6 +188,13 @@ pub fn init() {
         }
         TARGET_HWND.store(hwnd.0 as isize, atomic::Ordering::Relaxed);
 
+        let title = hachimi.config.load().windows.custom_title_name.clone();
+        if let Some(t) = title {
+            let _ = SetWindowTextW(hwnd, &HSTRING::from(t));
+        }
+
+        taskbar::init(hwnd);
+
         info!("Hooking WndProc");
         let wnd_proc_addr = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
         match hachimi.interceptor.hook(wnd_proc_addr as _, wnd_proc as *const () as _) {
@@ -206,6 +217,8 @@ pub fn init() {
                  error!("{}", e);
              }
         }
+
+        smtc::init(hwnd);
     }
 }
 

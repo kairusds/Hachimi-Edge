@@ -1,4 +1,4 @@
-use std::{ffi::{c_char, c_void, CStr}, sync::atomic::AtomicI32};
+use std::{ffi::{c_char, c_void, CStr, CString}, sync::atomic::AtomicI32};
 
 use once_cell::sync::OnceCell;
 use egui::Align;
@@ -8,8 +8,12 @@ use crate::{core::{Hachimi, Interceptor, gui}, il2cpp::{self, types::{FieldInfo,
 const VERSION: i32 = 3;
 
 static PLUGIN_VTABLE: OnceCell<Vtable> = OnceCell::new();
+static DATA_DIR_CSTR: once_cell::sync::OnceCell<CString> = once_cell::sync::OnceCell::new();
+static DATA_PATH_CSTR: once_cell::sync::OnceCell<CString> = once_cell::sync::OnceCell::new();
 
+pub type HachimiGetApiFn = extern "C" fn(name: *const c_char) -> *mut c_void;
 pub type HachimiInitFn = extern "C" fn(vtable: *const Vtable, version: i32) -> InitResult;
+pub type HachimiInitV3Fn = extern "C" fn(get_api: HachimiGetApiFn, version: i32) -> InitResult;
 pub type GuiMenuCallback = extern "C" fn(userdata: *mut c_void);
 pub type GuiMenuSectionCallback = extern "C" fn(ui: *mut c_void, userdata: *mut c_void);
 pub type GuiUiCallback = extern "C" fn(ui: *mut c_void, userdata: *mut c_void);
@@ -768,6 +772,30 @@ unsafe extern "C" fn android_dex_call_static_string(_handle: u64, _method: *cons
     false
 }
 
+unsafe extern "C" fn gui_get_menu_width() -> f32 {
+    gui::get_menu_width()
+}
+
+unsafe extern "C" fn gui_set_menu_width(width: f32) {
+    gui::set_menu_width(width);
+}
+
+unsafe extern "C" fn hachimi_get_base_dir() -> *const c_char {
+    let s = DATA_DIR_CSTR.get_or_init(|| {
+        let path = &crate::core::Hachimi::instance().game.data_dir;
+        CString::new(path.to_string_lossy().into_owned()).unwrap()
+    });
+    s.as_ptr()
+}
+
+unsafe extern "C" fn hachimi_get_data_path() -> *const c_char {
+    let s = DATA_PATH_CSTR.get_or_init(|| {
+        let path = crate::core::utils::get_data_path();
+        CString::new(path).unwrap()
+    });
+    s.as_ptr()
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Vtable {
@@ -935,6 +963,10 @@ pub struct Vtable {
         callback: Option<PresentCallback>,
         userdata: *mut c_void,
     ) -> bool,
+    pub gui_get_menu_width: unsafe extern "C" fn() -> f32,
+    pub gui_set_menu_width: unsafe extern "C" fn(width: f32),
+    pub hachimi_get_base_dir: unsafe extern "C" fn() -> *const c_char,
+    pub hachimi_get_data_path: unsafe extern "C" fn() -> *const c_char,
 }
 
 impl Vtable {
@@ -1001,6 +1033,10 @@ impl Vtable {
         gui_ui_combo_menu,
         hachimi_register_on_game_initialized,
         hachimi_register_present_callback,
+        gui_get_menu_width,
+        gui_set_menu_width,
+        hachimi_get_base_dir,
+        hachimi_get_data_path,
     };
 
     pub fn instantiate() -> Self {
@@ -1008,14 +1044,98 @@ impl Vtable {
     }
 }
 
+pub extern "C" fn hachimi_get_api(name: *const c_char) -> *mut c_void {
+    if name.is_null() {
+        return std::ptr::null_mut();
+    }
+    let Ok(func_name) = (unsafe { CStr::from_ptr(name).to_str() }) else {
+        return std::ptr::null_mut();
+    };
+
+    match func_name {
+        "hachimi_instance" => hachimi_instance as *mut c_void,
+        "hachimi_get_interceptor" => hachimi_get_interceptor as *mut c_void,
+        "interceptor_hook" => interceptor_hook as *mut c_void,
+        "interceptor_hook_vtable" => interceptor_hook_vtable as *mut c_void,
+        "interceptor_get_trampoline_addr" => interceptor_get_trampoline_addr as *mut c_void,
+        "interceptor_unhook" => interceptor_unhook as *mut c_void,
+        "il2cpp_resolve_symbol" => il2cpp_resolve_symbol as *mut c_void,
+        "il2cpp_get_assembly_image" => il2cpp_get_assembly_image as *mut c_void,
+        "il2cpp_get_class" => il2cpp_get_class as *mut c_void,
+        "il2cpp_get_method" => il2cpp_get_method as *mut c_void,
+        "il2cpp_get_method_overload" => il2cpp_get_method_overload as *mut c_void,
+        "il2cpp_get_method_addr" => il2cpp_get_method_addr as *mut c_void,
+        "il2cpp_get_method_overload_addr" => il2cpp_get_method_overload_addr as *mut c_void,
+        "il2cpp_get_method_cached" => il2cpp_get_method_cached as *mut c_void,
+        "il2cpp_get_method_addr_cached" => il2cpp_get_method_addr_cached as *mut c_void,
+        "il2cpp_find_nested_class" => il2cpp_find_nested_class as *mut c_void,
+        "il2cpp_resolve_icall" => il2cpp_resolve_icall as *mut c_void,
+        "il2cpp_class_get_methods" => il2cpp_class_get_methods as *mut c_void,
+        "il2cpp_get_field_from_name" => il2cpp_get_field_from_name as *mut c_void,
+        "il2cpp_get_field_value" => il2cpp_get_field_value as *mut c_void,
+        "il2cpp_set_field_value" => il2cpp_set_field_value as *mut c_void,
+        "il2cpp_get_static_field_value" => il2cpp_get_static_field_value as *mut c_void,
+        "il2cpp_set_static_field_value" => il2cpp_set_static_field_value as *mut c_void,
+        "il2cpp_object_new" => il2cpp_object_new as *mut c_void,
+        "il2cpp_unbox" => il2cpp_unbox as *mut c_void,
+        "il2cpp_get_main_thread" => il2cpp_get_main_thread as *mut c_void,
+        "il2cpp_get_attached_threads" => il2cpp_get_attached_threads as *mut c_void,
+        "il2cpp_schedule_on_thread" => il2cpp_schedule_on_thread as *mut c_void,
+        "il2cpp_create_array" => il2cpp_create_array as *mut c_void,
+        "il2cpp_get_singleton_like_instance" => il2cpp_get_singleton_like_instance as *mut c_void,
+        "log" => log as *mut c_void,
+        "gui_register_menu_item" => gui_register_menu_item as *mut c_void,
+        "gui_register_menu_section" => gui_register_menu_section as *mut c_void,
+        "gui_show_notification" => gui_show_notification as *mut c_void,
+        "gui_ui_heading" => gui_ui_heading as *mut c_void,
+        "gui_ui_label" => gui_ui_label as *mut c_void,
+        "gui_ui_small" => gui_ui_small as *mut c_void,
+        "gui_ui_separator" => gui_ui_separator as *mut c_void,
+        "gui_ui_button" => gui_ui_button as *mut c_void,
+        "gui_ui_small_button" => gui_ui_small_button as *mut c_void,
+        "gui_ui_checkbox" => gui_ui_checkbox as *mut c_void,
+        "gui_ui_text_edit_singleline" => gui_ui_text_edit_singleline as *mut c_void,
+        "gui_ui_horizontal" => gui_ui_horizontal as *mut c_void,
+        "gui_ui_grid" => gui_ui_grid as *mut c_void,
+        "gui_ui_end_row" => gui_ui_end_row as *mut c_void,
+        "gui_ui_colored_label" => gui_ui_colored_label as *mut c_void,
+        "gui_register_menu_item_icon" => gui_register_menu_item_icon as *mut c_void,
+        "gui_register_menu_section_with_icon" => gui_register_menu_section_with_icon as *mut c_void,
+        "gui_new_window_id" => gui_new_window_id as *mut c_void,
+        "gui_show_window" => gui_show_window as *mut c_void,
+        "gui_close_window" => gui_close_window as *mut c_void,
+        "android_dex_load" => android_dex_load as *mut c_void,
+        "android_dex_unload" => android_dex_unload as *mut c_void,
+        "android_dex_call_static_noargs" => android_dex_call_static_noargs as *mut c_void,
+        "android_dex_call_static_string" => android_dex_call_static_string as *mut c_void,
+        "gui_get_menu_width" => gui_get_menu_width as *mut c_void,
+        "gui_set_menu_width" => gui_set_menu_width as *mut c_void,
+        "hachimi_get_base_dir" => hachimi_get_base_dir as *mut c_void,
+        "hachimi_get_data_path" => hachimi_get_data_path as *mut c_void,
+        _ => std::ptr::null_mut(),
+    }
+}
+
+pub enum PluginInit {
+    V2(HachimiInitFn),
+    V3(HachimiInitV3Fn),
+}
+
 pub struct Plugin {
     pub name: String,
-    pub init_fn: HachimiInitFn
+    pub init_fn: PluginInit
 }
 
 impl Plugin {
     pub fn init(&self) -> InitResult {
-        let vtable = PLUGIN_VTABLE.get_or_init(Vtable::instantiate);
-        (self.init_fn)(vtable as *const Vtable, VERSION)
+        match &self.init_fn {
+            PluginInit::V2(init) => {
+                let vtable = PLUGIN_VTABLE.get_or_init(Vtable::instantiate);
+                init(vtable as *const Vtable, 2)
+            },
+            PluginInit::V3(init) => {
+                init(hachimi_get_api, VERSION)
+            }
+        }
     }
 }

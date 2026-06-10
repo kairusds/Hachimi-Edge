@@ -24,6 +24,8 @@ pub mod RectOffset;
 pub mod QualitySettings;
 #[cfg(target_os = "windows")]
 pub mod Screen;
+pub mod SceneManager;
+pub mod Scene;
 
 pub const HideFlags_DontUnloadUnusedAsset: i32 = 32;
 
@@ -52,6 +54,8 @@ pub fn init() {
     RectTransform::init(image);
     Transform::init(image);
     RectOffset::init(image);
+    SceneManager::init(image);
+    Scene::init(image);
     #[cfg(target_os = "android")]
     {
         TouchScreenKeyboard::init(image);

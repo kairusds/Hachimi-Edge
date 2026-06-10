@@ -48,9 +48,10 @@ sys-locale = "0.3.2"
 simplelog = "0.12.2"
 crossbeam-channel = "0.5"
 egui_commonmark = { version = "0.22", features = ["better_syntax_highlighting"] }
+libc = "0.2"
+regex = "1.12.3"
 
 [target.'cfg(target_os = "android")'.dependencies]
-libc = "0.2"
 android_logger = "0.15.1"
 procfs = "0.16"
 jni = "0.21.1"
@@ -64,6 +65,7 @@ minhook = "0.5"
 egui-directx11 = "0.12.1"
 discord-rich-presence = "1.0.0"
 pelite = "0.10"
+microseh = "1.1"
 
 [target.'cfg(target_os = "windows")'.dependencies.windows]
 version = "0.62.2"
@@ -81,9 +83,19 @@ features = [
     "Win32_UI_Input_Ime",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_Shell",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
     "Win32_Graphics_Dxgi",
     "Win32_Storage_FileSystem",
-    "Win32_Graphics_Gdi"
+    "Win32_Graphics_Gdi",
+    "Media",
+    "Foundation",
+    "Storage_Streams",
+    "Win32_System_WinRT",
+    "Win32_System_Com",
+    "Data_Xml_Dom",
+    "UI_Notifications"
 ]
 
 [build-dependencies]

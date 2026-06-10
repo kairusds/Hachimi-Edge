@@ -20,6 +20,9 @@ impl_addr_wrapper_fn!(
     FindObjectsOfType, FINDOBJECTSOFTYPE_ADDR, Array<*mut Il2CppObject>, type_: *mut Il2CppObject, include_inactive: bool
 );
 
+static mut OP_IMPLICIT_ADDR: usize = 0;
+impl_addr_wrapper_fn!(op_Implicit, OP_IMPLICIT_ADDR, bool, exists: *mut Il2CppObject);
+
 pub fn init(UnityEngine_CoreModule: *const Il2CppImage) {
     get_class_or_return!(UnityEngine_CoreModule, UnityEngine, Object);
 
@@ -32,5 +35,6 @@ pub fn init(UnityEngine_CoreModule: *const Il2CppImage) {
         FINDOBJECTSOFTYPE_ADDR = il2cpp_resolve_icall(
             c"UnityEngine.Object::FindObjectsOfType(System.Type,System.Boolean)".as_ptr()
         );
+        OP_IMPLICIT_ADDR = get_method_addr(Object, c"op_Implicit", 1);
     }
 }
