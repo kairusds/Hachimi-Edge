@@ -261,3 +261,62 @@ key_names:
   numpad_multiply: "小键盘*"
   numpad_divide: "小键盘/"
   numpad_decimal: "小键盘."
+  
+  
+disabled: "禁用"
+minutes: "分钟"
+
+about:
+  view_contributors: "查看贡献者"
+
+config_editor:
+  etag_translation_updates: "快速更新翻译"
+  tl_auto_updater_mode: "翻译自动更新模式"
+  tl_auto_updater_periodic: "定期更新（提示）"
+  tl_auto_updater_silent: "静默更新（自动）"
+  tl_auto_updater_interval: "翻译自动更新间隔"
+  taskbar_show_progress_on_download: "下载时任务栏显示进度"
+  taskbar_show_progress_on_connecting: "连接时任务栏显示进度"
+  cyspring_mono_uncap_frame_scale: "恢复旧版 CySpring 物理行为"
+  live_slider_always_show: "始终显示 Live 进度条"
+  live_playback_loop: "循环播放 Live 演出"
+  champions_live_show_text: "覆盖大赛 Live 显示文本"
+  champions_live_resource_id: "大赛 Live 标题"
+  champions_live_year: "大赛 Live 显示年份"
+  captions: "字幕"
+  caption_lines_char_count: "每行字幕字符数"
+  caption_font_size: "字幕字体大小"
+  caption_bg_alpha: "字幕背景透明度"
+  caption_pos_x: "字幕位置 X"
+  caption_pos_y: "字幕位置 Y"
+  caption_color: "字幕文字颜色"
+  caption_outline_color: "字幕描边颜色"
+  caption_outline_size: "字幕描边粗细"
+  enable_smtc: "启用 Windows 媒体控制"
+  hide_now_loading: "隐藏 Now Loading 画面"
+  ui_loading_show_orientation_guide: "隐藏 Now Loading 方向提示"
+  replace_to_builtin_font: "使用游戏默认字体"
+  custom_title_name: "自定义窗口标题"
+
+change_translation_repo:
+  removing: "正在移除翻译仓库..."
+  remove_in_progress: "无法移除翻译仓库，已有移除任务正在进行中。"
+  
+add_translation_repo:
+  title: "添加翻译仓库"
+  select_translation_repo: "选择翻译仓库："
+  already_downloaded: "（已下载）"
+
+translation_repo_info:
+  details_title: "翻译仓库详情"
+  homepage: "主页"
+  maintainer: "维护者"
+  contributors: "贡献者"
+  view_contributors: "查看贡献者"
+  links: "相关链接"
+
+tl_update_dialog:
+  show_changelog: "查看更新日志"
+  changelog_title: "更新日志"
+  changelog_fetch_failed: "获取更新日志失败"
+  changelog_invalid: "更新日志内容不是有效的纯文本格式"
