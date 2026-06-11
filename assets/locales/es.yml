@@ -4,7 +4,7 @@ windows:
   menu_open_key: "Flecha Derecha"
 
 android:
-  menu_open_key: "Volumen + y Volumen -\n\uf25a o Triple toque arriba a la izquierda"
+  menu_open_key: "Subir volumen y Bajar volumen\n\uf25a o Triple toque arriba a la izquierda"
 
 splash_sub: "\uf015 Pulsa %{open_key_str} para abrir el menú."
 loading_label: "Cargando..."
@@ -23,6 +23,8 @@ default: "Por defecto"
 off: "Desactivado"
 on: "Activado"
 enable: "Activar"
+disabled: "Desactivado"
+minutes: "minutos"
 info: "Info"
 warning: "Advertencia"
 confirm_dialog_title: "Confirmar"
@@ -30,6 +32,10 @@ soft_restart_confirm_content: "¿Seguro que quieres realizar un reinicio suave d
 in_game_browser_confirm_content: "¿Seguro que quieres abrir el navegador del juego?"
 browser_dialog_title: "Navegador"
 bind_key: "Asignar tecla"
+edit: "Editar"
+remove: "Quitar"
+add: "Añadir"
+save_changes: "¿Guardar los cambios?"
 
 menu:
   check_for_updates: "\uf0aa Buscar actualizaciones"
@@ -55,13 +61,16 @@ menu:
   danger_zone_warning: "Las siguientes opciones podrían tener efectos adversos en el juego. ¡Úsalas con precaución!"
   soft_restart: "\uf021 Reinicio suave"
   open_in_game_browser: "\uf0ac Abrir navegador en juego"
-  toggle_game_ui: "\uf06e Alternar el UI del juego"
+  toggle_game_ui: "\uf06e Alternar la UI del juego"
   discord_rpc: "Discord RPC"
+  edit_excludes: "\uf040 Editar exclusiones"
+  change_translation_repo: "\uf0c1 Cambiar repositorio de traducción"
 
 notification:
   saved_localize_dump: "Exportado en localize_dump.json"
   config_reloaded: "Configuración recargada."
   config_saved: "Configuración guardada."
+  config_error: "La configuración se ha corrompido. Se usarán los valores por defecto..."
   localized_data_reloaded: "Localización recargada."
   checking_for_tl_updates: "Buscando actualizaciones de traducción..."
   no_tl_updates: "No hay actualizaciones."
@@ -72,15 +81,15 @@ notification:
   no_updates: "No hay actualizaciones."
   ipc_softreset_exec: "Reinicio suave remoto (IPC) ejecutado con éxito."
   atlas_workaround_reset: "Archivos de Atlas modificados: arreglo temporal desactivado."
-
+  tl_repo_changed: "Repositorio cambiado. Se han recargado los datos de localización."
+  tl_repo_folder_missing: "No existe la carpeta de traducción. Busca actualizaciones para restaurarla."
 
 first_time_setup:
   title: "Instalación Inicial"
   welcome_heading: "Bienvenido/a"
   welcome_content: >-
-    ¡Has instalado Hachimi correctamente! Esta ventana te guiará por el proceso de
-    instalación inicial. Si no te interesa usar las funciones de traducción, omite
-    el proceso con solo cerrar este diálogo.
+    ¡Has instalado Hachimi correctamente! Esta ventana te guiará por el proceso de instalación inicial.
+    Si no te interesa usar las funciones de traducción, omite el proceso con solo cerrar este diálogo.
 
 
     DISCLAIMER: Hachimi es un proyecto impulsado por la comunidad. Las traducciones han sido realizadas por varios
@@ -90,7 +99,7 @@ first_time_setup:
   translation_repo_heading: "Repositorio de traducción"
   select_translation_repo: "Selecciona un repositorio de traducción:"
   no_compatible_repo: "No se han encontrado repositorios compatibles con esta versión del juego."
-  skip_translation: "Omitir traducciones"
+  skip_translation: "Omitir traducciones."
   complete_heading: "¡Todo listo!"
   complete_content: >-
     Se ha ajustado el repositorio de traducción. Cuando pulses en Listo, se guardará
@@ -103,9 +112,17 @@ about:
   view_license: "Ver licencia"
   open_website: "Abrir sitio web"
   view_source_code: "Ver código fuente"
+  view_contributors: "Ver contribuidores"
 
 license:
   title: "Licencia"
+  gpl_v3_only_notice: "Texto de la licencia GPL-3.0-only"
+  ofl_fonts_header: "Este software incluye las siguientes fuentes bajo la licencia SIL Open Font License 1.1:"
+  font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
+  font_font_awesome: "Font Awesome Versión 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. Todos los derechos reservados."
+  ofl_notice: "Texto de la licencia SIL OFL 1.1"
+  font_alibaba_header: "Alibaba PuHuiTi 3.0"
+  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. Todos los derechos reservados."
 
 tl_updater:
   title: "Actualizando..."
@@ -123,7 +140,7 @@ config_editor:
     Esta opción desactivará el overlay de Hachimi una vez reinicies el juego.
     Esto se traduce en que NO podrás acceder al Editor de Configuración tras ello.
     Si no es un cambio intencional, cierra este diálogo y DESACTIVA esta opción.
-  ipv4_only: "Usar IPv4 (sólo en ureq)"
+  ipv4_only: "Usar IPv4 (solo en ureq)"
   meta_index_url: "URL para las traducciones (meta)"
   debug_mode: "Modo depuración"
   enable_file_logging: "Guardar registro en un archivo"
@@ -131,25 +148,32 @@ config_editor:
   translator_mode: "Modo traductor"
   skip_first_time_setup: "Omitir instalación inicial"
   lazy_translation_updates: "Actualizaciones de traducciones (rápidas)"
+  etag_translation_updates: "Actualizaciones de traducciones (fastpath)"
   disable_auto_update_check: "Desactivar la búsqueda de actualizaciones"
+  tl_auto_updater_mode: "Modo de auto-actualización (traducciones)"
+  tl_auto_updater_periodic: "Periódico (preguntar)"
+  tl_auto_updater_silent: "Silencioso (automático)"
+  tl_auto_updater_interval: "Frecuencia de auto-actualización (traducciones)"
   disable_translations: "Desactivar traducciones"
   enable_ipc: "Habilitar IPC"
   ipc_listen_all: "IPC escuchar todo"
   auto_translate_stories: "Auto-traducir historias"
   auto_tl_warning: >-
     Nota: Esta función no funciona por sí sola; requiere configuración externa.
-    Active esta opción solo si tiene instalado un servidor de traducción compatible
-    instalado en tu ordenador o un servicio en la nube que exponga una API como
+    Activa esta opción solo si tiene instalado un servidor de traducción compatible
+    en tu ordenador o un servicio en la nube que exponga una API como
     py3translationServer o Sugoi Toolkit. Sin un servidor activo, no obtendrás
     traducciones adicionales y el rendimiento del juego podría verse afectado.
-    Por favor, déjela desactivada si no dispone de un servidor de traducción.
-  auto_translate_ui: "Auto-traducir UI\n(PUEDE ROMPER EL UI)"
+    Por favor, déjala desactivada si no dispone de un servidor de traducción.
+  auto_translate_ui: "Auto-traducir la UI (PUEDE ROMPER LA UI)"
+  taskbar_show_progress_on_download: "Ver progreso de la descarga en la barra de tareas"
+  taskbar_show_progress_on_connecting: "Ver progreso de la conexión en la barra de tareas"
   target_fps: "FPS objetivo"
   virtual_resolution_multiplier: "Multiplicador de resolución virtual"
-  ui_scale: "Escala del UI"
+  ui_scale: "Escala de la UI"
   gui_scale: "Escala del overlay"
   gui_landscape_ratio: "Relación de escala del overlay (apaisado)"
-  ui_animation_scale: "Escala de animación del UI"
+  ui_animation_scale: "Escala de animación de la UI"
   graphics_quality: "Calidad gráfica"
   vsync: "VSync"
   auto_full_screen: "Pantalla completa automática"
@@ -167,15 +191,32 @@ config_editor:
   force_allow_dynamic_camera: "Permitir siempre la cámara dinámica"
   live_theater_allow_same_chara: "Permitir personajes iguales en Live Theater"
   physics_update_mode: "Modo de actualización de físicas"
+  cyspring_mono_uncap_frame_scale: "Desbloquear escala de frames del CySpring Mono"
   disable_skill_name_translation: "No traducir habilidades"
   hide_ingame_ui_hotkey: "Atajo para ocultar UI del juego"
-  hide_ingame_ui_hotkey_bind: "Atajo para ocultar la interfaz del juego"
   hide_ingame_ui_hotkey_info: >-
-    Esta opción te permite asignar una tecla para alternar el UI del juego.
+    Esta opción te permite asignar una tecla para alternar la UI del juego.
     En Android, puedes tocar tres veces la parte superior derecha de la pantalla.
     En PC/Android con teclado será la tecla Insertar y podrá ser cambiada desde el GUI o en la configuración.
+  hide_ingame_ui_hotkey_bind: "Atajo para ocultar la interfaz del juego"
+  live_slider_always_show: "Mostrar siempre la barra de progreso en conciertos"
+  live_playback_loop: "Reproducir en bucle los conciertos"
+  champions_live_show_text: "Reemplazar textos del concierto (Champions Meeting)"
+  champions_live_resource_id: "Título del Champions Meeting"
+  champions_live_year: "Año del Champions Meeting"
+  captions: "Subtítulos"
+  caption_lines_char_count: "Caracteres por línea en subtítulos"
+  caption_font_size: "Tamaño de fuente de los subtítulos"
+  caption_bg_alpha: "Opacidad del fondo de los subtítulos"
+  caption_pos_x: "Posición de los subtítulos (Eje X)"
+  caption_pos_y: "Posición de los subtítulos (Eje Y)"
+  caption_color: "Color del texto de los subtítulos"
+  caption_outline_color: "Color del borde de los subtítulos"
+  caption_outline_size: "Tamaño del borde de los subtítulos"
   discord_rpc: "Discord RPC"
+  enable_smtc: "Habilitar controles multimedia de Windows"
   menu_open_key: "Tecla para abrir menú"
+  msaa: "MSAA"
   render_scale: "Escala de renderizado"
   aniso_level: "Filtrado anisotrópico"
   live_vocals_swap: "Cambiar vocalistas"
@@ -183,6 +224,10 @@ config_editor:
   skill_info_dialog: "Ver datos de habilidades (GUI)"
   homescreen_bgseason: "Estación en el menú principal"
   shadow_resolution: "Resolución de las sombras"
+  hide_now_loading: "Ocultar la pantalla de carga"
+  ui_loading_show_orientation_guide: "Ocultar guía para cambiar la orientación en la pantalla de carga"
+  replace_to_builtin_font: "Usar la fuente original del juego"
+  custom_title_name: "Título personalizado para la ventana"
 
 theme_editor:
   title: "Editor de temas (GUI)"
@@ -198,10 +243,44 @@ set_keybind:
   press_any_key: "Pulsa cualquier tecla…"
   bound_key: "Tecla asignada: %{key}"
 
+excludes_editor:
+  title: "Editor de exclusiones"
+  no_paths_available: "No hay rutas para excluir"
+  saved: "Exclusiones guardadas con éxito"
+  confirm_remove: "¿Está seguro de querer eliminar \"%{path}\" de las exclusiones?"
+
+change_translation_repo:
+  title: "Cambiar repositorio de traducción"
+  no_repos: "Aún no hay repositorios de traducción descargados."
+  browse_repositories: "Ver repositorios"
+  active: "Activo"
+  available: "Disponible"
+  confirm_remove: "¿Está seguro de querer eliminar \"%{name}\"?"
+  cannot_remove_active: "No es posible eliminar el repositorio activo si no lo cambias a otro primero."
+  removing: "Eliminando repositorio..."
+  remove_in_progress: "No es posible eliminar el repositorio mientras se encuentre otro proceso de eliminación en curso."
+
+add_translation_repo:
+  title: "Añadir repositorio de traducción"
+  select_translation_repo: "Selecciona un repositorio:"
+  already_downloaded: "(ya descargado)"
+
+translation_repo_info:
+  details_title: "Detalles del repositorio de traducción"
+  homepage: "Página web"
+  maintainer: "Mantenedor"
+  contributors: "Contribuidores"
+  view_contributors: "Ver contribuidores"
+  links: "Enlaces"
+
 tl_update_dialog:
   title: "Nueva actualización disponible"
-  content: "Existen nuevos datos de traducción (%{size}).\n¿Deseas descargarlos ahora?"
-  content_zip_warning: "Existen nuevos datos de traducción (%{changed_size}).\nEsta actualización descargará el archivo completo (%{download_size})."
+  content: "Existen nuevos datos de traducción (%{size}). ¿Deseas descargarlos ahora?"
+  content_zip_warning: "Existen nuevos datos de traducción (%{changed_size}). Esta actualización descargará el archivo completo (%{download_size})."
+  show_changelog: "Ver cambios"
+  changelog_title: "Registro de cambios"
+  changelog_fetch_failed: "No se pudo obtener el registro de cambios."
+  changelog_invalid: "El contenido del registro de cambios no tiene formato de texto válido."
 
 update_prompt_dialog:
   title: "Nueva actualización disponible"
@@ -210,10 +289,10 @@ update_prompt_dialog:
     ¿Quieres instalarla ahora? El juego será reiniciado para así poder
     aplicar la actualización.
   android_content: |
-    Se ha encontrado una nueva actualización de Hachimi Edge (%{version}).\n¿Quieres instalarla ahora?
+    Se ha encontrado una nueva actualización de Hachimi Edge (%{version}). ¿Quieres instalarla ahora?
 
-    Pulsa "Sí" para abrir UmaPatcher Edge para volver a parchear el juego.
-    (No es necesario volver a descargar el juego o los APK, solo parchea el juego nuevamente como normalmente lo harías. UmaPatcher Edge siempre descargará la nueva versión de Hachimi Edge.)
+    Pulsar en "Sí" abrirá UmaPatcher Edge para que vuelvas a parchear el juego.
+    (No será necesario volver a descargar el juego o los APK, solo vuelve a parchear el juego nuevamente para que se descargue e instale la nueva versión de Hachimi Edge.)
 
 updating_dialog:
   title: "Actualizando"
@@ -222,16 +301,18 @@ updating_dialog:
 steam_overlay_conflict_dialog:
   title: "Aviso"
   content: >-
-    Las compras podrían no funcionar con el overlay de Hachimi activo. Si el overlay de Steam ya apareció
-    para realizar compras, ignora este mensaje y pulsa No. Si no apareció nada, pulsa Sí para desactivar
-    temporalmente el overlay de Hachimi. Esto cerrará el juego, y la próxima vez que se inicie el overlay de
-    Hachimi estará desactivado para que puedas realizar compras. Después de realizar tus compras, podrás
-    volver a usar el overlay de Hachimi al reiniciar el juego.
+    Las compras podrían dejar de funcionar si el overlay de Hachimi está activo. Si ya ves el overlay para
+    realizar compras en Steam, ignora este mensaje y pulsa No. Si no ves nada, pulsa Sí para desactivar
+    temporalmente el overlay de Hachimi. Esto cerrará el juego y, al iniciarlo nuevamente, el overlay de
+    Hachimi estará desactivado para que puedas realizar compras. Después de realizarlas, podrás
+    volver a usar el overlay de Hachimi tras reiniciar el juego.
+
 key_names:
   left: "Flecha Izq."
   right: "Flecha Der."
   up: "Flecha Arriba"
   down: "Flecha Abajo"
+  back: "Atrás"
   insert: "Insertar"
   delete: "Suprimir"
   home: "Inicio"
@@ -255,7 +336,6 @@ key_names:
   alt: "Alt"
   ctrl: "Ctrl"
   shift: "Mayús."
-  back: "Atrás"
   dpad_up: "Cruceta arriba"
   dpad_down: "Cruceta abajo"
   dpad_left: "Cruceta izquierda"
@@ -265,6 +345,17 @@ key_names:
   copy: "Copiar"
   cut: "Cortar"
   paste: "Pegar"
+  semicolon: ";"
+  comma: ","
+  backslash: "\\"
+  slash: "/"
+  left_bracket: "["
+  right_bracket: "]"
+  grave: "`"
+  minus: "-"
+  period: "."
+  plus: "+"
+  equals: "="
   numpad_0: "Num 0"
   numpad_1: "Num 1"
   numpad_2: "Num 2"
