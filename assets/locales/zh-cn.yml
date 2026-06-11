@@ -114,13 +114,6 @@ about:
 
 license:
   title: "许可证"
-  gpl_v3_only_notice: "GPL-3.0-only 许可证文本"
-  ofl_fonts_header: "本软件捆绑了以下使用 SIL Open Font License 1.1 授权的字体："
-  font_inter: "Inter：Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
-  font_font_awesome: "Font Awesome 4.7.0：Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
-  ofl_notice: "SIL OFL 1.1 许可证文本"
-  font_alibaba_header: "阿里巴巴普惠体 3.0"
-  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
   title: "更新中..."
