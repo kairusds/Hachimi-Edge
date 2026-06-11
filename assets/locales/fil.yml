@@ -24,6 +24,10 @@ warning: "Babala"
 confirm_dialog_title: "Kumpirmahin"
 soft_restart_confirm_content: "Gusto mo ba talaga i-soft restart ang laro?"
 in_game_browser_confirm_content: "Gusto mo bang buksan ang in-game na browser?"
+remove: "Tanggalin"
+edit: "I-edit"
+add: "Magdagdag"
+save_changes: "I-save ang mga pagbabago?"
 
 menu:
   check_for_updates: "\uf0aa Tignan kung may update"
@@ -45,6 +49,9 @@ menu:
   open_in_game_browser: "\uf0ac Buksan ang in-game na browser"
   toggle_game_ui: "\uf06e I-toggle ang game UI"
   discord_rpc: "Discord RPC"
+  edit_excludes: "\uf040 I-edit ang Excludes"
+  change_translation_repo: "\uf0c1 Baguhin ang Translation Repo"
+
 
 notification:
   saved_localize_dump: "Na-save sa localize_dump.json"
@@ -74,7 +81,7 @@ first_time_setup:
 
 
     DISCLAIMER: Isang proyekto na pinangungunahan ng komunidad ang Hachimi. Ginawa
-    ng mga iba't ibang mga kontribyutor ang mga translator. Hindi ito binuo o ineendorso
+    ng mga iba't ibang mga kontribyutor ang mga translations. Hindi ito binuo o ineendorso
     ng Cygames, Inc., at lumalabag ito sa Mga Tuntunin sa Serbisyo. Sa pamamagitan ng pagpatuloy,
     tinatanggap mo na gagamitin mo ito sa iyong sariling peligro.
   translation_repo_heading: "Repo ng translations"
@@ -158,13 +165,62 @@ config_editor:
   skill_info_dialog: "Custom na dialog ng skill info"
   homescreen_bgseason: "Panahon ng Homescreen Background"
   shadow_resolution: "Resolution ng Shadows"
+  tl_auto_updater_mode: "Mode ng translation auto updater"
+  tl_auto_updater_periodic: "Pana-panahon (Prompt)"
+  tl_auto_updater_interval: "Pagitan ng auto updater"
+  taskbar_show_progress_on_download: "Progress sa taskbar kapag nagda-download"
+  taskbar_show_progress_on_connecting: "Progress sa taskbar kapag kumokonekta"
+  hide_ingame_ui_hotkey_bind: "Keybind sa pagtago ng game UI"
+  live_playback_loop: "I-loop ang mga Live Performance"
+  champions_live_show_text: "I-override ang Champions Meeting Live Text"
+  champions_live_resource_id: "Title ng Champions Meeting"
+  champions_live_year: "Taon ng Champions Meeting"
+  captions: "Mga Caption"
+  caption_lines_char_count: "Mga character sa captions kada linya"
+  caption_font_size: "Laki ng font"
+  caption_bg_alpha: "Opacity ng background"
+  caption_color: "Kulay ng text"
+  caption_outline_color: "Kulay ng outline"
+  caption_outline_size: "Laki ng outline"
+  enable_smtc: "Paganahin ang Windows Media Controls"
+  hide_now_loading: "Itago ang \"Now Loading\" na screen"
+  ui_loading_show_orientation_guide: "Itago ang oryentasyon sa loading screen"
+  replace_to_builtin_font: "Gamitin ang default na font ng laro"
+  custom_title_name: "Pasadyang Window Title"
+  live_slider_always_show: "Palaging ipakita ang Live Slider"
+
+excludes_editor:
+  no_paths_available: "Walang available na path na maaring i-exclude"
+  saved: "Matagumpay na na-save ang excludes"
+  confirm_remove: "Gusto mo ba talagang tanggalin ang exclude na \"%{path}\"?"
+
+change_translation_repo:
+  title: "Baguhin ang Translation Repo"
+  no_repos: "Wala pang translation repo na na-download."
+  browse_repositories: "Mag-browse ng Mga Repository"
+  active: "Aktibo"
+  confirm_remove: "Gusto mo bang tanggalin ang \"%{name}\"?"
+  cannot_remove_active: "Hindi maaaring burahin ang kasalukuyang aktibong repo. Mag-switch muna sa ibang repo."
+  removing: "Tinatanggal ang translation repo..."
+  remove_in_progress: "Hindi mabura ang repo. May ginagawa pang pagtanggal."
+
+add_translation_repo:
+  title: "Magdagdag ng Translation Repository"
+  select_translation_repo: "Pumili ng translation repo:"
+  already_downloaded: "(na-download na)"
+
+translation_repo_info:
+  details_title: "Mga Detalye ng Translation Repo"
+  contributors: "Mga Contributor"
+  view_contributors: "Tignan ang Mga Contributor"
+  links: "Mga Link"
 
 theme_editor:
   title: "Editor ng GUI Theme"
   ui_accent_color: "Kulay ng Accent"
   ui_window_fill: "Kulay ng Window Background"
   ui_panel_fill: "Kulay ng Panel Background"
-  ui_extreme_bg_color: "Background Input"
+  ui_extreme_bg_color: "Background ng Input"
   ui_text_color: "Kulay ng Text"
   ui_window_rounding: "Mga Rounded Corner"
 
@@ -177,6 +233,10 @@ tl_update_dialog:
   title: "May bagong update"
   content: "May bagong update sa translations (%{size}). Gusto mo ba ito i-download?"
   content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}) sa halip."
+  show_changelog: "Ipakita ang Mga Pagbabago"
+  changelog_title: "Mga Pagbabago"
+  changelog_fetch_failed: "Hindi makuha ang changelog"
+  changelog_invalid: "Hindi wastong plaintext ang nilalaman ng changelog"
 
 update_prompt_dialog:
   title: "May bagong update"
