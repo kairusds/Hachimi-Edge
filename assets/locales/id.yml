@@ -1,10 +1,10 @@
 hachimi: "Hachimi Edge"
 
 windows:
-  menu_open_key: "Panah Kanan"
+  menu_open_key: "Panah kanan"
 
 android:
-  menu_open_key: "Vol Atas + Bawah\n\uf25a atau Ketuk tiga kali kiri atas"
+  menu_open_key: "Vol atas + bawah\n\uf25a atau ketuk 3x kiri atas"
 
 splash_sub: "\uf015 Tekan %{open_key_str} untuk buka menu."
 loading_label: "Memuat..."
@@ -23,6 +23,8 @@ default: "Default"
 off: "Mati"
 on: "Nyala"
 enable: "Nyalakan"
+disabled: "Matikan"
+minutes: "menit"
 info: "Info"
 warning: "Peringatan"
 confirm_dialog_title: "Konfirmasi"
@@ -30,6 +32,10 @@ soft_restart_confirm_content: "Apa kamu yakin ingin memulai ulang ringan game?"
 in_game_browser_confirm_content: "Apa kamu yakin ingin buka browser dalam game?"
 browser_dialog_title: "Browser"
 bind_key: "Atur tombol"
+edit: "Edit"
+remove: "Hapus"
+add: "Tambah"
+save_changes: "Simpan perubahan?"
 
 menu:
   check_for_updates: "\uf0aa Cek pembaruan"
@@ -54,23 +60,29 @@ menu:
   danger_zone_heading: "\uf071 Zona Rawan"
   danger_zone_warning: "Hati-hati! Menggunakan opsi di bawah akan membuat game tidak stabil."
   soft_restart: "\uf021 Restart ringan"
-  open_in_game_browser: "\uf0ac Buka browser in-game"
+  open_in_game_browser: "\uf0ac Buka browser di game"
   toggle_game_ui: "\uf06e Atur UI game"
   discord_rpc: "RPC Discord"
+  edit_excludes: "\uf040 Edit Pengecualian"
+  change_translation_repo: "\uf0c1 Ubah Repo Translasi"
 
 notification:
   saved_localize_dump: "Tersimpan sebagai localize_dump.json"
   config_reloaded: "Konfigurasi dimuat ulang."
   config_saved: "Konfigurasi tersimpan."
+  config_error: "File konfig telah korup. Kembali ke default..."
   localized_data_reloaded: "Data lokalisasi dimuat ulang."
   checking_for_tl_updates: "Memeriksa pembaruan translasi..."
   no_tl_updates: "Tidak ada pembaruan translasi."
   update_failed: "Pembaruan gagal: %{reason}"
   update_completed: "Pembaruan berhasil."
-  errors_during_update: "%{count} error terjadi ketika pembaruan. Mohon periksa log untuk info lanjutan."
+  errors_during_update: "%{count} error terjadi ketika pembaruan. Periksa log untuk info lanjutan."
   checking_for_updates: "Memeriksa pembaruan..."
   no_updates: "Tidak ada pembaruan."
   ipc_softreset_exec: "Kendali IPC soft-reset dijalankan"
+  atlas_workaround_reset: "File Atlas diubah: mode perbaikan dimatikan."
+  tl_repo_changed: "Repositori translasi diubah. Data lokalisasi dimuat ulang."
+  tl_repo_folder_missing: "Folder data translasi hilang. Silakan cek pembaruan untuk memperbaiki."
 
 first_time_setup:
   title: "Setup Pertama Kali"
@@ -85,7 +97,7 @@ first_time_setup:
     Proyek ini tidak dibuat/didukung oleh Cygames, Inc., dan berpotensi melanggar S&K game ini. Kamu dianggap
     bersedia menerima segala risiko yang ada apabila melanjutkan.
   translation_repo_heading: "Repositori Translasi"
-  select_translation_repo: "Mohon pilih repositori translasi:"
+  select_translation_repo: "Pilih repositori translasi:"
   no_compatible_repo: "Tidak ada repositori yang didukung oleh versi game ini"
   skip_translation: "Lewati translasi."
   complete_heading: "Selesai!"
@@ -99,13 +111,21 @@ about:
   view_license: "Lihat lisensi"
   open_website: "Buka situs web"
   view_source_code: "Lihat kode sumber"
+  view_contributors: "Lihat kontributor"
 
 license:
   title: "Lisensi"
+  gpl_v3_only_notice: "GPL-3.0-only License Text"
+  ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
+  font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
+  font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
+  ofl_notice: "SIL OFL 1.1 License Text"
+  font_alibaba_header: "Alibaba PuHuiTi 3.0"
+  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
   title: "Memperbarui..."
-  warning: "Fitur translasi tidak bekerja saat progres pembaruan berjalan."
+  warning: "Fitur translasi tidak bekerja saat pembaruan berjalan."
 
 config_editor:
   title: "Editor Konfigurasi"
@@ -120,32 +140,39 @@ config_editor:
     Kamu tidak bisa mengakses editor konfigurasi setelah kamu memulai ulang game.
     Jika tidak disengaja dinyalakan, mohon tutup dialog ini dan matikan opsinya!
   ipv4_only: "Khusus IPv4 ureq"
-  meta_index_url: "URL Meta Terjemahan"
-  debug_mode: "Mode Debug"
+  meta_index_url: "URL Meta terjemahan"
+  debug_mode: "Mode debug"
   enable_file_logging: "Nyalakan logging file"
-  apply_atlas_workaround: "\uf013 Terapkan Perbaikan Atlas TL"
+  apply_atlas_workaround: "\uf013 Terapkan Perbaikan Atlas"
   translator_mode: "Mode Translator"
   skip_first_time_setup: "Lewati setup pertama kali"
-  lazy_translation_updates: "Pembaruan terjemahan fleksibel"
+  lazy_translation_updates: "Pembaruan translasi fleksibel"
+  etag_translation_updates: "Pembaruan translasi kilat"
   disable_auto_update_check: "Matikan cek pembaruan otomatis"
+  tl_auto_updater_mode: "Mode pembaruan translasi otomatis"
+  tl_auto_updater_periodic: "Periodik (Prompt)"
+  tl_auto_updater_silent: "Senyap (Auto)"
+  tl_auto_updater_interval: "Interval pembaruan otomatis translasi"
   disable_translations: "Matikan translasi"
   enable_ipc: "Nyalakan IPC"
   ipc_listen_all: "Buka IPC listen-all"
   auto_translate_stories: "Otomatis terjemahkan cerita"
   auto_tl_warning: >-
-    Catatan: Fitur ini tidak dapat berjalan sendiri; memerlukan pengaturan eksternal.
+    Catatan: Fitur ini tidak dapat berjalan sendiri dan memerlukan pengaturan eksternal.
     Mengaktifkan opsi ini memerlukan server terjemahan yang kompatibel terpasang di
-    komputer Anda atau layanan cloud dengan API seperti py3translationServer atau
-    Sugoi Toolkit. Tanpa server yang berjalan, tidak akan ada terjemahan tambahan
-    dan permainan mungkin terganggu. Harap biarkan opsi ini dinonaktifkan jika Anda
-    tidak memiliki server terjemahan.
+    komputer kamu atau layanan cloud dengan API seperti py3translationServer atau
+    Sugoi Toolkit. Tanpa server yang berjalan, tidak ada terjemahan tambahan dan 
+    permainan mungkin terganggu. Biarkan opsi ini nonaktif jika kamu tidak memiliki 
+    server terjemahan.
   auto_translate_ui: "Otomatis terjemahkan UI (BISA MERUSAK UI)"
+  taskbar_show_progress_on_download: "Tampilkan kemajuan unduh di taskbar"
+  taskbar_show_progress_on_connecting: "Tampilkan kemajuan koneksi di taskbar"
   target_fps: "Target FPS"
   virtual_resolution_multiplier: "Kelipatan resolusi virtual"
-  ui_scale: "Skala UI"
-  gui_scale: "Skala overlay"
-  gui_landscape_ratio: "Rasio skala hamparan lanskap"
-  ui_animation_scale: "Skala animasi UI"
+  ui_scale: "Ukuran UI"
+  gui_scale: "Ukuran overlay"
+  gui_landscape_ratio: "Rasio GUI lanskap"
+  ui_animation_scale: "Kecepatan animasi UI"
   graphics_quality: "Kualitas grafis"
   vsync: "VSync"
   auto_full_screen: "Otomatis Layar penuh"
@@ -163,51 +190,105 @@ config_editor:
   force_allow_dynamic_camera: "Paksa nyalakan kamera dinamis (POV)"
   live_theater_allow_same_chara: "Izinkan karakter yang sama untuk konser"
   physics_update_mode: "Mode update fisik"
+  cyspring_mono_uncap_frame_scale: "Buka skala frame Mono CySpring"
   disable_skill_name_translation: "Matikan translasi nama skill"
   hide_ingame_ui_hotkey: "Sembunyikan hotkey UI dalam game"
-  hide_ingame_ui_hotkey_bind: "Sembunyikan tombol dalam UI in-game"
   hide_ingame_ui_hotkey_info: >-
-    Opsi ini memungkinkan tombol pintas untuk mengaktifkan/menonaktifkan UI di dalam game.
-    Untuk Android, Anda dapat mengetuk tiga kali di bagian kanan atas layar.
-    Untuk PC/Android dengan keyboard, tombolnya adalah Insert dan dapat dikonfigurasi di GUI atau config.
+    Opsi ini memungkinkan tombol pintasan untuk mengaktifkan/menonaktifkan UI di dalam game.
+    Untuk Android, kamu bisa mengetuk tiga kali di bagian kanan atas layar.
+    Untuk PC/Android dengan keyboard, gunakan Insert dan bisa disetel di GUI atau konfig.
+  hide_ingame_ui_hotkey_bind: "Sembunyikan kunci pintasan UI dalam game"
+  live_slider_always_show: "Selalu tampilkan pemutar saat konser"
+  live_playback_loop: "Ulang pemutaran konser"
+  champions_live_show_text: "Ganti teks konser Champions Meeting"
+  champions_live_resource_id: "Judul Champions Meeting"
+  champions_live_year: "Tahun Champions Meeting"
+  captions: "Takarir"
+  caption_lines_char_count: "Karakter takarir per baris"
+  caption_font_size: "Ukuran Font Takarir"
+  caption_bg_alpha: "Transparansi latar takarir"
+  caption_pos_x: "Posisi X takarir"
+  caption_pos_y: "Posisi Y takarir"
+  caption_color: "Warna teks takarir"
+  caption_outline_color: "Warna garis tepi takarir"
+  caption_outline_size: "Ukuran garis tepi takarir"
   discord_rpc: "RPC Discord"
   menu_open_key: "Buka menu hotkey"
+  menu_open_key_set: "Atur"
   msaa: "MSAA"
   render_scale: "Skala render"
   aniso_level: "Filter Anisotropik"
-  live_vocals_swap: "Tukar Vokal Langsung"
+  live_vocals_swap: "Tukar vokal konser"
   live_vocals_swap_character_n: "Karakter %{index}"
   skill_info_dialog: "Dialog info skill kustom"
-  homescreen_bgseason: "Latar Musim Beranda"
-  shadow_resolution: "Resolusi Bayangan"
+  homescreen_bgseason: "Latar musim di beranda"
+  shadow_resolution: "Resolusi bayangan"
+  hide_now_loading: "Sembunyikan layar 'Now Loading'"
+  ui_loading_show_orientation_guide: "Sembunyikan info orientasi layar"
+  replace_to_builtin_font: "Gunakan font default game"
+  custom_title_name: "Judul jendela kustom"
 
 theme_editor:
   title: "Editor Tema GUI"
-  ui_accent_color: "Warna Aksen"
-  ui_window_fill: "Warna Latar Jendela"
-  ui_panel_fill: "Warna Latar Panel"
-  ui_extreme_bg_color: "Latar Input"
-  ui_text_color: "Warna Teks"
-  ui_window_rounding: "Sudut Membulat"
+  ui_accent_color: "Warna aksen"
+  ui_window_fill: "Warna latar jendela"
+  ui_panel_fill: "Warna latar panel"
+  ui_extreme_bg_color: "Latar input"
+  ui_text_color: "Warna teks"
+  ui_window_rounding: "Bulatkan sudut"
 
 set_keybind:
   title: "Atur Tombol"
   press_any_key: "Tekan tombol apapun…"
   bound_key: "Tombol yang diatur: %{key}"
 
+excludes_editor:
+  title: "Editor Pengecualian"
+  no_paths_available: "Tidak ada yang bisa dikecualikan"
+  saved: "Berhasil dikecualikan"
+  confirm_remove: "Apa kamu yakin menghapus pengecualian untuk \"%{path}\"?"
+
+change_translation_repo:
+  title: "Ubah Repo Translasi"
+  no_repos: "Belum ada repo translasi yang diunduh."
+  browse_repositories: "Cari repositori"
+  active: "Aktif"
+  available: "Tersedia"
+  confirm_remove: "apa kamu yakin ingin menghapus \"%{name}\"?"
+  cannot_remove_active: "Tidak bisa menghapus repo yang sedang aktif. Ganti ke repo lain terlebih dahulu."
+  removing: "Menghapus repo translasi..."
+  remove_in_progress: "Tidak bisa menghapus repo translasi. Penghapusan lain sedang berlangsung."
+
+add_translation_repo:
+  title: "Tambah Repositori Translasi"
+  select_translation_repo: "Pilih repositori translasi:"
+  already_downloaded: "(sudah diunduh)"
+
+translation_repo_info:
+  details_title: "Detail repo translasi"
+  homepage: "Beranda"
+  maintainer: "Pengelola"
+  contributors: "Kontributor"
+  view_contributors: "Lihat Kontributor"
+  links: "Tautan"
+
 tl_update_dialog:
   title: "Pembaruan Translasi Tersedia"
   content: "Pembaruan translasi tersedia (%{size}). Apa kamu ingin mengunduhnya?"
-  content_zip_warning: "Pembaruan translasi tersedia (%{changed_size}). Pembaruan akan diunduh secara arsip (%{download_size})."
+  content_zip_warning: "Pembaruan translasi tersedia (%{changed_size}). \nPembaruan akan diunduh secara arsip (%{download_size})."
+  show_changelog: "Tampilkan log"
+  changelog_title: "Log perubahan"
+  changelog_fetch_failed: "Gagal mengambil data changelog"
+  changelog_invalid: "Isi changelog bukan teks polos yang valid"
 
 update_prompt_dialog:
   title: "Pembaruan tersedia!"
   content: "Versi terbaru Hachimi telah tersedia (%{version}). Apa kamu ingin memasangnya? Game akan dimulai ulang saat proses penerapan pembaruan."
   android_content: |
-    Update Hachimi Edge baru tersedia (%{version}). Apakah Anda ingin menginstalnya?
+    Pembaruan Hachimi Edge tersedia (%{version}). Apakah kamu ingin memasangnya?
 
-    Ketuk "Ya" untuk membuka UmaPatcher Edge dan re-patch game Anda.
-    (Tidak perlu download ulang full game atau APK, Anda hanya perlu patch lagi seperti biasanya karena UmaPatcher Edge selalu mendownload versi Hachimi Edge terbaru.)
+    Ketuk "Ya" untuk membuka UmaPatcher Edge dan patch ulang game kamu.
+    (Tidak perlu mengunduh ulang data game atau APK, kamu hanya perlu patch lagi seperti biasanya karena UmaPatcher Edge selalu mengunduh versi Hachimi Edge terbaru.)
 
 updating_dialog:
   title: "Memperbarui"
@@ -217,9 +298,10 @@ steam_overlay_conflict_dialog:
   title: "Peringatan"
   content: >-
     Pembelian mungkin tidak bekerja saat overlay Hachimi menyala. Jika overlay Steam muncul saat melakukan 
-    transaksi, mohon abaikan pesan ini dan klik tombol Tidak. Jika tidak berfungsi, klik tombol Ya untuk 
-    mematikan sementara overlay Hachimi. Game akan dimulai ulang kemudian overlay Hachimi akan mati dan kamu
-    bisa melakukan pembelian lagi, setelah itu mulai ulang game untuk menyalakan kembali overlay Hachimi.
+    transaksi, abaikan pesan ini dan klik tombol Tidak. Jika tidak berfungsi, klik tombol Ya untuk 
+    mematikan sementara overlay Hachimi. Game akan dimulai ulang, kemudian overlay Hachimi akan dimatikan dan kamu
+    bisa melakukan pembelian lagi, setelah itu mulai ulang game lagi untuk menyalakan kembali overlay Hachimi.
+
 key_names:
   left: "Panah Kiri"
   right: "Panah Kanan"
