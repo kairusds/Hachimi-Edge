@@ -1,5 +1,4 @@
 hachimi: "Hachimi Edge"
-
 windows:
   menu_open_key: "右方向键"
 
@@ -23,13 +22,19 @@ default: "默认"
 off: "关闭"
 on: "开启"
 enable: "启用"
+disabled: "禁用"
+minutes: "分钟"
 info: "信息"
 warning: "警告"
 confirm_dialog_title: "确认"
 soft_restart_confirm_content: "确定要软重启游戏吗？"
 in_game_browser_confirm_content: "确定要打开游戏内浏览器吗？"
 browser_dialog_title: "浏览器"
-
+bind_key: "绑定按键"
+edit: "编辑"
+remove: "移除"
+add: "添加"
+save_changes: "保存更改？"
 menu:
   check_for_updates: "\uf0aa 检查更新"
   fps_text: "帧率: %{fps}"
@@ -55,11 +60,15 @@ menu:
   soft_restart: "\uf021 软重启"
   open_in_game_browser: "\uf0ac 打开游戏内浏览器"
   toggle_game_ui: "\uf06e 切换游戏界面显示"
+  discord_rpc: "Discord RPC"
+  edit_excludes: "\uf040 编辑排除项"
+  change_translation_repo: "\uf0c1 更换翻译仓库"
 
 notification:
   saved_localize_dump: "已保存到 localize_dump.json"
   config_reloaded: "配置已重新加载"
   config_saved: "配置已保存"
+  config_error: "配置文件已损坏，已改用默认配置..."
   localized_data_reloaded: "本地化数据已重新加载"
   checking_for_tl_updates: "正在检查翻译更新..."
   no_tl_updates: "无可用翻译更新"
@@ -68,10 +77,10 @@ notification:
   errors_during_update: "更新过程中出现 %{count} 个错误，详情请参阅日志"
   checking_for_updates: "正在检查更新..."
   no_updates: "无可用更新"
-  press_to_set_menu_key: "请在游戏窗口按下新的按键以设为打开菜单按键"
-  menu_open_key_set: "已设置打开菜单按键为 %{key}"
   ipc_softreset_exec: "已远程软重启（IPC）"
   atlas_workaround_reset: "检测到 Atlas 文件更新: 已重新应用 Atlas 翻译..."
+  tl_repo_changed: "翻译仓库已更换，本地化数据已重新加载。"
+  tl_repo_folder_missing: "翻译数据文件夹缺失。请检查更新以恢复翻译。"
 
 first_time_setup:
   title: "初始化设置"
@@ -97,13 +106,21 @@ first_time_setup:
 
 about:
   title: "关于"
-  copyright: "© 2024-%{year} LeadRDRK, kairusds 及贡献者"
+  copyright: "© 2024-%{year} LeadRDRK、kairusds 及贡献者"
   view_license: "查看许可证"
   open_website: "打开网站"
   view_source_code: "查看源代码"
+  view_contributors: "查看贡献者"
 
 license:
   title: "许可证"
+  gpl_v3_only_notice: "GPL-3.0-only 许可证文本"
+  ofl_fonts_header: "本软件捆绑了以下使用 SIL Open Font License 1.1 授权的字体："
+  font_inter: "Inter：Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
+  font_font_awesome: "Font Awesome 4.7.0：Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
+  ofl_notice: "SIL OFL 1.1 许可证文本"
+  font_alibaba_header: "阿里巴巴普惠体 3.0"
+  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
   title: "更新中..."
@@ -116,20 +133,26 @@ config_editor:
   gameplay_tab: "\uf11b 游戏玩法"
   language: "语言"
   restore_defaults: "恢复默认设置"
-  disable_overlay: "禁用覆盖层(GUI)"
+  disable_overlay: "禁用覆盖层（GUI）"
   disable_overlay_warning: >-
     此选项将在游戏重启后禁用Hachimi的GUI，
     您将无法再访问配置编辑器。
     如非本意，请关闭此窗口并禁用此选项。
+  ipv4_only: "仅使用 IPv4 ureq"
   meta_index_url: "翻译 Meta URL"
   debug_mode: "调试模式"
-  enable_file_logging: "启用文件日志记录"
+  enable_file_logging: "记录日志"
   apply_atlas_workaround: "应用翻译 Atlas 修复"
   translator_mode: "翻译者模式"
   skip_first_time_setup: "跳过初始化设置"
-  lazy_translation_updates: "宽松翻译更新检查"
-  disable_auto_update_check: "禁用自动更新检查"
-  disable_translations: "禁用翻译功能"
+  lazy_translation_updates: "检查翻译更新（宽松）"
+  etag_translation_updates: "检查翻译更新（快速）"
+  disable_auto_update_check: "禁用自动检查更新"
+  tl_auto_updater_mode: "翻译更新模式"
+  tl_auto_updater_periodic: "发现更新后询问"
+  tl_auto_updater_silent: "后台自动更新（不询问）"
+  tl_auto_updater_interval: "翻译自动检查更新间隔"
+  disable_translations: "禁用翻译"
   enable_ipc: "启用 IPC"
   ipc_listen_all: "IPC 监听所有地址"
   auto_translate_stories: "自动翻译剧情"
@@ -141,6 +164,8 @@ config_editor:
     如果您没有可用的翻译服务器，请保持此选项关闭。
   ipv4_only: "仅接收 IPv4 请求"
   auto_translate_ui: "自动翻译游戏界面 (可能导致游戏界面异常)"
+  taskbar_show_progress_on_download: "下载时任务栏显示进度"
+  taskbar_show_progress_on_connecting: "连接时任务栏显示进度"
   target_fps: "目标帧率"
   virtual_resolution_multiplier: "分辨率缩放倍数"
   ui_scale: "界面缩放比例"
@@ -165,20 +190,42 @@ config_editor:
   live_theater_allow_same_chara: "在 LIVE 剧场中 允许设置多个相同角色"
   physics_update_mode: "物理引擎更新模式"
   disable_skill_name_translation: "禁用技能名称翻译"
-  hide_ingame_ui_hotkey: "隐藏游戏内 UI 的快捷键"
+  cyspring_mono_uncap_frame_scale: "恢复旧版 CySpring 物理行为"
+  hide_ingame_ui_hotkey: "隐藏游戏内 UI 快捷键"
   hide_ingame_ui_hotkey_info: >-
     此选项允许使用快捷键切换游戏内 UI 界面的显示。
     Android 端，可连续三次点击屏幕右上角。
     对于配备键盘的 PC/Android 设备，默认按键为 Insert，并可在 GUI 或配置文件中进行更改。
-  menu_open_key: "打开菜单按键"
-  menu_open_key_set: "按下以设置"
-  render_scale: "渲染比例"
+  hide_ingame_ui_hotkey_bind: "隐藏游戏内 UI 快捷键绑定"
+  live_slider_always_show: "始终显示 Live 进度条"
+  live_playback_loop: "循环播放 Live 演出"
+  champions_live_show_text: "覆盖大赛 Live 文本"
+  champions_live_resource_id: "大赛标题"
+  champions_live_year: "大赛年份"
+  captions: "字幕"
+  caption_lines_char_count: "每行字幕字符数"
+  caption_font_size: "字幕字体大小"
+  caption_bg_alpha: "字幕背景透明度"
+  caption_pos_x: "字幕位置 X"
+  caption_pos_y: "字幕位置 Y"
+  caption_color: "字幕文字颜色"
+  caption_outline_color: "字幕描边颜色"
+  caption_outline_size: "字幕描边粗细"
+  discord_rpc: "Discord RPC"
+  enable_smtc: "启用 Windows 媒体控制"
+  menu_open_key: "打开菜单快捷键"
+  msaa: "MSAA"
+  render_scale: "渲染缩放"
   aniso_level: "各向异性过滤"
-  live_vocals_swap: "Live演唱人声切换"
+  live_vocals_swap: "Live 剧场音轨替换"
   live_vocals_swap_character_n: "角色 %{index}"
   skill_info_dialog: "自定义技能信息弹窗"
   homescreen_bgseason: "主界面背景季节"
   shadow_resolution: "阴影分辨率"
+  hide_now_loading: "隐藏加载画面画面"
+  ui_loading_show_orientation_guide: "隐藏加载画面方向提示"
+  replace_to_builtin_font: "使用游戏默认字体"
+  custom_title_name: "自定义窗口标题"
 
 theme_editor:
   title: "覆盖层主题编辑器"
@@ -189,10 +236,49 @@ theme_editor:
   ui_text_color: "文本颜色"
   ui_window_rounding: "圆角半径"
 
+set_keybind:
+  title: "设置按键绑定"
+  press_any_key: "按下任意按键…"
+  bound_key: "已绑定按键：%{key}"
+
+excludes_editor:
+  title: "排除项编辑器"
+  no_paths_available: "没有可排除的路径"
+  saved: "排除项已成功保存"
+  confirm_remove: "确定要移除排除项「%{path}」吗？"
+
+change_translation_repo:
+  title: "更换翻译仓库"
+  no_repos: "尚未下载任何翻译仓库。"
+  browse_repositories: "浏览仓库"
+  active: "当前"
+  available: "可用"
+  confirm_remove: "确定要移除「%{name}」吗？"
+  cannot_remove_active: "无法移除当前正在使用的仓库。请先切换到其他仓库。"
+  removing: "正在移除翻译仓库..."
+  remove_in_progress: "无法移除翻译仓库，已有移除任务正在进行中。"
+
+add_translation_repo:
+  title: "添加翻译仓库"
+  select_translation_repo: "选择翻译仓库："
+  already_downloaded: "（已下载）"
+
+translation_repo_info:
+  details_title: "翻译仓库详情"
+  homepage: "主页"
+  maintainer: "维护者"
+  contributors: "贡献者"
+  view_contributors: "查看贡献者"
+  links: "相关链接"
+
 tl_update_dialog:
-  title: "新翻译更新可用"
-  content: "新的翻译更新可用 (%{size})，是否下载？"
-  content_zip_warning: "有新的翻译更新可用（%{changed_size}）。此更新将重新下载完整的存档（%{download_size}）。"
+  title: "发现翻译更新"
+  content: "发现新的翻译更新（%{size}）。是否下载？"
+  content_zip_warning: "发现新的翻译更新（%{changed_size}）。本次更新将改为下载完整压缩包（%{download_size}）。"
+  show_changelog: "查看更新日志"
+  changelog_title: "更新日志"
+  changelog_fetch_failed: "获取更新日志失败"
+  changelog_invalid: "更新日志内容不是有效的纯文本格式"
 
 update_prompt_dialog:
   title: "新版本可用"
@@ -217,12 +303,13 @@ steam_overlay_conflict_dialog:
     如果您无法进行内购，请按「是」以临时禁用 Hachimi GUI 并关闭游戏。
     在下次启动游戏时，Hachimi GUI 将被禁用，此时您可以正常进行内购操作。
     购买完成后，请重启游戏以重新启用 Hachimi GUI。
-    
+
 key_names:
   left: "左方向键"
   right: "右方向键"
   up: "上方向键"
   down: "下方向键"
+  back: "返回"
   insert: "Insert"
   delete: "Delete"
   home: "Home"
@@ -246,6 +333,26 @@ key_names:
   alt: "Alt"
   ctrl: "Ctrl"
   shift: "Shift"
+  dpad_up: "方向键上"
+  dpad_down: "方向键下"
+  dpad_left: "方向键左"
+  dpad_right: "方向键右"
+  volume_up: "音量+"
+  volume_down: "音量-"
+  copy: "复制"
+  cut: "剪切"
+  paste: "粘贴"
+  semicolon: ";"
+  comma: ","
+  backslash: "\\"
+  slash: "/"
+  left_bracket: "["
+  right_bracket: "]"
+  grave: "`"
+  minus: "-"
+  period: "."
+  plus: "+"
+  equals: "="
   numpad_0: "小键盘0"
   numpad_1: "小键盘1"
   numpad_2: "小键盘2"
@@ -261,62 +368,4 @@ key_names:
   numpad_multiply: "小键盘*"
   numpad_divide: "小键盘/"
   numpad_decimal: "小键盘."
-  
-  
-disabled: "禁用"
-minutes: "分钟"
-
-about:
-  view_contributors: "查看贡献者"
-
-config_editor:
-  etag_translation_updates: "快速更新翻译"
-  tl_auto_updater_mode: "翻译自动更新模式"
-  tl_auto_updater_periodic: "定期更新（提示）"
-  tl_auto_updater_silent: "静默更新（自动）"
-  tl_auto_updater_interval: "翻译自动更新间隔"
-  taskbar_show_progress_on_download: "下载时任务栏显示进度"
-  taskbar_show_progress_on_connecting: "连接时任务栏显示进度"
-  cyspring_mono_uncap_frame_scale: "恢复旧版 CySpring 物理行为"
-  live_slider_always_show: "始终显示 Live 进度条"
-  live_playback_loop: "循环播放 Live 演出"
-  champions_live_show_text: "覆盖大赛 Live 显示文本"
-  champions_live_resource_id: "大赛 Live 标题"
-  champions_live_year: "大赛 Live 显示年份"
-  captions: "字幕"
-  caption_lines_char_count: "每行字幕字符数"
-  caption_font_size: "字幕字体大小"
-  caption_bg_alpha: "字幕背景透明度"
-  caption_pos_x: "字幕位置 X"
-  caption_pos_y: "字幕位置 Y"
-  caption_color: "字幕文字颜色"
-  caption_outline_color: "字幕描边颜色"
-  caption_outline_size: "字幕描边粗细"
-  enable_smtc: "启用 Windows 媒体控制"
-  hide_now_loading: "隐藏 Now Loading 画面"
-  ui_loading_show_orientation_guide: "隐藏 Now Loading 方向提示"
-  replace_to_builtin_font: "使用游戏默认字体"
-  custom_title_name: "自定义窗口标题"
-
-change_translation_repo:
-  removing: "正在移除翻译仓库..."
-  remove_in_progress: "无法移除翻译仓库，已有移除任务正在进行中。"
-  
-add_translation_repo:
-  title: "添加翻译仓库"
-  select_translation_repo: "选择翻译仓库："
-  already_downloaded: "（已下载）"
-
-translation_repo_info:
-  details_title: "翻译仓库详情"
-  homepage: "主页"
-  maintainer: "维护者"
-  contributors: "贡献者"
-  view_contributors: "查看贡献者"
-  links: "相关链接"
-
-tl_update_dialog:
-  show_changelog: "查看更新日志"
-  changelog_title: "更新日志"
-  changelog_fetch_failed: "获取更新日志失败"
-  changelog_invalid: "更新日志内容不是有效的纯文本格式"
+  unknown: "%{code} 键"
