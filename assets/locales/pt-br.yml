@@ -4,9 +4,9 @@ windows:
   menu_open_key: "Seta direita"
 
 android:
-  menu_open_key: "Vol. Cima + Vol. Baixo\n\uf25a ou dê três toques no canto superior esquerdo da tela"
+  menu_open_key: "Vol. Cima + Vol. Baixo\n\uf25a ou dê três toques no canto superior esquerdo da tela\n"
 
-splash_sub: "\uf015 Pressione %{open_key_str}\npara abrir o menu."
+splash_sub: "\uf015 Pressione %{open_key_str} para abrir o menu."
 loading_label: "Carregando..."
 search_filter: "Digite para pesquisar..."
 open: "Abrir"
@@ -23,6 +23,8 @@ default: "Padrão"
 off: "Desligado"
 on: "Ligado"
 enable: "Habilitar"
+disabled: "Desabilitado"
+minutes: "minutos"
 info: "Info."
 warning: "Aviso"
 confirm_dialog_title: "Confirmar"
@@ -30,6 +32,10 @@ soft_restart_confirm_content: "Você tem certeza que deseja realizar um soft-res
 in_game_browser_confirm_content: "Você tem certeza que deseja abrir o navegador do jogo?"
 browser_dialog_title: "Navegador"
 bind_key: "Definir atalho"
+edit: "Editar"
+remove: "Remover"
+add: "Adicionar"
+save_changes: "Salvar mudanças?"
 
 menu:
   check_for_updates: "\uf0aa Buscar atualizações"
@@ -57,6 +63,8 @@ menu:
   open_in_game_browser: "\uf0ac Abrir navegador do jogo"
   toggle_game_ui: "\uf06e Alternar UI do jogo"
   discord_rpc: "Discord RPC"
+  edit_excludes: "\uf040 Editar exceções"
+  change_translation_repo: "\uf0c1 Mudar repositório de tradução"
 
 notification:
   saved_localize_dump: "Exportado em localize_dump.json"
@@ -67,12 +75,14 @@ notification:
   checking_for_tl_updates: "Buscando atualizações de tradução..."
   no_tl_updates: "Nenhuma atualização de tradução encontrada."
   update_failed: "Atualização falhou: %{reason}"
-  update_completed: "Atualização foi realizada."
+  update_completed: "Atualização realizada."
   errors_during_update: "%{count} erros aconteceram durante a atualização. Verifique os registros para mais detalhes."
   checking_for_updates: "Procurando atualizações..."
   no_updates: "Nenhuma atualização encontrada."
   ipc_softreset_exec: "Soft-restart remoto (IPC) realizado."
   atlas_workaround_reset: "Arquivos de atlas modificados: solução temporária desabilitada."
+  tl_repo_changed: "O repositório de tradução mudou. Dados de tradução recarregados."
+  tl_repo_folder_missing: "A pasta com os dados de tradução não foi encontrada. Por favor, busque atualizações de tradução para restaurá-la."
 
 first_time_setup:
   title: "Configuração inicial"
@@ -82,7 +92,7 @@ first_time_setup:
     Se não estiver interessado em utilizar as funcionalidades de tradução, pode ignorá-las fechando esta janela.
 
 
-    AVISO: O Hachimi é um projeto desenvolvido pela comunidade. Todas as traduções foram feitas por vários contribuintes.
+    AVISO: O Hachimi é um projeto desenvolvido pela comunidade. Todas as traduções foram feitas por vários contribuidores.
     Este projeto não é desenvolvido e nem apoiado pela Cygames, Inc., e viola os termos de serviço do jogo. Ao continuar,
     você está aceitando os riscos envolvidos.
   translation_repo_heading: "Repositório de tradução"
@@ -101,9 +111,17 @@ about:
   view_license: "Ver licença"
   open_website: "Abrir site"
   view_source_code: "Ver código fonte"
+  view_contributors: "Ver contribuidores"
 
 license:
   title: "Licença"
+  gpl_v3_only_notice: "GPL-3.0-only License Text"
+  ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
+  font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
+  font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
+  ofl_notice: "SIL OFL 1.1 License Text"
+  font_alibaba_header: "Alibaba PuHuiTi 3.0"
+  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
   title: "Atualizando..."
@@ -121,7 +139,7 @@ config_editor:
     Esta opção irá desabilitar a sobreposição do Hachimi após você reiniciar o jogo,
     isso significa que você NÃO poderá acessar o editor de configurações após ativá-la.
     Se não deseja isso, clique em OK e DESABILITE esta opção.
-  ipv4_only: "Utilizar apenas IPv4 (ureq)"
+  ipv4_only: "Usar apenas IPv4 (ureq)"
   meta_index_url: "URL dos Metadados das Traduções"
   debug_mode: "Modo de depuração"
   enable_file_logging: "Habilitar arquivo de registro"
@@ -129,7 +147,12 @@ config_editor:
   translator_mode: "Modo tradutor"
   skip_first_time_setup: "Pular configuração inicial"
   lazy_translation_updates: "Atualizações rápidas de tradução"
+  etag_translation_updates: "Atualizações de tradução (fastpath)"
   disable_auto_update_check: "Desabilitar busca automática de atualizações"
+  tl_auto_updater_mode: "Atualizações automáticas de tradução"
+  tl_auto_updater_periodic: "Perguntar antes"
+  tl_auto_updater_silent: "Atualizar em segundo plano"
+  tl_auto_updater_interval: "Intervalo das atualizações automáticas de tradução"
   disable_translations: "Desabilitar traduções"
   enable_ipc: "Habilitar IPC"
   ipc_listen_all: "IPC: Escutar Tudo"
@@ -143,6 +166,8 @@ config_editor:
     Por favor, deixe esta opção desabilitada se você não tem um servidor
     de tradução disponível.
   auto_translate_ui: "Tradução automática da UI (PODE QUEBRAR AS UIs)"
+  taskbar_show_progress_on_download: "Mostrar progresso do download na barra de tarefas"
+  taskbar_show_progress_on_connecting: "Mostrar progresso da conexão na barra de tarefas"
   target_fps: "FPS Alvo"
   virtual_resolution_multiplier: "Multiplicador virtual de resolução"
   ui_scale: "Escala da UI"
@@ -166,6 +191,7 @@ config_editor:
   force_allow_dynamic_camera: "Forçar uso da câmera dinâmica"
   live_theater_allow_same_chara: "Permitir personagens repetidos nos shows"
   physics_update_mode: "Modo de atualização das físicas"
+  cyspring_mono_uncap_frame_scale: "Escala de Quadros CySpring Mono"
   disable_skill_name_translation: "Desabilitar tradução dos nomes das habilidades"
   hide_ingame_ui_hotkey: "Atalho para esconder a UI do jogo"
   hide_ingame_ui_hotkey_bind: "Atalho para esconder a UI do jogo"
@@ -173,16 +199,35 @@ config_editor:
     Esta opção permite que um atalho seja utilizado para alternar a visualização da UI do jogo.
     No Android, você pode tocar três vezes rapidamente no canto superior direito da tela.
     No PC/Android com um teclado conectado, você pode pressionar a tecla Insert ou definir outra tecla nas configurações.
+  live_slider_always_show: "Sempre mostrar barra de progresso nos shows"
+  live_playback_loop: "Reproduzir shows em loop"
+  champions_live_show_text: "Substituir textos do show da Champions Meeting"
+  champions_live_resource_id: "Título da Champions Meeting"
+  champions_live_year: "Ano da Champions Meeting"
+  captions: "Legendas"
+  caption_lines_char_count: "Caracteres da legenda por linha"
+  caption_font_size: "Tamanho da fonte das legendas"
+  caption_bg_alpha: "Transparência do fundo das legendas"
+  caption_pos_x: "Posição X das legendas"
+  caption_pos_y: "Posição Y das legendas"
+  caption_color: "Cor do texto das legendas"
+  caption_outline_color: "Cor do contorno das legendas"
+  caption_outline_size: "Tamanho do contorno das legendas"
   discord_rpc: "Discord RPC"
+  enable_smtc: "Habilitar Controles de Mídia do Windows"
   menu_open_key: "Atalho para abrir o menu"
   msaa: "MSAA"
-  render_scale: "Escala de Renderização"
+  render_scale: "Escala de renderização"
   aniso_level: "Filtragem Anisotrópica"
   live_vocals_swap: "Vozes dos shows"
   live_vocals_swap_character_n: "Personagem %{index}"
   skill_info_dialog: "Caixa de informações das habilidades personalizada"
   homescreen_bgseason: "Estação da tela de início"
-  shadow_resolution: "Resolução das Sombras"
+  shadow_resolution: "Resolução das sombras"
+  hide_now_loading: "Esconder tela de carregamento"
+  ui_loading_show_orientation_guide: "Esconder tela de carregamento com ícone de orientação da tela"
+  replace_to_builtin_font: "Usar fontes originais do jogo"
+  custom_title_name: "Título customizado da janela"
 
 theme_editor:
   title: "Editor do tema da GUI"
@@ -198,10 +243,44 @@ set_keybind:
   press_any_key: "Pressione qualquer tecla…"
   bound_key: "Tecla definida: %{key}"
 
+excludes_editor:
+  title: "Editor de exceções"
+  no_paths_available: "Não há caminhos disponíveis para adicionar às exceções"
+  saved: "Exceções salvas com sucesso"
+  confirm_remove: "Você certeza de que deseja remover \"%{path}\" das exceções?"
+
+change_translation_repo:
+  title: "Alterar repositório de tradução"
+  no_repos: "Você ainda não baixou nenhum repositório de tradução."
+  browse_repositories: "Ver repositórios"
+  active: "Ativo"
+  available: "Disponível"
+  confirm_remove: "Você tem certeza que deseja remover \"%{name}\"?"
+  cannot_remove_active: "Você não pode remover um repositório que está ativo. Troque para outro repositório antes."
+  removing: "Removendo repositório de tradução..."
+  remove_in_progress: "Não foi possível remover o repositório de tradução. Outro repositório já está sendo removido."
+
+add_translation_repo:
+  title: "Adicionar repositório de tradução"
+  select_translation_repo: "Selecione um repositório de tradução:"
+  already_downloaded: "(já está instalado)"
+
+translation_repo_info:
+  details_title: "Detalhes do repositório de tradução"
+  homepage: "Página da web"
+  maintainer: "Mantenedores"
+  contributors: "Contribuidores"
+  view_contributors: "Ver contribuidores"
+  links: "Links"
+
 tl_update_dialog:
   title: "Uma nova atualização está disponível."
   content: "Uma nova atualização de tradução está disponível (%{size}). Deseja baixá-la?"
   content_zip_warning: "Uma nova atualização de tradução está disponível (%{changed_size}). Esta atualização precisará baixar (%{download_size}) de dados."
+  show_changelog: "Mostrar registro de alterações"
+  changelog_title: "Registro de alterações"
+  changelog_fetch_failed: "Falha ao obter registro de alterações"
+  changelog_invalid: "O conteúdo do registro de alterações não é texto simples válido"
 
 update_prompt_dialog:
   title: "Uma nova atualização está disponível"
@@ -216,7 +295,7 @@ update_prompt_dialog:
 
 updating_dialog:
   title: "Atualizando"
-  content: "Baixando atualização, o jogo reiniciará brevemente..."
+  content: "Baixando atualização, o jogo reiniciará em breve..."
 
 steam_overlay_conflict_dialog:
   title: "Aviso"
