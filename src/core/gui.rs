@@ -1198,9 +1198,14 @@ impl Gui {
                                 ui.vertical(|ui| {
                                     ui.label(t!("config_editor.enable_smtc"));
                                 });
-                                if ui.checkbox(&mut self.config.windows.enable_smtc, "").changed() {
+                                let mut enable_smtc = hachimi.config.load().windows.enable_smtc;
+                                if ui.checkbox(&mut enable_smtc, "").changed() {
                                     use crate::windows::smtc;
-                                    if self.config.windows.enable_smtc {
+                                    let mut config = hachimi.config.load().as_ref().clone();
+                                    config.windows.enable_smtc = enable_smtc;
+                                    save_and_reload_config(config);
+                                    self.config.windows.enable_smtc = enable_smtc;
+                                    if enable_smtc {
                                         smtc::init(crate::windows::wnd_hook::get_target_hwnd());
                                     } else {
                                         smtc::unregister();
