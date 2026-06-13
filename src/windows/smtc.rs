@@ -322,11 +322,12 @@ fn update_metadata(smtc: &SystemMediaTransportControls, music_id: i32) {
     if music_id == 0 { return; }
 
     unsafe {
-        if CURRENT_MUSIC_ID != music_id {
-            if let Ok(updater) = smtc.DisplayUpdater() {
-                let _ = updater.SetThumbnail(None);
-                let _ = updater.Update();
-            }
+        if CURRENT_MUSIC_ID == music_id {
+            return;
+        }
+        if let Ok(updater) = smtc.DisplayUpdater() {
+            let _ = updater.SetThumbnail(None);
+            let _ = updater.Update();
         }
         CURRENT_MUSIC_ID = music_id;
     }
@@ -559,6 +560,11 @@ pub fn unregister() {
     let mut smtc_guard = SMTC_INSTANCE.lock().unwrap();
     if let Some(smtc) = smtc_guard.take() {
         let _ = smtc.SetIsEnabled(false);
+        unsafe {
+            CURRENT_MUSIC_ID = -1;
+            CURRENT_SCENE_HANDLE = -1;
+            LAST_STATUS = MediaPlaybackStatus::Closed;
+        }
         info!("SMTC unregistered");
     }
 }
