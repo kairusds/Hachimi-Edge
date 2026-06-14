@@ -200,6 +200,55 @@ fn process_caption_requests() {
             .cloned()
             .unwrap_or_else(|| caption_data.text.clone());
 
+        static mut PARTS_CHARA_MESSAGE_BASE_TYPE: usize = 0;
+        static mut GET_IS_PLAYING_ADDR: usize = 0;
+        static GET_PARTS_TYPE_INIT: std::sync::Once = std::sync::Once::new();
+        GET_PARTS_TYPE_INIT.call_once(|| {
+            if let Ok(image) = symbols::get_assembly_image(c"umamusume.dll") {
+                if let Ok(class) = symbols::get_class(image, c"Gallop", c"PartsCharaMessageBase") {
+                    unsafe {
+                        PARTS_CHARA_MESSAGE_BASE_TYPE = crate::il2cpp::api::il2cpp_type_get_object(
+                            crate::il2cpp::api::il2cpp_class_get_type(class)
+                        ) as usize;
+                        GET_IS_PLAYING_ADDR = symbols::get_method_addr_cached(class, c"get_IsPlaying", 0);
+                    }
+                }
+            }
+        });
+
+        let mut caption_is_redundant = unsafe {
+            let mut redundant = false;
+            if PARTS_CHARA_MESSAGE_BASE_TYPE != 0 && GET_IS_PLAYING_ADDR != 0 {
+                let objects = crate::il2cpp::hook::UnityEngine_CoreModule::Object::FindObjectsOfType(
+                    PARTS_CHARA_MESSAGE_BASE_TYPE as *mut Il2CppObject,
+                    false
+                );
+                if !objects.this.is_null() && objects.len() > 0 {
+                    let get_is_playing: extern "C" fn(*mut Il2CppObject) -> bool = std::mem::transmute(GET_IS_PLAYING_ADDR);
+                    for obj in objects.as_slice() {
+                        if !obj.is_null() && get_is_playing(*obj) {
+                            redundant = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            redundant
+        };
+
+        if !caption_is_redundant {
+            let balloon = crate::il2cpp::hook::UnityEngine_CoreModule::GameObject::Find(
+                "/Gallop.GameSystem/SystemManagerRoot/SystemSingleton/UIManager/GameCanvas/MainCanvas/EpisodeCharacterView(Clone)/ContentsRoot/PartsEpisodeList/MidArea/BalloonRoot".to_il2cpp_string()
+            );
+            if !balloon.is_null() {
+                caption_is_redundant = true;
+            }
+        }
+
+        if caption_is_redundant {
+            continue;
+        }
+
         crate::core::captions::Captions::init();
         crate::core::captions::Captions::set_display_time(length);
 
