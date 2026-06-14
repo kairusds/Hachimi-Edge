@@ -820,6 +820,22 @@ impl Gui {
                 return;
             }
 
+            static mut LAST_MOUSE_MOVE_TIME: f64 = 0.0;
+            let time = ctx.input(|i| i.time);
+            if LAST_MOUSE_MOVE_TIME == 0.0 {
+                LAST_MOUSE_MOVE_TIME = time;
+            }
+
+            let pointer_delta = ctx.input(|i| i.pointer.delta());
+            let pointer_down = ctx.input(|i| i.pointer.any_down());
+            if pointer_delta != egui::Vec2::ZERO || pointer_down {
+                LAST_MOUSE_MOVE_TIME = time;
+            }
+
+            if time - LAST_MOUSE_MOVE_TIME > 3.0 {
+                return;
+            }
+
             let scale = get_scale(ctx);
             egui::Area::new(egui::Id::new("live_slider_area"))
                 .anchor(egui::Align2::CENTER_BOTTOM, egui::vec2(0.0, -40.0 * scale))
