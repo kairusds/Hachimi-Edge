@@ -137,6 +137,28 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
     }
 }
 
+#[cfg(target_os = "windows")]
+type SetupOrientationFn = extern "C" fn(this: *mut Il2CppObject, target_display_mode: i32);
+
+#[cfg(target_os = "windows")]
+extern "C" fn SetupOrientation(this: *mut Il2CppObject, mut target_display_mode: i32) {
+    const LANDSCAPE_DISPLAY_MODE: i32 = 1;
+    const PORTRAIT_DISPLAY_MODE: i32 = 2;
+
+    let config = Hachimi::instance().config.load();
+    if config.windows.freeform_window {
+        if let Some((width, height)) = crate::windows::wnd_hook::get_client_size() {
+            target_display_mode = if width > height {
+                LANDSCAPE_DISPLAY_MODE
+            } else {
+                PORTRAIT_DISPLAY_MODE
+            };
+        }
+    }
+
+    get_orig_fn!(SetupOrientation, SetupOrientationFn)(this, target_display_mode);
+}
+
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, "Gallop.Live", Director);
 
@@ -158,4 +180,10 @@ pub fn init(umamusume: *const Il2CppImage) {
 
     let pause_live_addr = get_method_addr(Director, c"PauseLive", 1);
     new_hook!(pause_live_addr, PauseLive);
+
+    #[cfg(target_os = "windows")]
+    {
+        let setup_orientation_addr = get_method_addr(Director, c"SetupOrientation", 1);
+        new_hook!(setup_orientation_addr, SetupOrientation);
+    }
 }
