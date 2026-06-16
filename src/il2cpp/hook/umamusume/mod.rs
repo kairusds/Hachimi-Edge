@@ -7,7 +7,7 @@ pub mod StoryTimelineBlockData;
 pub mod StoryTimelineTrackData;
 pub mod StoryTimelineTextClipData;
 pub mod GallopUtil;
-mod UIManager;
+pub mod UIManager;
 pub mod GraphicSettings;
 mod CameraController;
 pub mod SingleModeStartResultCharaViewer;
@@ -27,6 +27,14 @@ mod StoryViewTextControllerLandscape;
 mod StoryViewTextControllerSingleMode;
 mod JikkyoDisplay;
 pub mod Screen;
+#[cfg(target_os = "windows")]
+pub mod StandaloneWindowResize;
+#[cfg(target_os = "windows")]
+mod GallopInput;
+#[cfg(target_os = "windows")]
+pub mod WindowsGamepadControl;
+#[cfg(target_os = "windows")]
+pub mod TapEffectController;
 mod TrainingParamChangePlate;
 mod SingleModeUtils;
 mod MasterSingleModeTurn;
@@ -120,6 +128,13 @@ pub fn init() {
     StoryViewTextControllerSingleMode::init(image);
     JikkyoDisplay::init(image);
     Screen::init(image);
+    #[cfg(target_os = "windows")]
+    {
+        StandaloneWindowResize::init(image);
+        GallopInput::init(image);
+        WindowsGamepadControl::init(image);
+        TapEffectController::init(image);
+    }
     TrainingParamChangePlate::init(image);
     SingleModeUtils::init(image);
     MasterSingleModeTurn::init(image);

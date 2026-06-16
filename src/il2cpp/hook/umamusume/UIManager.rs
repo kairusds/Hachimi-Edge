@@ -28,7 +28,16 @@ pub fn apply_ui_scale() {
 
     #[cfg(target_os = "windows")]
     {
-        if let Some((width, height)) = crate::windows::utils::get_scaling_res() {
+        if config.windows.freeform_window {
+            if config.windows.freeform_ui_scale_auto {
+                if let Some((_, height)) = crate::windows::wnd_hook::get_client_size() {
+                    scale *= height as f32 / 1080.0 *
+                        config.windows.freeform_ui_scale_auto_ratio;
+                }
+                scale = scale.clamp(0.1, 10.0);
+            }
+        }
+        else if let Some((width, height)) = crate::windows::utils::get_scaling_res() {
             if width < height {
                 scale *= width as f32 / 1080.0;
             }
@@ -79,13 +88,55 @@ type ChangeResizeUIForPCFn = extern "C" fn(this: *mut Il2CppObject, width: i32, 
 extern "C" fn ChangeResizeUIForPC(this: *mut Il2CppObject, width: i32, height: i32) {
     use super::GraphicSettings;
 
-    get_orig_fn!(ChangeResizeUIForPC, ChangeResizeUIForPCFn)(this, width, height);
+    let windows_config = &Hachimi::instance().config.load().windows;
+    if !windows_config.freeform_window {
+        get_orig_fn!(ChangeResizeUIForPC, ChangeResizeUIForPCFn)(this, width, height);
+    }
+
     // Recreate the render texture so it scales with the resolution
-    if Hachimi::instance().config.load().windows.resolution_scaling.is_not_default() {
+    if windows_config.freeform_window ||
+        windows_config.resolution_scaling.is_not_default()
+    {
         CreateRenderTextureFromScreen(this);
-        GraphicSettings::Update3DRenderTexture(GraphicSettings::instance());
+        let graphic_settings = GraphicSettings::instance();
+        if !graphic_settings.is_null() {
+            GraphicSettings::Update3DRenderTexture(graphic_settings);
+        }
     }
     apply_ui_scale();
+}
+
+#[cfg(target_os = "windows")]
+static mut CHANGERESOLUTION_ADDR: usize = 0;
+
+#[cfg(target_os = "windows")]
+pub fn refresh_after_window_resize(width: i32, height: i32) {
+    use super::{GraphicSettings, Screen, TapEffectController, WindowsGamepadControl};
+
+    if width <= 0 || height <= 0 {
+        return;
+    }
+
+    Screen::update_original_screen_size(width, height);
+    WindowsGamepadControl::refresh_after_window_resize();
+
+    let this = instance();
+    if !this.is_null() {
+        if unsafe { CHANGERESOLUTION_ADDR } != 0 {
+            let change_resolution: extern "C" fn(*mut Il2CppObject) = unsafe {
+                std::mem::transmute(CHANGERESOLUTION_ADDR)
+            };
+            change_resolution(this);
+        }
+        CreateRenderTextureFromScreen(this);
+        let graphic_settings = GraphicSettings::instance();
+        if !graphic_settings.is_null() {
+            GraphicSettings::Update3DRenderTexture(graphic_settings);
+        }
+        apply_ui_scale();
+    }
+
+    TapEffectController::refresh_all();
 }
 
 #[cfg(target_os = "android")]
@@ -144,6 +195,9 @@ pub fn init(umamusume: *const Il2CppImage) {
         GETCANVASSCALERLIST_ADDR = get_method_addr(UIManager, c"GetCanvasScalerList", 0);
 
         #[cfg(target_os = "windows")]
-        { CREATERENDERTEXTUREFROMSCREEN_ADDR = get_method_addr(UIManager, c"CreateRenderTextureFromScreen", 0); }
+        {
+            CHANGERESOLUTION_ADDR = get_method_addr(UIManager, c"ChangeResolution", 0);
+            CREATERENDERTEXTUREFROMSCREEN_ADDR = get_method_addr(UIManager, c"CreateRenderTextureFromScreen", 0);
+        }
     }
 }
