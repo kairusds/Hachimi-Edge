@@ -84,9 +84,13 @@ mod StoryChoiceButton;
 mod DialogMissionListItem;
 mod PartsNamePlateBase;
 mod PartsSupportCardImproveDetail;
+#[cfg(target_os = "windows")]
 mod Connecting;
+#[cfg(target_os = "windows")]
 mod DownloadManager;
+#[cfg(target_os = "windows")]
 mod DownloadView;
+#[cfg(target_os = "windows")]
 mod DownloadErrorProcessor;
 mod TitleViewController;
 pub mod Director;
@@ -178,6 +182,10 @@ pub fn init() {
     #[cfg(target_os = "windows")]
     {
         PaymentUtility::init(image);
+        Connecting::init(image);
+        DownloadManager::init(image);
+        DownloadView::init(image);
+        DownloadErrorProcessor::init(image);
     }
     LowResolutionCamera::init(image);
     CameraData::init(image);
@@ -195,10 +203,6 @@ pub fn init() {
     DialogMissionListItem::init(image);
     PartsNamePlateBase::init(image);
     PartsSupportCardImproveDetail::init(image);
-    Connecting::init(image);
-    DownloadManager::init(image);
-    DownloadView::init(image);
-    DownloadErrorProcessor::init(image);
     TitleViewController::init(image);
     Director::init(image);
     CySpringNative::init(image);
