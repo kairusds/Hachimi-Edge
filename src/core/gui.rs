@@ -3762,6 +3762,14 @@ impl Window for FreeCameraSettingsWindow {
                                 Gui::run_combo(ui, "free_camera_live_target_part", &mut cfg.live_target_part_index, &live_part_choices);
                                 ui.end_row();
 
+                                ui.label(t!("free_camera.live_selfie_horizontal_stabilization"));
+                                ui.add(egui::DragValue::new(&mut cfg.live_selfie_horizontal_stabilization).speed(0.01).range(0.0..=5.0));
+                                ui.end_row();
+
+                                ui.label(t!("free_camera.live_selfie_vertical_stabilization"));
+                                ui.add(egui::DragValue::new(&mut cfg.live_selfie_vertical_stabilization).speed(0.01).range(0.0..=5.0));
+                                ui.end_row();
+
                                 ui.label(t!("free_camera.live_follow_smooth"));
                                 ui.checkbox(&mut cfg.live_follow_smooth, "");
                                 ui.end_row();
