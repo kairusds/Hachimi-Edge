@@ -96,10 +96,6 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
     let action_masked = action & ACTION_MASK;
     let is_consuming = Gui::is_consuming_input_atomic();
 
-    if !is_consuming && (action_masked == ACTION_MOVE || action_masked == ACTION_HOVER_MOVE) {
-        return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
-    }
-
     let key_event_class = env.find_class("android/view/KeyEvent").unwrap();
     if env.is_instance_of(&input_event, &key_event_class).unwrap() {
         let key_code = env.call_method(&input_event, "getKeyCode", "()I", &[])
@@ -210,6 +206,10 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
 
     let motion_event_class = env.find_class("android/view/MotionEvent").unwrap();
     if env.is_instance_of(&input_event, &motion_event_class).unwrap() {
+        if !is_consuming && (action_masked == ACTION_MOVE || action_masked == ACTION_HOVER_MOVE) {
+            return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
+        }
+
         let pointer_index = (action & ACTION_POINTER_INDEX_MASK) >> ACTION_POINTER_INDEX_SHIFT;
 
         let real_x = env.call_method(&input_event, "getX", "()F", &[])
