@@ -277,6 +277,8 @@ free_camera:
   gamepad_look_speed: "Gamepad look speed"
   live_target_position: "Live target position"
   live_target_part: "Live target part"
+  live_selfie_horizontal_stabilization: "Live horizontal follow dead zone"
+  live_selfie_vertical_stabilization: "Live vertical follow dead zone"
   live_follow_offset: "Live follow offset"
   live_follow_lookat_offset: "Live look-at offset"
   live_follow_smooth: "Smooth live follow"
