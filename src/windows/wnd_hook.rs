@@ -13,13 +13,13 @@ use windows::{core::{w, HSTRING}, Win32::{
             WM_IME_SETCONTEXT, WM_IME_NOTIFY, WM_ACTIVATE, WA_INACTIVE, GWL_STYLE, SIZE_MAXIMIZED,
             SIZE_MINIMIZED,
             SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WM_ENTERSIZEMOVE,
-            WM_EXITSIZEMOVE, WM_MOVING, WM_SIZE, WM_SIZING, WM_SYSKEYUP, WINDOW_LONG_PTR_INDEX,
-            WS_MAXIMIZEBOX
+            WM_EXITSIZEMOVE, WM_KEYUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_MOVING, WM_RBUTTONDOWN,
+            WM_RBUTTONUP, WM_SIZE, WM_SIZING, WM_SYSKEYUP, WM_INPUT, WINDOW_LONG_PTR_INDEX, WS_MAXIMIZEBOX
         },
     }
 }};
 
-use crate::{core::{game::Region, gui, Gui, Hachimi}, il2cpp::{hook::{umamusume, UnityEngine_CoreModule}, symbols::{create_delegate, get_assembly_image, get_class, get_method_addr, Thread}, types::{Il2CppDelegate, RefreshRate}}, windows::utils};
+use crate::{core::{free_camera, game::Region, gui, Gui, Hachimi}, il2cpp::{hook::{umamusume, UnityEngine_CoreModule}, symbols::{create_delegate, get_assembly_image, get_class, get_method_addr, Thread}, types::{Il2CppDelegate, RefreshRate}}, windows::utils};
 
 use super::{gui_impl::input, discord, smtc, taskbar};
 
@@ -396,6 +396,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
     match umsg {
         WM_KEYDOWN | WM_SYSKEYDOWN => {
             let current_key = wparam.0 as u16;
+            let repeat = ((lparam.0 as usize) & (1usize << 30)) != 0;
 
             if gui::is_keybind_capture_active() {
                 let display = utils::vk_to_display_label(current_key);
@@ -422,6 +423,62 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 return LRESULT(0);
             } else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
                 Thread::main_thread().schedule(Gui::toggle_game_ui);
+            }
+
+            if !Gui::is_gui_input_active_atomic() {
+                free_camera::on_windows_key(current_key, true, repeat);
+                if free_camera::is_windows_key_bound(current_key) {
+                    return LRESULT(0);
+                }
+            }
+        },
+        WM_KEYUP | WM_SYSKEYUP => {
+            let current_key = wparam.0 as u16;
+            if !Gui::is_gui_input_active_atomic() {
+                free_camera::on_windows_key(current_key, false, false);
+                if free_camera::is_windows_key_bound(current_key) {
+                    return LRESULT(0);
+                }
+            }
+        },
+        WM_RBUTTONDOWN => {
+            if !Gui::is_gui_input_active_atomic() {
+                free_camera::on_mouse_button(true);
+                if free_camera::is_enabled() {
+                    return LRESULT(0);
+                }
+            }
+        },
+        WM_RBUTTONUP => {
+            if !Gui::is_gui_input_active_atomic() {
+                free_camera::on_mouse_button(false);
+                if free_camera::is_enabled() {
+                    return LRESULT(0);
+                }
+            }
+        },
+        WM_MOUSEMOVE => {
+            if !Gui::is_gui_input_active_atomic() {
+                let x = (lparam.0 & 0xffff) as i16 as i32;
+                let y = ((lparam.0 >> 16) & 0xffff) as i16 as i32;
+                free_camera::on_mouse_move(x, y);
+                if free_camera::wants_windows_input_capture() {
+                    return LRESULT(0);
+                }
+            }
+        },
+        WM_MOUSEWHEEL => {
+            if !Gui::is_gui_input_active_atomic() {
+                let delta = (wparam.0 >> 16) as u16 as i16;
+                free_camera::on_mouse_wheel(delta);
+                if free_camera::is_enabled() {
+                    return LRESULT(0);
+                }
+            }
+        },
+        WM_INPUT => {
+            if !Gui::is_gui_input_active_atomic() && free_camera::is_enabled() {
+                return LRESULT(0);
             }
         },
         WM_ACTIVATE => {
@@ -547,6 +604,7 @@ pub fn init() {
         }
 
         taskbar::init(hwnd);
+        free_camera::init_windows_gamepad_capture();
 
         if let Ok(umamusume) = get_assembly_image(c"umamusume.dll") {
             if let Ok(mono_behaviour_extension) =
@@ -624,6 +682,7 @@ pub fn init() {
 pub fn uninit() {
     unsafe {
         restore_original_wnd_proc(get_target_hwnd());
+        free_camera::uninit_windows_gamepad_capture();
         Hachimi::instance().interceptor.unhook(set_window_long_ptr_w_hook as *const () as _);
         Hachimi::instance().interceptor.unhook(set_window_long_ptr_a_hook as *const () as _);
 

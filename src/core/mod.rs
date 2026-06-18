@@ -33,3 +33,4 @@ pub mod updater;
 pub mod taskbar;
 pub mod captions;
 pub mod live_utils;
+pub mod free_camera;

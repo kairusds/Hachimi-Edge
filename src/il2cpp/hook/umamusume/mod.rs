@@ -78,6 +78,8 @@ pub mod SceneManager;
 #[cfg(target_os = "windows")]
 mod PaymentUtility;
 mod LowResolutionCamera;
+#[cfg(target_os = "windows")]
+mod FreeCamera;
 pub mod TweenAnimationTimelineComponent;
 pub mod TweenAnimationTimelineData;
 pub mod TweenAnimationTimelineSheetData;
@@ -203,6 +205,8 @@ pub fn init() {
         DownloadErrorProcessor::init(image);
     }
     LowResolutionCamera::init(image);
+    #[cfg(target_os = "windows")]
+    FreeCamera::init(image);
     CameraData::init(image);
     TweenAnimationTimelineComponent::init(image);
     TweenAnimationTimelineData::init(image);
