@@ -2943,7 +2943,7 @@ impl std::ops::MulAssign<f32> for Vector2Int_t {
     }
 }
 #[repr(C)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, Default)]
 pub struct Vector3_t {
     pub x: f32,
     pub y: f32,
@@ -2958,7 +2958,7 @@ pub struct Rect_t {
     pub height: f32,
 }
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Quaternion_t {
     pub w: f32,
     pub x: f32,
