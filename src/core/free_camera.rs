@@ -166,6 +166,8 @@ pub struct FreeCameraConfig {
     pub remove_camera_effects: bool,
     pub show_overlay: bool,
     pub selfie_use_head_transform: bool,
+    pub live_selfie_horizontal_stabilization: f32,
+    pub live_selfie_vertical_stabilization: f32,
     pub mode: FreeCameraMode,
     pub live_move_step: f32,
     pub race_move_step: f32,
@@ -200,6 +202,8 @@ impl Default for FreeCameraConfig {
             remove_camera_effects: true,
             show_overlay: true,
             selfie_use_head_transform: false,
+            live_selfie_horizontal_stabilization: 0.0,
+            live_selfie_vertical_stabilization: 0.0,
             mode: FreeCameraMode::Free,
             live_move_step: 0.2,
             race_move_step: 0.25,
@@ -487,6 +491,7 @@ struct FreeCameraState {
     live_selfie_head_pos: Option<Vec3>,
     live_selfie_head_forward: Option<Vec3>,
     live_selfie_last_head_pos: Option<Vec3>,
+    live_selfie_stabilized_target: Option<Vec3>,
     race_target_index: i32,
     race_follow_offset: Vec3,
     race_follow_distance: f32,
@@ -538,6 +543,7 @@ impl FreeCameraState {
             live_selfie_head_pos: None,
             live_selfie_head_forward: None,
             live_selfie_last_head_pos: None,
+            live_selfie_stabilized_target: None,
             race_target_index: -1,
             race_follow_offset: Vec3::default(),
             race_follow_distance: 0.0,
@@ -581,6 +587,7 @@ impl FreeCameraState {
         self.live_selfie_head_pos = None;
         self.live_selfie_head_forward = None;
         self.live_selfie_last_head_pos = None;
+        self.live_selfie_stabilized_target = None;
         self.race_target_index = config.race_target_index;
         self.race_follow_offset = Vec3::from_config(config.race_follow_offset);
         self.race_follow_distance = config.race_follow_distance;
@@ -642,6 +649,7 @@ impl FreeCameraState {
                 self.live_selfie_head_pos = None;
                 self.live_selfie_head_forward = None;
                 self.live_selfie_last_head_pos = None;
+                self.live_selfie_stabilized_target = None;
                 if self.scene == CameraScene::Race {
                     if config.selfie_use_head_transform {
                         self.race_follow_offset = Vec3::new(0.0, 0.0, -2.0);
@@ -1002,7 +1010,7 @@ fn update_live_follow_camera_locked(
     config: &FreeCameraConfig,
     position_target: Vec3,
 ) {
-    let mut position_target = position_target;
+    let mut position_target = apply_live_selfie_dead_zone_locked(state, config, position_target);
     let had_target = state.live_follow_target.is_some();
     if config.live_follow_smooth && had_target {
         let old_pos_target = state.live_follow_target.unwrap();
@@ -1019,16 +1027,88 @@ fn update_live_follow_camera_locked(
         look_at.y + state.live_follow_offset.y,
         look_at.z - angle.cos() * distance,
     );
-    if config.live_follow_smooth && had_target {
-        state.camera_pos = camera_pos;
-        state.camera_look_at =
-            state.camera_look_at.lerp(look_at, config.live_follow_smooth_lookat_step.clamp(0.02, 1.0));
+    let camera_look_at = if config.live_follow_smooth && had_target {
+        state.camera_look_at.lerp(look_at, config.live_follow_smooth_lookat_step.clamp(0.02, 1.0))
     }
     else {
-        state.camera_pos = camera_pos;
-        state.camera_look_at = look_at;
-    }
+        look_at
+    };
+    state.camera_pos = camera_pos;
+    state.camera_look_at = camera_look_at;
     state.camera_rotation = None;
+}
+
+fn apply_live_selfie_dead_zone_locked(
+    state: &mut FreeCameraState,
+    config: &FreeCameraConfig,
+    position_target: Vec3,
+) -> Vec3 {
+    let horizontal_dead_zone = config.live_selfie_horizontal_stabilization.max(0.0);
+    let vertical_dead_zone = config.live_selfie_vertical_stabilization.max(0.0);
+    if config.selfie_use_head_transform ||
+        (horizontal_dead_zone <= f32::EPSILON && vertical_dead_zone <= f32::EPSILON) ||
+        has_selfie_manual_input(state)
+    {
+        state.live_selfie_stabilized_target = Some(position_target);
+        return position_target;
+    }
+
+    if let Some(stabilized_target) = state.live_selfie_stabilized_target {
+        let delta = position_target - stabilized_target;
+        let horizontal_len = (delta.x * delta.x + delta.z * delta.z).sqrt();
+        let vertical_len = delta.y.abs();
+        let mut next_target = stabilized_target;
+
+        if horizontal_dead_zone <= f32::EPSILON {
+            next_target.x = position_target.x;
+            next_target.z = position_target.z;
+        }
+        else if horizontal_len > horizontal_dead_zone {
+            let amount = (horizontal_len - horizontal_dead_zone) / horizontal_len;
+            next_target.x += delta.x * amount;
+            next_target.z += delta.z * amount;
+        }
+
+        if vertical_dead_zone <= f32::EPSILON {
+            next_target.y = position_target.y;
+        }
+        else if vertical_len > vertical_dead_zone {
+            next_target.y += delta.y.signum() * (vertical_len - vertical_dead_zone);
+        }
+
+        if (next_target - stabilized_target).len() <= f32::EPSILON {
+            return stabilized_target;
+        }
+
+        state.live_selfie_stabilized_target = Some(next_target);
+        return next_target;
+    }
+
+    state.live_selfie_stabilized_target = Some(position_target);
+    position_target
+}
+
+fn has_selfie_manual_input(state: &FreeCameraState) -> bool {
+    state.key_state.forward ||
+        state.key_state.back ||
+        state.key_state.left ||
+        state.key_state.right ||
+        state.key_state.down ||
+        state.key_state.up ||
+        state.key_state.look_up ||
+        state.key_state.look_down ||
+        state.key_state.look_left ||
+        state.key_state.look_right ||
+        state.key_state.follow_offset_up ||
+        state.key_state.follow_offset_down ||
+        state.key_state.follow_offset_left ||
+        state.key_state.follow_offset_right ||
+        state.gamepad.axes.left_x.abs() > 0.01 ||
+        state.gamepad.axes.left_y.abs() > 0.01 ||
+        state.gamepad.axes.right_x.abs() > 0.01 ||
+        state.gamepad.axes.right_y.abs() > 0.01 ||
+        state.gamepad.axes.left_trigger.abs() > 0.01 ||
+        state.gamepad.axes.right_trigger.abs() > 0.01
 }
 
 pub fn update_live_head_part_target(target: Vector3_t) {
@@ -1801,6 +1881,7 @@ fn cycle_mode_locked(state: &mut FreeCameraState) {
     state.live_selfie_camera_offset = None;
     state.live_selfie_look_offset = None;
     state.live_selfie_last_head_pos = None;
+    state.live_selfie_stabilized_target = None;
     state.last_overlay_mode = state.mode;
     set_overlay_message(t!(
         "free_camera.overlay_mode",
@@ -1847,6 +1928,7 @@ fn previous_target_locked(state: &mut FreeCameraState) {
             state.live_selfie_camera_offset = None;
             state.live_selfie_look_offset = None;
             state.live_selfie_last_head_pos = None;
+            state.live_selfie_stabilized_target = None;
             set_overlay_message(t!(
                 "free_camera.overlay_target",
                 target = live_target_label(state.live_target_position_index)
@@ -1884,6 +1966,7 @@ fn next_target_locked(state: &mut FreeCameraState) {
             state.live_selfie_camera_offset = None;
             state.live_selfie_look_offset = None;
             state.live_selfie_last_head_pos = None;
+            state.live_selfie_stabilized_target = None;
             set_overlay_message(t!(
                 "free_camera.overlay_target",
                 target = live_target_label(state.live_target_position_index)
@@ -1902,6 +1985,7 @@ fn previous_live_part_locked(state: &mut FreeCameraState) {
             state.live_head_part_target = None;
             state.live_follow_precise_target = false;
             state.live_follow_timeline_updated = false;
+            state.live_selfie_stabilized_target = None;
             set_overlay_message(t!(
                 "free_camera.overlay_part",
                 part = live_part_label(state.live_target_part_index)
@@ -1920,6 +2004,7 @@ fn next_live_part_locked(state: &mut FreeCameraState) {
             state.live_head_part_target = None;
             state.live_follow_precise_target = false;
             state.live_follow_timeline_updated = false;
+            state.live_selfie_stabilized_target = None;
             set_overlay_message(t!(
                 "free_camera.overlay_part",
                 part = live_part_label(state.live_target_part_index)
