@@ -731,6 +731,8 @@ pub struct Config {
     #[serde(default)]
     pub force_allow_dynamic_camera: bool,
     #[serde(default)]
+    pub free_camera: crate::core::free_camera::FreeCameraConfig,
+    #[serde(default)]
     pub live_theater_allow_same_chara: bool,
     #[serde(default = "Config::default_live_vocals_swap")]
     pub live_vocals_swap: [i32; 6],
