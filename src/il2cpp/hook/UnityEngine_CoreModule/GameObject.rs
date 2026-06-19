@@ -71,6 +71,9 @@ impl_addr_wrapper_fn!(SetActive, SETACTIVE_ADDR, (), this: *mut Il2CppObject, va
 static mut GET_ACTIVESELF_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_activeSelf, GET_ACTIVESELF_ADDR, bool, this: *mut Il2CppObject);
 
+static mut FIND_ADDR: usize = 0;
+impl_addr_wrapper_fn!(Find, FIND_ADDR, *mut Il2CppObject, name: *mut Il2CppString);
+
 // public Transform get_transform() { }
 static mut GET_TRANSFORM_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_transform, GET_TRANSFORM_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
@@ -155,6 +158,7 @@ pub fn init(UnityEngine_CoreModule: *const Il2CppImage) {
     unsafe {
         CLASS = GameObject;
         TYPE_OBJECT = get_type_object_for_class(GameObject);
+        FIND_ADDR = get_method_addr(GameObject, c"Find", 1);
         ADDCOMPONENT_ADDR = get_method_addr(GameObject, c"AddComponent", 1);
         GETCOMPONENT_ADDR = get_method_addr(GameObject, c"GetComponent", 1);
         GETCOMPONENTINCHILDREN_ADDR = get_method_addr(GameObject, c"GetComponentInChildren", 2);

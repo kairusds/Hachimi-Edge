@@ -63,6 +63,7 @@ pub mod Notification;
 pub mod TimeUtil;
 pub mod CameraData;
 pub mod DialogManager;
+pub mod PartsCharaMessageBase;
 
 pub mod SceneManager;
 
@@ -170,6 +171,7 @@ pub fn init() {
     Notification::init(image);
     TimeUtil::init(image);
     DialogManager::init(image);
+    PartsCharaMessageBase::init(image);
 
     SceneManager::init(image);
 

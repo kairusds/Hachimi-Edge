@@ -10,7 +10,7 @@ use crate::{
             UnityEngine_CoreModule::{Component, GameObject, Object, Resources, Transform},
             UnityEngine_UI::Text,
             UnityEngine_UIModule::CanvasGroup,
-            umamusume::{AudioManager, GallopUtil, ImageCommon, MasterCharacterSystemText::{self, CharacterSystemText}, Notification, SceneManager, TextCommon, UIManager}
+            umamusume::{AudioManager, GallopUtil, ImageCommon, MasterCharacterSystemText::{self, CharacterSystemText}, Notification, PartsCharaMessageBase, SceneManager, TextCommon, UIManager}
         },
         symbols::{self, GCHandle, Thread},
         types::*
@@ -116,6 +116,35 @@ pub fn process_caption_request() {
         AudioManager::GetCueLength(am, final_data.cue_sheet.to_il2cpp_string(), final_data.cue_id)
     } else { 0.0 };
     let length = if length <= 0.0 { 3.0 } else { length };
+
+    let mut caption_is_redundant = false;
+    unsafe {
+        let parts_type = PartsCharaMessageBase::type_object();
+        if !parts_type.is_null() {
+            let objects = Object::FindObjectsOfType(parts_type, false);
+            if !objects.this.is_null() && objects.len() > 0 {
+                for obj in objects.as_slice() {
+                    if !obj.is_null() && PartsCharaMessageBase::get_IsPlaying(*obj) {
+                        caption_is_redundant = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if !caption_is_redundant {
+        let balloon = GameObject::Find(
+            "/Gallop.GameSystem/SystemManagerRoot/SystemSingleton/UIManager/GameCanvas/MainCanvas/EpisodeCharacterView(Clone)/ContentsRoot/PartsEpisodeList/MidArea/BalloonRoot".to_il2cpp_string()
+        );
+        if !balloon.is_null() {
+            caption_is_redundant = true;
+        }
+    }
+
+    if caption_is_redundant {
+        return;
+    }
 
     let localized_text = Hachimi::instance().localized_data.load()
         .character_system_text_dict
