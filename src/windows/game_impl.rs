@@ -21,6 +21,7 @@ pub fn get_region(package_name: &str) -> Region {
         .as_str()
     {
         "umamusume.exe" | "umamusumeprettyderby_jpn.exe" => Region::Japan,
+        "komoeumamusume.exe" => Region::Taiwan,
         "umamusumeprettyderby.exe" => Region::Global,
         _ => Region::Unknown
     }

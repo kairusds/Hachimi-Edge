@@ -4,7 +4,7 @@ use std::path::Path;
 
 use windows::{core::{w, PCWSTR}, Win32::{Foundation::HMODULE, System::LibraryLoader::GetModuleHandleW}};
 
-use crate::{core::{Error, Hachimi}, windows::{steamworks, utils}};
+use crate::{core::{Error, Hachimi, game::Region}, windows::{steamworks, utils}};
 
 use super::{hachimi_impl, proxy, ffi};
 
@@ -56,8 +56,10 @@ fn init_internal() -> Result<(), Error> {
         hachimi.on_hooking_finished();   
     }
     else {
-        info!("Init UnityPlayer.dll proxy");
-        proxy::unityplayer::init();
+        if hachimi.game.region != Region::Taiwan {
+            info!("Init UnityPlayer.dll proxy");
+            proxy::unityplayer::init();
+        }
 
         let system_dir = utils::_get_system_directory();
 
