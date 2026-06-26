@@ -31,7 +31,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         return unsafe { DefWindowProcW(hwnd, umsg, wparam, lparam) };
     };
 
-    external_link::webview::process_massage(umsg,lparam);
+    external_link::process_massage(umsg,lparam);
     match umsg {
         WM_KEYDOWN | WM_SYSKEYDOWN => {
             let current_key = wparam.0 as u16;

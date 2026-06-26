@@ -2,8 +2,6 @@ use std::sync::{atomic};
 
 use crate::{core::Hachimi, il2cpp::{api::il2cpp_resolve_icall, symbols::get_method_addr, types::*}};
 
-#[cfg(target_os = "windows")]
-use crate::windows::external_link::open_url;
 
 type SetTargetFrameRateFn = extern "C" fn(value: i32);
 pub extern "C" fn set_targetFrameRate(mut value: i32) {
@@ -19,7 +17,7 @@ type OpenURLFn = extern "system" fn(il2cpp_url:*mut Il2CppString);
 pub extern "system" fn OpenURL(url:*mut Il2CppString){
     #[cfg(target_os="windows")]
     {
-        if !open_url::open(url) {
+        if !crate::windows::external_link::open(url) {
             get_orig_fn!(OpenURL,OpenURLFn)(url);
         }
     }
