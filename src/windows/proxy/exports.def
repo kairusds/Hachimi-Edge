@@ -1,6 +1,7 @@
 EXPORTS
     ; UnityPlayer.dll
     UnityMain
+    UnityMain2
 
     ; cri_mana_vpx.dll
     criVvp9_GetAlphaInterface
