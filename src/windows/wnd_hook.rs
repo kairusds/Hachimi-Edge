@@ -16,7 +16,7 @@ use windows::{core::{w, HSTRING}, Win32::{
 
 use crate::{core::{game::Region, gui, Gui, Hachimi}, il2cpp::{hook::UnityEngine_CoreModule, symbols::Thread}, windows::utils};
 
-use super::{gui_impl::input, discord, smtc, taskbar};
+use super::{gui_impl::input, discord, smtc, taskbar, external_link};
 
 static TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
 pub fn get_target_hwnd() -> HWND {
@@ -31,6 +31,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         return unsafe { DefWindowProcW(hwnd, umsg, wparam, lparam) };
     };
 
+    external_link::webview::process_massage(umsg,lparam);
     match umsg {
         WM_KEYDOWN | WM_SYSKEYDOWN => {
             let current_key = wparam.0 as u16;
