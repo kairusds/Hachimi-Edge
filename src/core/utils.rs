@@ -17,23 +17,11 @@ pub struct SendPtr(pub *mut Il2CppObject);
 unsafe impl Send for SendPtr {}
 unsafe impl Sync for SendPtr {}
 
-static LOCALIZE_ID_CACHE: Lazy<Mutex<FnvHashMap<String, i32>>> =
+static LOCALIZE_STRING_CACHE: Lazy<Mutex<FnvHashMap<String, String>>> =
     Lazy::new(|| Mutex::new(FnvHashMap::default()));
 
 pub fn get_localized_string(id_name: &str) -> String {
-    let check_cache = |name: &str| -> Option<String> {
-        let cache = LOCALIZE_ID_CACHE.lock().unwrap();
-        if let Some(&id) = cache.get(name) {
-            let ptr = Localize::Get(id);
-            if !ptr.is_null() {
-                return Some(unsafe { (*ptr).as_utf16str() }.to_string());
-            }
-            return Some(name.to_owned());
-        }
-        None
-    };
-
-    if let Some(result) = check_cache(id_name) {
+    if let Some(result) = LOCALIZE_STRING_CACHE.lock().unwrap().get(id_name).cloned() {
         return result;
     }
 
@@ -43,12 +31,17 @@ pub fn get_localized_string(id_name: &str) -> String {
 
     Thread::main_thread().schedule(|| {
         if let Some(name) = PENDING_NAME.lock().unwrap().take() {
-            let val = TextId::from_name(&name);
-            LOCALIZE_ID_CACHE.lock().unwrap().insert(name, val);
+            let ptr = Localize::Get(TextId::from_name(&name));
+            let value = if !ptr.is_null() {
+                unsafe { (*ptr).as_utf16str() }.to_string()
+            } else {
+                name.clone()
+            };
+            LOCALIZE_STRING_CACHE.lock().unwrap().insert(name, value);
         }
     });
 
-    check_cache(id_name).unwrap_or_else(|| id_name.to_owned())
+    id_name.to_owned()
 }
 
 pub fn char_to_utf16_index(text: &str, char_idx: usize) -> i32 {
