@@ -56,12 +56,8 @@ fn init_internal() -> Result<(), Error> {
             info!("Init winhttp.dll proxy");
             proxy::winhttp::init(&utils::_get_system_directory());
         }
-        Some("cri_mana_vpx.dll") => {
-            info!("Init cri_mana_vpx.dll proxy");
-            proxy::cri_mana_vpx::init();
-        }
         other => {
-            warn!("Unrecognized proxy module name {:?}, skip init proxy", other);
+            info!("Unknown module name {:?}, skip init proxy", other);
         }
     }
 
