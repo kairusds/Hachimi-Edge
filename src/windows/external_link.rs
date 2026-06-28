@@ -1,62 +1,54 @@
-use crate::windows::wnd_hook::get_target_hwnd;
-use once_cell::sync::Lazy;
-use std::ffi::c_uint;
-use std::num::NonZeroIsize;
-use windows::core::{w, PWSTR};
-use windows::Win32::Foundation::{HWND, LPARAM, TRUE};
-use windows::Win32::Graphics::Gdi::{InvalidateRect, UpdateWindow};
-use windows::Win32::UI::Shell::ShellExecuteW;
-use windows::Win32::UI::WindowsAndMessaging::{SW_SHOWNORMAL, WM_USER};
-use wry::raw_window_handle::{
-    HandleError, HasWindowHandle, RawWindowHandle, Win32WindowHandle, WindowHandle,
-};
-use wry::{Rect, WebView, WebViewBuilder};
-
 use crate::core::game::Region;
 use crate::core::gui::Window;
 use crate::core::Gui;
 use crate::core::Hachimi;
 use crate::il2cpp::types::Il2CppString;
+use crate::windows::wnd_hook::get_target_hwnd;
 use egui::Context;
+use once_cell::sync::Lazy;
 use rust_i18n::t;
 use std::collections::HashMap;
-use std::sync::RwLock;
-use windows::core::PCWSTR;
-use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
-use wry::dpi::{PhysicalPosition, PhysicalSize};
+use std::ffi::c_uint;
+use std::sync::{mpsc, RwLock};
+use webview2_com::Microsoft::Web::WebView2::Win32::{
+    CreateCoreWebView2EnvironmentWithOptions, GetAvailableCoreWebView2BrowserVersionString,
+    ICoreWebView2, ICoreWebView2Controller, ICoreWebView2Environment, ICoreWebView2Environment10,
+    ICoreWebView2EnvironmentOptions, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC,
+};
+use webview2_com::{
+    CoreWebView2EnvironmentOptions, CreateCoreWebView2ControllerCompletedHandler,
+    CreateCoreWebView2EnvironmentCompletedHandler, ExecuteScriptCompletedHandler, Result,
+};
+use windows::core::{w, Interface, HSTRING};
+use windows::core::{PCWSTR, PWSTR};
+use windows::Win32::Foundation::{E_POINTER, E_UNEXPECTED, HWND, LPARAM, RECT, TRUE};
+use windows::Win32::Globalization::{
+    GetUserDefaultUILanguage, LCIDToLocaleName, LOCALE_ALLOW_NEUTRAL_NAMES, MAX_LOCALE_NAME,
+};
+use windows::Win32::Graphics::Gdi::{InvalidateRect, UpdateWindow};
+use windows::Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED};
+use windows::Win32::UI::Shell::ShellExecuteW;
+use windows::Win32::UI::WindowsAndMessaging::{PostMessageW, SW_SHOWNORMAL, WM_USER};
 
 pub const WM_OPEN_WEBVIEW: u32 = WM_USER + 500;
 pub const WM_CLOSE_WEBVIEW: u32 = WM_USER + 501;
 pub const WM_SET_WEBVIEW_POSITION: u32 = WM_USER + 502;
 pub const WM_WEBVIEW_GOBACK: u32 = WM_USER + 503;
 
-struct WindowsWindowHandle {
-    hwnd: HWND,
-}
-
-impl HasWindowHandle for WindowsWindowHandle {
-    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
-        let hwnd_nonzero =
-            NonZeroIsize::new(self.hwnd.0 as isize).ok_or(HandleError::Unavailable)?;
-        let handle = Win32WindowHandle::new(hwnd_nonzero);
-        unsafe { Ok(WindowHandle::borrow_raw(RawWindowHandle::Win32(handle))) }
-    }
-}
-
 struct DialogWebView {
-    webview: Option<WebView>,
-    handle: WindowsWindowHandle,
+    parent: HWND,
+    webview: Option<InnerWebView>,
 }
 
 impl DialogWebView {
-    pub fn new(hwnd: HWND) -> DialogWebView {
+    pub fn new(parent: HWND) -> DialogWebView {
         DialogWebView {
+            parent,
             webview: None,
-            handle: WindowsWindowHandle { hwnd },
         }
     }
 
-    fn set_position(&self, position: Rect) {
+    fn set_position(&self, position: RECT) {
         if let Some(ref webview) = self.webview {
             match webview.set_bounds(position) {
                 Ok(_) => {}
@@ -65,49 +57,141 @@ impl DialogWebView {
         }
     }
     fn close(&mut self) {
-        self.webview = None;
         unsafe {
-            if InvalidateRect(Some(self.handle.hwnd), None, true) == TRUE {
-                let _ = UpdateWindow(self.handle.hwnd);
+            self.webview = None;
+            if InvalidateRect(Some(self.parent), None, true) == TRUE {
+                let _ = UpdateWindow(self.parent);
             }
         }
     }
 
     fn back(&self) {
         if let Some(ref webview) = self.webview {
-            if let Err(e) = webview.evaluate_script("window.history.back()") {
-                warn!("webview back failure: {:?}", e);
-            }
+            let _ = webview.execute_script(&"window.history.back()".to_string());
         }
     }
 
     fn open(&mut self, url: &String, title: &String, orig_url: &String) {
-        let url_string = String::from(url);
-        match WebViewBuilder::new()
-            .with_url(url_string)
-            .build_as_child(&self.handle)
-        {
-            Ok(wv) => {
-                open_dialog(title.clone(), orig_url.clone());
-                self.webview = Some(wv);
-            }
-            Err(e) => {
-                warn!("Failed to build webview: {:?}", e);
-                unsafe {
-                    ShellExecuteW(
-                        None,
-                        w!("open"),
-                        PWSTR(widestring::U16CString::from_str(orig_url).unwrap().as_ptr() as _),
-                        None,
-                        None,
-                        SW_SHOWNORMAL,
-                    );
-                }
-            }
+        if let Ok(webview) = InnerWebView::new(get_target_hwnd(), url) {
+            self.webview = Some(webview);
+            open_dialog(title.clone(), orig_url.clone());
         }
     }
 }
 
+struct InnerWebView {
+    controller: ICoreWebView2Controller,
+    webview: ICoreWebView2,
+}
+impl InnerWebView {
+    pub fn new(parent: HWND, url: &String) -> Result<InnerWebView> {
+        let _ = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
+        let env = Self::create_environment()?;
+        let controller = Self::create_controller(parent, &env)?;
+        let webview = Self::init_webview(&controller, url)?;
+        let w = Self {
+            controller,
+            webview,
+        };
+        Ok(w)
+    }
+
+    fn set_bounds(&self, bounds: RECT) -> Result<()> {
+        unsafe { Ok(self.controller.SetBounds(bounds)?) }
+    }
+
+    fn execute_script(&self, js: &String) -> windows::core::Result<()> {
+        unsafe {
+            let js = HSTRING::from(js);
+            self.webview.ExecuteScript(
+                &js,
+                &ExecuteScriptCompletedHandler::create(Box::new(|_, _| Ok(()))),
+            )
+        }
+    }
+    fn create_controller(
+        hwnd: HWND,
+        env: &ICoreWebView2Environment,
+    ) -> Result<ICoreWebView2Controller> {
+        let (tx, rx) = mpsc::channel();
+
+        let handler = CreateCoreWebView2ControllerCompletedHandler::create(Box::new(
+            move |error_code, controller| {
+                let result = (|| {
+                    error_code?;
+                    controller.ok_or_else(|| windows::core::Error::from(E_POINTER).into())
+                })();
+                tx.send(result)
+                    .map_err(|_| windows::core::Error::from(E_UNEXPECTED))
+            },
+        ));
+
+        unsafe {
+            if let Ok(env10) = env.cast::<ICoreWebView2Environment10>() {
+                let controller_opts = env10.CreateCoreWebView2ControllerOptions()?;
+
+                controller_opts.SetIsInPrivateModeEnabled(false)?;
+                env10.CreateCoreWebView2ControllerWithOptions(hwnd, &controller_opts, &handler)?;
+            } else {
+                env.CreateCoreWebView2Controller(hwnd, &handler)?
+            }
+        }
+
+        webview2_com::wait_with_pump(rx)?
+    }
+
+    #[inline]
+    fn create_environment() -> Result<ICoreWebView2Environment> {
+        let options = CoreWebView2EnvironmentOptions::default();
+        let (tx, rx) = mpsc::channel();
+        unsafe {
+            options.set_are_browser_extensions_enabled(false);
+            let lcid = GetUserDefaultUILanguage();
+            let mut lang = [0; MAX_LOCALE_NAME as usize];
+            LCIDToLocaleName(lcid as u32, Some(&mut lang), LOCALE_ALLOW_NEUTRAL_NAMES);
+            options.set_language(String::from_utf16_lossy(&lang));
+            CreateCoreWebView2EnvironmentWithOptions(
+                PCWSTR::null(),
+                &HSTRING::default(),
+                &ICoreWebView2EnvironmentOptions::from(options),
+                &CreateCoreWebView2EnvironmentCompletedHandler::create(Box::new(
+                    move |error_code, environment| {
+                        let result = (|| {
+                            error_code?;
+                            environment.ok_or_else(|| windows::core::Error::from(E_POINTER).into())
+                        })();
+                        tx.send(result)
+                            .map_err(|_| windows::core::Error::from(E_UNEXPECTED))
+                    },
+                )),
+            )?;
+        }
+        webview2_com::wait_with_pump(rx)?
+    }
+
+    #[inline]
+    fn init_webview(controller: &ICoreWebView2Controller, url: &String) -> Result<ICoreWebView2> {
+        let webview = unsafe { controller.CoreWebView2()? };
+
+        let h_url = HSTRING::from(url);
+        unsafe {
+            webview.Navigate(&h_url)?;
+        }
+
+        unsafe {
+            controller.SetIsVisible(true)?;
+            controller.MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC)?;
+        }
+
+        Ok(webview)
+    }
+}
+
+impl Drop for InnerWebView {
+    fn drop(&mut self) {
+        let _ = unsafe { self.controller.Close() };
+    }
+}
 static mut DIALOG_WEBVIEW: Lazy<DialogWebView> =
     Lazy::new(|| DialogWebView::new(get_target_hwnd()));
 
@@ -220,8 +304,9 @@ fn pares_url(url: &String) -> (String, HashMap<String, String>) {
     }
 }
 pub fn open(url: *mut Il2CppString) -> bool {
-    if Hachimi::instance().game.region == Region::Japan
-        && !Hachimi::instance()
+    if Hachimi::instance().game.region != Region::Japan
+        || !has_available_webview()
+        || !Hachimi::instance()
             .config
             .load()
             .windows
@@ -265,7 +350,7 @@ impl ExternalLinkDialog {
     }
 }
 
-static WEBVIEW_RECT: RwLock<Option<Rect>> = RwLock::new(None);
+static WEBVIEW_RECT: RwLock<Option<RECT>> = RwLock::new(None);
 
 impl Window for ExternalLinkDialog {
     fn run(&mut self, ctx: &Context) -> bool {
@@ -276,11 +361,12 @@ impl Window for ExternalLinkDialog {
         let view_height = view_rect.height();
 
         let target_height = view_height * 0.9;
-        let target_width = if view_width * 0.9 > 280f32 {
-            view_width * 0.9
+        let target_width = if view_width * 0.9 > 300f32 {
+            300f32
         } else {
-            280f32
+            view_width * 0.9
         };
+
         let resp = egui::Window::new(self.title.clone())
             .pivot(egui::Align2::CENTER_CENTER)
             .fixed_pos(ctx.viewport_rect().max / 2.0)
@@ -332,13 +418,15 @@ impl Window for ExternalLinkDialog {
             if let Some(inner_rect) = resp.inner {
                 unsafe {
                     let scale = ctx.pixels_per_point();
-                    let h = inner_rect.height() * scale;
-                    let x = inner_rect.min.x * scale;
-                    let y = inner_rect.min.y * scale;
-                    let w = inner_rect.width() * scale;
-                    let rect = wry::Rect {
-                        position: PhysicalPosition::new(x, y).into(),
-                        size: PhysicalSize::new(w, h).into(),
+                    let bottom = inner_rect.max.y * scale;
+                    let left = inner_rect.min.x * scale;
+                    let top = inner_rect.min.y * scale;
+                    let right = inner_rect.max.x * scale;
+                    let rect = RECT {
+                        left: left as i32,
+                        top: top as i32,
+                        right: right as i32,
+                        bottom: bottom as i32,
                     };
 
                     if let Ok(lock) = WEBVIEW_RECT.read() {
@@ -377,4 +465,22 @@ fn open_dialog(title: String, orig_url: String) {
         .lock()
         .unwrap()
         .show_window(Box::new(ExternalLinkDialog::new(title, orig_url)));
+}
+pub fn has_available_webview() -> bool {
+    let mut version_info = PWSTR::null();
+    unsafe {
+        match GetAvailableCoreWebView2BrowserVersionString(None, &mut version_info) {
+            Ok(_) => {
+                let mut available = false;
+                if !version_info.is_null() {
+                    if version_info.to_string().is_ok() {
+                        available = true
+                    }
+                    windows::Win32::System::Com::CoTaskMemFree(Some(version_info.as_ptr() as *const _));
+                }
+                available
+            }
+            Err(_) => false,
+        }
+    }
 }
