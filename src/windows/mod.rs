@@ -14,3 +14,4 @@ pub mod steamworks;
 pub mod discord;
 pub mod smtc;
 pub mod taskbar;
+pub mod external_link;

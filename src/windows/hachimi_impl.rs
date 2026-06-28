@@ -89,6 +89,8 @@ pub struct Config {
     pub gui_landscape_ratio: f32,
     #[serde(default)]
     pub custom_title_name: Option<String>,
+    #[serde(default = "Config::default_true")]
+    pub open_external_link_with_hachimi:bool,
 }
 
 impl Config {
