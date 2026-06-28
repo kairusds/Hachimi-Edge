@@ -45,6 +45,13 @@ pub fn get_exec_path() -> PathBuf {
     PathBuf::from(exec_path_str)
 }
 
+pub fn get_module_file_name(hmodule: HMODULE) -> Utf16String {
+    let mut slice = [0u16; MAX_PATH as usize];
+    let length = unsafe { GetModuleFileNameW(Some(hmodule), &mut slice) } as usize;
+    let module_filename_str = unsafe { Utf16Str::from_slice_unchecked(&slice[..length]) }.to_owned();
+    module_filename_str
+}
+
 pub fn get_game_dir() -> PathBuf {
     let exec_path = get_exec_path();
     let parent = exec_path.parent().unwrap();

@@ -10,6 +10,5 @@ macro_rules! proxy_proc {
     }
 }
 
-pub mod cri_mana_vpx;
 pub mod unityplayer;
 pub mod winhttp;

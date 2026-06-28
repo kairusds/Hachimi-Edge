@@ -129,11 +129,11 @@ impl Updater {
         };
         self.new_update.store(Arc::new(None));
 
-        use crate::windows::{main::DLL_HMODULE, utils};
+        use crate::windows::{main::DLL_HMODULE, utils::{self, get_module_file_name}};
         use windows::{
             core::{HSTRING, PCWSTR},
             Win32::{
-                Foundation::{MAX_PATH, WPARAM, LPARAM}, System::LibraryLoader::GetModuleFileNameW,
+                Foundation::{WPARAM, LPARAM},
                 UI::{Shell::ShellExecuteW, WindowsAndMessaging::{PostMessageW, SW_NORMAL, WM_CLOSE}}
             }
         };
@@ -164,9 +164,7 @@ impl Updater {
         }
 
         // Launch the installer
-        let mut slice = [0u16; MAX_PATH as usize];
-        let length = unsafe { GetModuleFileNameW(Some(DLL_HMODULE), &mut slice) } as usize;
-        let hachimi_path_str = unsafe { widestring::Utf16Str::from_slice_unchecked(&slice[..length]) };
+        let hachimi_path_str = unsafe { get_module_file_name(DLL_HMODULE) };
         let game_dir = utils::get_game_dir();
         unsafe {
             ShellExecuteW(
@@ -177,7 +175,7 @@ impl Updater {
                     "install --install-dir \"{}\" --target \"{}\" --sleep 1000 --prompt-for-game-exit --launch-game -- {}",
                     game_dir.display(), hachimi_path_str, std::env::args().skip(1).collect::<Vec<String>>().join(" ")
                 )),
-                PCWSTR::from_raw(slice.as_ptr()),
+                PCWSTR::from_raw(hachimi_path_str.as_ptr()),
                 SW_NORMAL
             );
 

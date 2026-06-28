@@ -8,6 +8,7 @@ use windows::{core::PCWSTR, Win32::System::LibraryLoader::LoadLibraryW};
 use crate::{core::{utils::get_file_modified_time, Hachimi}, windows::utils};
 
 proxy_proc!(UnityMain, UnityMain_orig);
+proxy_proc!(UnityMain2, UnityMain2_orig);
 
 fn prepare_orig_dll() -> std::io::Result<PathBuf> {
     let src_dll = utils::get_game_dir().join("UnityPlayer.dll");
@@ -58,5 +59,6 @@ pub fn init() {
         };
 
         UnityMain_orig = utils::get_proc_address(handle, c"UnityMain");
+        UnityMain2_orig = utils::get_proc_address(handle, c"UnityMain2");
     }
 }
