@@ -1,5 +1,5 @@
 pub mod Texture2D;
-mod Resources;
+pub mod Resources;
 pub mod Sprite;
 pub mod Object;
 pub mod Application;
@@ -20,6 +20,8 @@ pub mod RectTransform;
 pub mod Transform;
 pub mod RectOffset;
 
+#[cfg(target_os = "windows")]
+pub mod Camera;
 #[cfg(target_os = "windows")]
 pub mod QualitySettings;
 #[cfg(target_os = "windows")]
@@ -65,6 +67,7 @@ pub fn init() {
 
     #[cfg(target_os = "windows")]
     {
+        Camera::init(image);
         QualitySettings::init(image);
         Screen::init(image);
     }

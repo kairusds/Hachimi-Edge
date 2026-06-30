@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "hachimi"
-version = "0.26.1"
+version = "0.26.4"
 dependencies = [
  "android_logger",
  "arc-swap",
@@ -806,7 +806,6 @@ dependencies = [
  "pelite",
  "png 0.17.16",
  "procfs",
- "regex",
  "rust-i18n",
  "serde",
  "serde_json",

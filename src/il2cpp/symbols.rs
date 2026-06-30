@@ -566,23 +566,34 @@ pub fn create_delegate(delegate_class: *mut Il2CppClass, args_count: i32, method
 
 // Singleton-like class wrapper
 pub struct SingletonLike {
-    instance_field: *mut FieldInfo,
+    get_instance_method: *const MethodInfo,
 }
 
 impl SingletonLike {
     pub fn new(class: *mut Il2CppClass) -> Option<SingletonLike> {
-        let instance_field = get_field_from_name(class, c"_instance");
-        if instance_field.is_null() {
+        let method = il2cpp_class_get_method_from_name(class, c"get_Instance".as_ptr(), 0);
+        if method.is_null() {
+            warn!("SingletonLike: get_Instance method not found");
             return None;
         }
 
         Some(SingletonLike {
-            instance_field
+            get_instance_method: method
         })
     }
 
     pub fn instance(&self) -> *mut Il2CppObject {
-        get_static_field_object_value(self.instance_field)
+        let mut exc: *mut Il2CppException = null_mut();
+        let obj = il2cpp_runtime_invoke(
+            self.get_instance_method,
+            null_mut(),
+            std::ptr::null_mut(),
+            &mut exc
+        );
+        if !exc.is_null() {
+            warn!("SingletonLike: get_Instance threw an exception");
+        }
+        obj
     }
 }
 
@@ -751,4 +762,82 @@ impl<K: PartialEq + 'static, V> Dictionary<K, V> {
     pub fn get(&self, key: &K) -> Option<&'static mut V> {
         self.find_entry(&key).map(|e| &mut e.value)
     }
+}
+
+// Generic IL2CPP enum and type utilities
+
+pub fn get_runtime_type(asm: &CStr, ns: &CStr, name: &CStr) -> *mut Il2CppObject {
+    let k = match get_class(match get_assembly_image(asm) {
+        Ok(img) => img,
+        Err(_) => return null_mut()
+    }, ns, name) {
+        Ok(c) => c,
+        Err(_) => return null_mut()
+    };
+    if k.is_null() { return null_mut(); }
+    let t = il2cpp_class_get_type(k);
+    if t.is_null() { return null_mut(); }
+    il2cpp_type_get_object(t) as *mut Il2CppObject
+}
+
+pub fn parse_enum(enum_type: *mut Il2CppObject, value: &str) -> Option<*mut Il2CppObject> {
+    if enum_type.is_null() || value.is_empty() { return None; }
+    let enum_class = match get_class(
+        match get_assembly_image(c"mscorlib.dll") { Ok(img) => img, Err(_) => return None },
+        c"System", c"Enum"
+    ) {
+        Ok(c) => c,
+        Err(_) => return None
+    };
+    let val_str = crate::il2cpp::ext::StringExt::to_il2cpp_string(value);
+    let parse_method = get_method_cached(enum_class, c"Parse", 2).ok()?;
+    let mut params: [*mut c_void; 2] = [enum_type as *mut c_void, val_str as *mut c_void];
+    let mut exc = null_mut();
+    let result = il2cpp_runtime_invoke(parse_method, null_mut(), params.as_mut_ptr(), &mut exc);
+    if !exc.is_null() || result.is_null() { None } else { Some(result as *mut Il2CppObject) }
+}
+
+pub fn get_enum_int(e: *mut Il2CppObject) -> i32 {
+    if e.is_null() { return 0; }
+    let enum_class = match get_class(
+        match get_assembly_image(c"mscorlib.dll") { Ok(img) => img, Err(_) => return 0 },
+        c"System", c"Enum"
+    ) {
+        Ok(c) => c,
+        Err(_) => return 0
+    };
+    let to_uint64_method = match get_method_cached(enum_class, c"ToUInt64", 1) {
+        Ok(m) => m,
+        Err(_) => return 0
+    };
+    let mut params: [*mut c_void; 1] = [e as *mut c_void];
+    let mut exc = null_mut();
+    let result = il2cpp_runtime_invoke(to_uint64_method, null_mut(), params.as_mut_ptr(), &mut exc);
+    if !exc.is_null() || result.is_null() { return 0; }
+    unsafe { *(il2cpp_object_unbox(result) as *const u64) as i32 }
+}
+
+pub fn get_type_object_for_class(klass: *mut Il2CppClass) -> *mut Il2CppObject {
+    if klass.is_null() { return null_mut(); }
+    let t = il2cpp_class_get_type(klass);
+    if t.is_null() { return null_mut(); }
+    il2cpp_type_get_object(t) as *mut Il2CppObject
+}
+
+pub fn invoke_object_method(
+    obj: *mut Il2CppObject,
+    method_name: &CStr,
+    param_count: i32,
+    params: &mut [*mut c_void]
+) -> Option<*mut Il2CppObject> {
+    let klass = unsafe { (*obj).klass() };
+    let method = get_method_cached(klass, method_name, param_count).ok()?;
+    let mut exc = null_mut();
+    let result = il2cpp_runtime_invoke(
+        method,
+        obj as *mut c_void,
+        params.as_mut_ptr(),
+        &mut exc
+    );
+    if !exc.is_null() { None } else { Some(result as *mut Il2CppObject) }
 }

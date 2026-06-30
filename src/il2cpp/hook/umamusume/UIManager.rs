@@ -1,7 +1,7 @@
 use crate::{
     core::Hachimi,
     il2cpp::{
-        ext::{Il2CppStringExt, StringExt}, hook::UnityEngine_UI::CanvasScaler, symbols::{get_method_addr, get_method_overload_addr, Array, SingletonLike}, types::*
+        ext::{Il2CppStringExt, StringExt}, hook::UnityEngine_UI::CanvasScaler, symbols::{get_method_addr, get_method_overload_addr, get_field_from_name, Array, SingletonLike}, types::*
     }
 };
 
@@ -19,6 +19,10 @@ pub fn instance() -> *mut Il2CppObject {
 
 static mut GETCANVASSCALERLIST_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetCanvasScalerList, GETCANVASSCALERLIST_ADDR, Array, this: *mut Il2CppObject);
+
+def_field_object_accessors!(get_noticeCanvas, set_noticeCanvas, _NOTICECANVAS_FIELD, Il2CppObject);
+def_field_object_accessors!(get_systemCanvas, set_systemCanvas, _SYSTEMCANVAS_FIELD, Il2CppObject);
+def_field_object_accessors!(get_mainCanvas, set_mainCanvas, _MAINCANVAS_FIELD, Il2CppObject);
 
 pub fn apply_ui_scale() {
     let config = Hachimi::instance().config.load();
@@ -193,6 +197,10 @@ pub fn init(umamusume: *const Il2CppImage) {
     unsafe {
         CLASS = UIManager;
         GETCANVASSCALERLIST_ADDR = get_method_addr(UIManager, c"GetCanvasScalerList", 0);
+
+        _NOTICECANVAS_FIELD = get_field_from_name(UIManager, c"_noticeCanvas");
+        _SYSTEMCANVAS_FIELD = get_field_from_name(UIManager, c"_systemCanvas");
+        _MAINCANVAS_FIELD = get_field_from_name(UIManager, c"_mainCanvas");
 
         #[cfg(target_os = "windows")]
         {

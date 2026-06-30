@@ -35,6 +35,8 @@ static SCROLL_AXIS_SCALE: f32 = 10.0;
 static VOLUME_UP_PRESSED: AtomicBool = AtomicBool::new(false);
 static VOLUME_DOWN_PRESSED: AtomicBool = AtomicBool::new(false);
 
+static POINTER_CAPTURED: AtomicBool = AtomicBool::new(false);
+
 pub struct MultiTapState {
     pub count: AtomicUsize,
     pub last_tap_time: AtomicI64,
@@ -278,7 +280,7 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
             return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
         }
 
-        let mut capture = Gui::wants_input_atomic();
+        let mut capture = false;
 
         {
             let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
@@ -288,12 +290,23 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
             let ppp = get_ppp(unsafe { env.unsafe_clone() }, &gui);
             let pos = egui::Pos2 { x: real_x / ppp, y: real_y / ppp };
 
-            if action_masked == ACTION_DOWN || action_masked == ACTION_POINTER_DOWN || action_masked == ACTION_SCROLL {
-                if let Some(layer) = gui.context.layer_id_at(pos) {
-                    if layer.order != egui::Order::Background {
-                        capture = true;
+            match action_masked {
+                ACTION_DOWN | ACTION_POINTER_DOWN | ACTION_SCROLL => {
+                    if let Some(layer) = gui.context.layer_id_at(pos) {
+                        if layer.order != egui::Order::Background {
+                            capture = true;
+                        }
                     }
+                    POINTER_CAPTURED.store(capture, Ordering::Release);
                 }
+                ACTION_MOVE | ACTION_HOVER_MOVE => {
+                    capture = POINTER_CAPTURED.load(Ordering::Acquire);
+                }
+                ACTION_UP | ACTION_POINTER_UP => {
+                    capture = POINTER_CAPTURED.load(Ordering::Acquire);
+                    POINTER_CAPTURED.store(false, Ordering::Release);
+                }
+                _ => return JNI_TRUE
             }
 
             if action_masked == ACTION_SCROLL {

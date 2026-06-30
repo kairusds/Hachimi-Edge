@@ -6,7 +6,7 @@ use windows::{
     core::{HRESULT, Interface, w},
     Win32::{
         Foundation::{HINSTANCE, HMODULE, HWND, LPARAM, LRESULT, RECT, WPARAM}, Graphics::{
-            Direct3D::{D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL, D3D_FEATURE_LEVEL_11_0},
+            Direct3D::{D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL, D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0},
             Direct3D11::{D3D11CreateDeviceAndSwapChain, ID3D11Device, D3D11_CREATE_DEVICE_FLAG, D3D11_SDK_VERSION},
             Dxgi::{
                 Common::{DXGI_FORMAT, DXGI_FORMAT_R8G8B8A8_UNORM},
@@ -22,7 +22,7 @@ use windows::{
     }
 };
 
-use crate::{core::{Error, Gui, Hachimi, Interceptor}, windows::wnd_hook};
+use crate::{core::{Error, Gui, Hachimi, Interceptor}, il2cpp::{hook::UnityEngine_InputLegacyModule, symbols::Thread, types::Vector2_t}, windows::wnd_hook};
 
 use super::d3d11_painter::D3D11Painter;
 
@@ -56,6 +56,9 @@ extern "C" fn IDXGISwapChain_Present(this: *mut c_void, sync_interval: c_uint, f
     let hachimi = Hachimi::instance();
     let callbacks = hachimi.present_callbacks.lock().unwrap();
     for (callback, userdata) in callbacks.iter() {
+        if *callback == 0 {
+            continue;
+        }
         let callback: unsafe extern "C" fn(*mut c_void, *mut c_void) = unsafe { std::mem::transmute(*callback) };
         unsafe { callback(this, *userdata as *mut c_void); }
     }
@@ -113,11 +116,11 @@ extern "C" fn IDXGISwapChain_Present(this: *mut c_void, sync_interval: c_uint, f
                 let y_unity = height as f32 - y;
                 *IME_COMPOSITION_POS.lock().unwrap() = (x, y_unity);
 
-                crate::il2cpp::symbols::Thread::main_thread().schedule(|| {
+                Thread::main_thread().schedule(|| {
                     let (x, y_unity) = *IME_COMPOSITION_POS.lock().unwrap();
 
-                    crate::il2cpp::hook::UnityEngine_InputLegacyModule::Input::set_compositionCursorPos(
-                        crate::il2cpp::types::Vector2_t { x, y: y_unity }
+                    UnityEngine_InputLegacyModule::Input::set_compositionCursorPos(
+                        Vector2_t { x, y: y_unity }
                     );
                 });
             }
@@ -250,9 +253,9 @@ fn get_swap_chain_vtable() -> Result<*mut usize, Error> {
     swap_chain_desc.BufferCount = 1;
     swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swap_chain_desc.OutputWindow = hwnd;
-	swap_chain_desc.SampleDesc.Count = 1;
-	swap_chain_desc.Windowed = true.into();
+    swap_chain_desc.OutputWindow = hwnd;
+    swap_chain_desc.SampleDesc.Count = 1;
+    swap_chain_desc.Windowed = true.into();
 
     let mut p_swap_chain: Option<IDXGISwapChain> = None;
     let mut p_device: Option<ID3D11Device> = None;
@@ -260,7 +263,7 @@ fn get_swap_chain_vtable() -> Result<*mut usize, Error> {
 
     unsafe {
         D3D11CreateDeviceAndSwapChain(
-            None, D3D_DRIVER_TYPE_HARDWARE, HMODULE::default(), D3D11_CREATE_DEVICE_FLAG(0), Some(&[D3D_FEATURE_LEVEL_11_0]),
+            None, D3D_DRIVER_TYPE_HARDWARE, HMODULE::default(), D3D11_CREATE_DEVICE_FLAG(0), Some(&[D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0,]),
             D3D11_SDK_VERSION, Some(&swap_chain_desc), Some(&mut p_swap_chain), Some(&mut p_device),
             Some(&mut feature_level), None
         )

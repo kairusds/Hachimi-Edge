@@ -1,3 +1,4 @@
+use crate::core::sugoi_client;
 use crate::il2cpp::{symbols::{get_method_addr}, types::*};
 
 static mut GET_CURRENT_ADDR: usize = 0;
@@ -12,7 +13,7 @@ extern "C" fn Update(this: *mut Il2CppObject) {
 
     let mut completed = Vec::new();
     {
-        let rx = crate::core::sugoi_client::TRANSLATION_QUEUE.1.lock().unwrap();
+        let rx = sugoi_client::TRANSLATION_QUEUE.1.lock().unwrap();
         while let Ok(msg) = rx.try_recv() {
             completed.push(msg);
         }
@@ -20,12 +21,16 @@ extern "C" fn Update(this: *mut Il2CppObject) {
 
     if completed.is_empty() {
         #[cfg(target_os = "windows")]
-        crate::windows::smtc::on_update();
+        {
+            if microseh::try_seh(|| crate::windows::smtc::on_update()).is_err() {
+                error!("[smtc] SEH exception in on_update!");
+            }
+        }
         return;
     }
 
     {
-        let mut cache = crate::core::sugoi_client::TRANSLATION_CACHE.lock().unwrap();
+        let mut cache = sugoi_client::TRANSLATION_CACHE.lock().unwrap();
         for (orig, trans) in &completed {
             cache.insert(orig.clone(), trans.clone());
         }

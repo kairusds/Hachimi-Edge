@@ -3,7 +3,7 @@ use std::{ffi::{c_char, c_void, CStr, CString}, sync::atomic::AtomicI32};
 use once_cell::sync::OnceCell;
 use egui::Align;
 
-use crate::{core::{Hachimi, Interceptor, gui}, il2cpp::{self, types::{FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppMethodPointer, Il2CppObject, Il2CppString, Il2CppThread, Il2CppTypeEnum, MethodInfo, il2cpp_array_size_t}}};
+use crate::{core::{utils::get_data_path, Hachimi, Interceptor, gui}, il2cpp::{self, types::{FieldInfo, Il2CppArray, Il2CppClass, Il2CppImage, Il2CppMethodPointer, Il2CppObject, Il2CppString, Il2CppThread, Il2CppTypeEnum, MethodInfo, il2cpp_array_size_t}}};
 
 const VERSION: i32 = 3;
 
@@ -782,7 +782,7 @@ unsafe extern "C" fn gui_set_menu_width(width: f32) {
 
 unsafe extern "C" fn hachimi_get_base_dir() -> *const c_char {
     let s = DATA_DIR_CSTR.get_or_init(|| {
-        let path = &crate::core::Hachimi::instance().game.data_dir;
+        let path = &Hachimi::instance().game.data_dir;
         CString::new(path.to_string_lossy().into_owned()).unwrap()
     });
     s.as_ptr()
@@ -790,7 +790,7 @@ unsafe extern "C" fn hachimi_get_base_dir() -> *const c_char {
 
 unsafe extern "C" fn hachimi_get_data_path() -> *const c_char {
     let s = DATA_PATH_CSTR.get_or_init(|| {
-        let path = crate::core::utils::get_data_path();
+        let path = get_data_path();
         CString::new(path).unwrap()
     });
     s.as_ptr()

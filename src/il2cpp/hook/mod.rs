@@ -134,7 +134,8 @@ pub mod LibNative_Runtime;
 pub mod umamusume;
 pub mod Cute_UI_Assembly;
 pub mod Plugins;
-mod Cute_Cri_Assembly;
+pub mod Cute_Cri_Assembly;
+pub mod CriMw_CriWare_Runtime;
 mod DOTween;
 
 #[cfg(target_os = "android")]
@@ -166,6 +167,7 @@ pub fn init() {
     Cute_UI_Assembly::init();
     Plugins::init();
     Cute_Cri_Assembly::init();
+    CriMw_CriWare_Runtime::init();
     DOTween::init();
 
     #[cfg(target_os = "android")]

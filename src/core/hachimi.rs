@@ -306,11 +306,13 @@ impl Hachimi {
                 if let Some(addr) = open_addr {
                     if let Ok(orig) = self.interceptor.hook(addr as usize, sqlite3_open_v2_hook as *const () as usize) {
                         ORIG_SQLITE3_OPEN_V2 = Some(std::mem::transmute(orig));
+                        info!("Successfully hooked native sqlite3_open_v2 (Windows)");
                     }
                 }
                 if let Some(addr) = key_addr {
                     if let Ok(orig) = self.interceptor.hook(addr as usize, sqlite3_key_hook as *const () as usize) {
                         ORIG_SQLITE3_KEY = Some(std::mem::transmute(orig));
+                        info!("Successfully hooked native sqlite3_key (Windows)");
                     }
                 }
             }
@@ -342,14 +344,6 @@ impl Hachimi {
             }
         }
 
-        if hachimi_impl::is_criware_lib(filename) {
-            crate::core::criware::init(handle);
-            if !self.hooking_finished.load(atomic::Ordering::Relaxed) {
-                self.on_hooking_finished();
-            }
-            return true;
-        }
-
         // Prevent double initialization
         if self.hooking_finished.load(atomic::Ordering::Relaxed) { return false; }
 
@@ -357,6 +351,10 @@ impl Hachimi {
             info!("Got il2cpp handle");
             il2cpp::symbols::set_handle(handle);
             false
+        }
+        else if hachimi_impl::is_criware_lib(filename) {
+            self.on_hooking_finished();
+            true
         }
         else {
             false

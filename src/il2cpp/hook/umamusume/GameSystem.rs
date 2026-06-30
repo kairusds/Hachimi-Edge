@@ -1,4 +1,6 @@
 use crate::{core::{Hachimi, game::Region}, il2cpp::{symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr}, types::*}};
+#[cfg(target_os = "windows")]
+use crate::core::free_camera;
 // use std::sync::atomic::{AtomicBool, Ordering};
 
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
@@ -18,6 +20,14 @@ pub fn instance() -> *mut Il2CppObject {
 static mut SOFTWARERESET_ADDR: usize = 0;
 impl_addr_wrapper_fn!(SoftwareReset, SOFTWARERESET_ADDR, (), this: *mut Il2CppObject);
 
+#[cfg(target_os = "windows")]
+type GameSystemUpdateFn = extern "C" fn(this: *mut Il2CppObject);
+#[cfg(target_os = "windows")]
+extern "C" fn GameSystem_Update(this: *mut Il2CppObject) {
+    free_camera::tick();
+    get_orig_fn!(GameSystem_Update, GameSystemUpdateFn)(this);
+}
+
 // good hook for initializing values i guess
 pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
@@ -32,7 +42,9 @@ pub fn on_game_initialized() {
     let hachimi = Hachimi::instance();
     let callbacks = hachimi.plugin_init_callbacks.lock().unwrap();
     for (callback, userdata) in callbacks.iter() {
-        let callback: unsafe extern "C" fn(*mut std::ffi::c_void) = unsafe { std::mem::transmute(*callback) };
+        let callback_ptr = *callback;
+        if callback_ptr == 0 { continue; }
+        let callback: unsafe extern "C" fn(*mut std::ffi::c_void) = unsafe { std::mem::transmute(callback_ptr) };
         unsafe { callback(*userdata as *mut std::ffi::c_void); }
     }
 }
@@ -83,5 +95,11 @@ pub fn init(umamusume: *const Il2CppImage) {
     unsafe {
         CLASS = GameSystem;
         SOFTWARERESET_ADDR = get_method_addr(GameSystem, c"SoftwareReset", 0);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let GameSystem_Update_addr = get_method_addr(GameSystem, c"Update", 0);
+        new_hook!(GameSystem_Update_addr, GameSystem_Update);
     }
 }

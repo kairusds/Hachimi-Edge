@@ -1,4 +1,4 @@
-use crate::{core::taskbar::{self, TBPF_NOPROGRESS}, il2cpp::{symbols::get_method_addr, types::*}};
+use crate::{core::taskbar::{self, TBPF_NOPROGRESS}, il2cpp::{symbols::{get_class, get_method_addr}, types::*}};
 
 static mut GET_BOOT_PROGRESS_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_boot_progress, GET_BOOT_PROGRESS_ADDR, f32, );
@@ -25,7 +25,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     let UpdateView_addr = get_method_addr(TitleViewController, c"UpdateView", 0);
     new_hook!(UpdateView_addr, UpdateView);
 
-    if let Ok(main_game_init) = crate::il2cpp::symbols::get_class(umamusume, c"Gallop", c"MainGameInitializer") {
+    if let Ok(main_game_init) = get_class(umamusume, c"Gallop", c"MainGameInitializer") {
         unsafe { GET_BOOT_PROGRESS_ADDR = get_method_addr(main_game_init, c"GetBootProgress", 0); }
     }
 }

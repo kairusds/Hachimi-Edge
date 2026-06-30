@@ -64,7 +64,6 @@ struct TemplateContext {
 
 impl template::Context for TemplateContext {
     fn on_filter_eval(&mut self, name: &str, args: &[template::Token]) -> Option<String> {
-        debug!("Eval filter");
         match name {
             "anchor" => {
                 let value = args.get(0)?;
@@ -77,19 +76,14 @@ impl template::Context for TemplateContext {
             }
 
             "scale" => {
-                debug!("Eval scale");
                 let value = args.get(0)?;
                 let template::Token::NumberLit(percentage) = value else {
                     return None;
                 };
                 let cur_size = get_fontSize(self.component);
-                debug!("Cur size: {cur_size}");
                 let new_size = (cur_size as f64 * (percentage / 100.0)) as i32;
-                debug!("Setting scale");
                 SetTextFontSize(self.component, new_size);
-                debug!("Setting fit");
                 SetTextFit(self.component, false);
-                debug!("all set");
             }
 
             "ls" => {
@@ -116,7 +110,7 @@ impl template::Context for TemplateContext {
                 SetTextWrap(self.component, state != 0.0);
             }
 
-            _ => return None,
+            _ => return Some(String::new()),
         }
 
         Some(String::new())

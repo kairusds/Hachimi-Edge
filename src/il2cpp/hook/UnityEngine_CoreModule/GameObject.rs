@@ -14,7 +14,7 @@ use crate::{
             Plugins::AnimateToUnity::AnRoot,
             UnityEngine_AssetBundleModule::AssetBundle
         },
-        symbols::{get_method_addr, Array},
+        symbols::{get_method_addr, get_type_object_for_class, Array},
         types::*
     }
 };
@@ -22,6 +22,11 @@ use crate::{
 static mut CLASS: *mut Il2CppClass = 0 as _;
 pub fn class() -> *mut Il2CppClass {
     unsafe { CLASS }
+}
+
+static mut TYPE_OBJECT: *mut Il2CppObject = 0 as _;
+pub fn type_object() -> *mut Il2CppObject {
+    unsafe { TYPE_OBJECT }
 }
 
 static mut GETCOMPONENT_ADDR: usize = 0;
@@ -65,6 +70,9 @@ impl_addr_wrapper_fn!(SetActive, SETACTIVE_ADDR, (), this: *mut Il2CppObject, va
 
 static mut GET_ACTIVESELF_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_activeSelf, GET_ACTIVESELF_ADDR, bool, this: *mut Il2CppObject);
+
+static mut FIND_ADDR: usize = 0;
+impl_addr_wrapper_fn!(Find, FIND_ADDR, *mut Il2CppObject, name: *mut Il2CppString);
 
 // public Transform get_transform() { }
 static mut GET_TRANSFORM_ADDR: usize = 0;
@@ -149,6 +157,8 @@ pub fn init(UnityEngine_CoreModule: *const Il2CppImage) {
 
     unsafe {
         CLASS = GameObject;
+        TYPE_OBJECT = get_type_object_for_class(GameObject);
+        FIND_ADDR = get_method_addr(GameObject, c"Find", 1);
         ADDCOMPONENT_ADDR = get_method_addr(GameObject, c"AddComponent", 1);
         GETCOMPONENT_ADDR = get_method_addr(GameObject, c"GetComponent", 1);
         GETCOMPONENTINCHILDREN_ADDR = get_method_addr(GameObject, c"GetComponentInChildren", 2);

@@ -1,4 +1,4 @@
-use crate::{core::{Hachimi, utils::wrap_fit_text_il2cpp}, il2cpp::{api::{il2cpp_class_get_type, il2cpp_type_get_object}, ext::{Il2CppObjectExt, Il2CppStringExt, LocalizedDataExt}, hook::UnityEngine_UI::Text, symbols::get_method_addr, types::*}};
+use crate::{core::{Hachimi, utils::wrap_fit_text_il2cpp}, il2cpp::{ext::{Il2CppObjectExt, Il2CppStringExt, LocalizedDataExt}, hook::UnityEngine_UI::Text, symbols::{get_method_addr, get_method_addr_cached, get_type_object_for_class}, types::*}};
 
 static mut TYPE_OBJECT: *mut Il2CppObject = 0 as _;
 pub fn type_object() -> *mut Il2CppObject {
@@ -7,6 +7,21 @@ pub fn type_object() -> *mut Il2CppObject {
 
 static mut GET_IS_ACTIVE_IN_HIERARCHY_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_IsActiveInHierarchy, GET_IS_ACTIVE_IN_HIERARCHY_ADDR, bool, this: *mut Il2CppObject);
+
+static mut SET_FONTCOLOR_ADDR: usize = 0;
+impl_addr_wrapper_fn!(set_FontColor, SET_FONTCOLOR_ADDR, (), this: *mut Il2CppObject, value: i32);
+
+static mut SET_OUTLINESIZE_ADDR: usize = 0;
+impl_addr_wrapper_fn!(set_OutlineSize, SET_OUTLINESIZE_ADDR, (), this: *mut Il2CppObject, value: i32);
+
+static mut UPDATEOUTLINE_ADDR: usize = 0;
+impl_addr_wrapper_fn!(UpdateOutline, UPDATEOUTLINE_ADDR, (), this: *mut Il2CppObject);
+
+static mut SET_OUTLINECOLOR_ADDR: usize = 0;
+impl_addr_wrapper_fn!(set_OutlineColor, SET_OUTLINECOLOR_ADDR, (), this: *mut Il2CppObject, value: i32);
+
+static mut REBUILDOUTLINE_ADDR: usize = 0;
+impl_addr_wrapper_fn!(RebuildOutline, REBUILDOUTLINE_ADDR, (), this: *mut Il2CppObject);
 
 type AwakeFn = extern "C" fn(this: *mut Il2CppObject);
 extern "C" fn Awake(this: *mut Il2CppObject) {
@@ -17,7 +32,7 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
 
     if config.replace_to_builtin_font {
         unsafe {
-            let assign_default_font = crate::il2cpp::symbols::get_method_addr_cached((*this).klass(), c"AssignDefaultFont", 0);
+            let assign_default_font = get_method_addr_cached((*this).klass(), c"AssignDefaultFont", 0);
             if assign_default_font != 0 {
                 let func: extern "C" fn(*mut Il2CppObject) = std::mem::transmute(assign_default_font);
                 func(this);
@@ -92,7 +107,12 @@ pub fn init(umamusume: *const Il2CppImage) {
     new_hook!(SetSystemTextWithLineHeadWrap_addr, SetSystemTextWithLineHeadWrap);
 
     unsafe {
-        TYPE_OBJECT = il2cpp_type_get_object(il2cpp_class_get_type(TextCommon));
+        TYPE_OBJECT = get_type_object_for_class(TextCommon);
         GET_IS_ACTIVE_IN_HIERARCHY_ADDR = get_method_addr(TextCommon, c"get_IsActiveInHierarchy", 0);
+        SET_FONTCOLOR_ADDR = get_method_addr(TextCommon, c"set_FontColor", 1);
+        SET_OUTLINESIZE_ADDR = get_method_addr(TextCommon, c"set_OutlineSize", 1);
+        UPDATEOUTLINE_ADDR = get_method_addr(TextCommon, c"UpdateOutline", 0);
+        SET_OUTLINECOLOR_ADDR = get_method_addr(TextCommon, c"set_OutlineColor", 1);
+        REBUILDOUTLINE_ADDR = get_method_addr(TextCommon, c"RebuildOutline", 0);
     }
 }

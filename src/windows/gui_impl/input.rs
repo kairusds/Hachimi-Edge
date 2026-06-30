@@ -146,9 +146,7 @@ pub fn process(input: &mut RawInput, zoom_factor: f32, umsg: u32, wparam: usize,
                 let events = &mut input.events;
                 let mods = get_key_modifiers(msg);
 
-                if key == Key::Space {
-                    events.push(Event::Text(String::from(" ")));
-                } else if key == Key::V && mods.ctrl {
+                if key == Key::V && mods.ctrl {
                     if let Some(clipboard) = get_clipboard_text() {
                         events.push(Event::Text(clipboard));
                     }
