@@ -79,7 +79,41 @@ pub mod SceneManager;
 mod PaymentUtility;
 mod LowResolutionCamera;
 #[cfg(target_os = "windows")]
-mod FreeCamera;
+mod free_camera;
+#[cfg(target_os = "windows")]
+mod LiveTimelineControl;
+#[cfg(target_os = "windows")]
+mod PostEffectUpdateInfo_DOF;
+#[cfg(target_os = "windows")]
+mod DOFUpdateInfoDelegate;
+#[cfg(target_os = "windows")]
+mod PostFilmUpdateInfoDelegate;
+#[cfg(target_os = "windows")]
+mod LiveTimelineKeyCameraPositionData;
+#[cfg(target_os = "windows")]
+mod LiveTimelineKeyCameraLookAtData;
+#[cfg(target_os = "windows")]
+mod CharacterObject;
+#[cfg(target_os = "windows")]
+mod LiveModelController;
+#[cfg(target_os = "windows")]
+mod ModelController;
+#[cfg(target_os = "windows")]
+mod RaceCameraManager;
+#[cfg(target_os = "windows")]
+mod RaceCameraEventBase;
+#[cfg(target_os = "windows")]
+mod RaceModelController;
+#[cfg(target_os = "windows")]
+mod RaceViewBase;
+#[cfg(target_os = "windows")]
+mod RaceEffectManager;
+#[cfg(target_os = "windows")]
+mod HorseData;
+#[cfg(target_os = "windows")]
+mod HorseRaceInfo;
+#[cfg(target_os = "windows")]
+mod HorseRaceInfoReplay;
 pub mod TweenAnimationTimelineComponent;
 pub mod TweenAnimationTimelineData;
 pub mod TweenAnimationTimelineSheetData;
@@ -206,7 +240,25 @@ pub fn init() {
     }
     LowResolutionCamera::init(image);
     #[cfg(target_os = "windows")]
-    FreeCamera::init(image);
+    {
+        LiveTimelineControl::init(image);
+        PostEffectUpdateInfo_DOF::init(image);
+        DOFUpdateInfoDelegate::init(image);
+        PostFilmUpdateInfoDelegate::init(image);
+        LiveTimelineKeyCameraPositionData::init(image);
+        LiveTimelineKeyCameraLookAtData::init(image);
+        CharacterObject::init(image);
+        LiveModelController::init(image);
+        ModelController::init(image);
+        RaceCameraManager::init(image);
+        RaceCameraEventBase::init(image);
+        RaceModelController::init(image);
+        RaceViewBase::init(image);
+        RaceEffectManager::init(image);
+        HorseData::init(image);
+        HorseRaceInfo::init(image);
+        HorseRaceInfoReplay::init(image);
+    }
     CameraData::init(image);
     TweenAnimationTimelineComponent::init(image);
     TweenAnimationTimelineData::init(image);

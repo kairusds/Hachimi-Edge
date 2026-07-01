@@ -1023,11 +1023,11 @@ impl Gui {
         let has_interactive_widgets = IS_LIVE_SCENE.load(atomic::Ordering::Relaxed);
         let free_camera_input_capture = free_camera::wants_windows_input_capture();
 
-        // Store this as an atomic value so the input thread can check it without locking the gui
-        GUI_INPUT_ACTIVE.store(self.is_consuming_input(), atomic::Ordering::Relaxed);
+        // Store these as atomic values so the input thread can check them without locking the gui
+        GUI_INPUT_ACTIVE.store(self.is_consuming_input(), atomic::Ordering::Release);
         IS_CONSUMING_INPUT.store(
             self.is_consuming_input() || has_interactive_widgets || free_camera_input_capture,
-            atomic::Ordering::Relaxed
+            atomic::Ordering::Release
         );
 
         WANTS_INPUT.store(
@@ -1035,7 +1035,7 @@ impl Gui {
             self.context.is_pointer_over_area() || 
             self.context.wants_keyboard_input() ||
             free_camera_input_capture,
-            atomic::Ordering::Relaxed
+            atomic::Ordering::Release
         );
 
         self.context.end_pass()
@@ -1698,7 +1698,7 @@ impl Gui {
     pub fn is_empty(&self) -> bool {
         !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
         self.notifications.is_empty() && self.windows.is_empty() &&
-        !IS_LIVE_SCENE.load(atomic::Ordering::Relaxed) &&
+        !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
         !free_camera::has_overlay_message()
     }
 
@@ -1720,8 +1720,8 @@ impl Gui {
         }
 
         self.menu_visible = val;
-        GUI_INPUT_ACTIVE.store(val, atomic::Ordering::Relaxed);
-        IS_CONSUMING_INPUT.store(val, atomic::Ordering::Relaxed);
+        GUI_INPUT_ACTIVE.store(val, atomic::Ordering::Release);
+        IS_CONSUMING_INPUT.store(val, atomic::Ordering::Release);
     }
 
     pub fn wants_input_atomic() -> bool {
@@ -2760,6 +2760,7 @@ impl ConfigEditor {
             #[cfg(target_os = "windows")]
             {
                 use crate::windows::hachimi_impl::{FullScreenMode, ResolutionScaling};
+                let supports_freeform_window = Hachimi::instance().game.region != Region::Global;
 
                 if should_show_option(search, &t!("config_editor.vsync")) {
                     ui.label(t!("config_editor.vsync"));
@@ -2773,13 +2774,15 @@ impl ConfigEditor {
                     ui.end_row();
                 }
 
-                if should_show_option(search, &t!("config_editor.freeform_window")) {
+                if supports_freeform_window &&
+                    should_show_option(search, &t!("config_editor.freeform_window"))
+                {
                     ui.label(t!("config_editor.freeform_window"));
                     ui.checkbox(&mut config.windows.freeform_window, "");
                     ui.end_row();
                 }
 
-                if config.windows.freeform_window {
+                if supports_freeform_window && config.windows.freeform_window {
                     if should_show_option(search, &t!("config_editor.freeform_ui_scale_auto")) {
                         ui.label(t!("config_editor.freeform_ui_scale_auto"));
                         ui.checkbox(&mut config.windows.freeform_ui_scale_auto, "");
@@ -3782,6 +3785,14 @@ impl Window for FreeCameraSettingsWindow {
 
                                 ui.strong(t!("free_camera.section_live"));
                                 ui.label("");
+                                ui.end_row();
+
+                                ui.label(t!("free_camera.live_disable_character_teleport"));
+                                ui.checkbox(&mut cfg.live_disable_character_teleport, "");
+                                ui.end_row();
+
+                                ui.label(t!("free_camera.live_force_all_characters_visible"));
+                                ui.checkbox(&mut cfg.live_force_all_characters_visible, "");
                                 ui.end_row();
 
                                 ui.label(t!("free_camera.live_target_position"));
