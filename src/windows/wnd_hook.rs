@@ -1,5 +1,6 @@
-use std::{os::raw::c_uint, ptr, sync::{atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, AtomicUsize}}};
+use std::{os::raw::c_uint, ptr, sync::{Arc, atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, AtomicUsize}}};
 
+use rust_i18n::t;
 use windows::{core::{w, HSTRING}, Win32::{
     Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
     Graphics::Gdi::{RedrawWindow, RDW_ALLCHILDREN, RDW_FRAME, RDW_INVALIDATE, RDW_UPDATENOW},
@@ -32,6 +33,7 @@ static RESIZE_WAIT_ACTIVE: AtomicBool = AtomicBool::new(false);
 static RESIZE_WAIT_FRAMES: AtomicI32 = AtomicI32::new(0);
 static RESIZE_GENERATION: AtomicU32 = AtomicU32::new(0);
 static RESIZE_WAIT_FOR_END_FRAME_ADDR: AtomicUsize = AtomicUsize::new(0);
+static FREEFORM_LANDSCAPE_CLOSE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 pub fn get_target_hwnd() -> HWND {
     HWND(TARGET_HWND.load(atomic::Ordering::Relaxed) as *mut _)
@@ -59,6 +61,10 @@ pub fn get_client_size() -> Option<(i32, i32)> {
 }
 
 pub fn apply_freeform_window_style() {
+    if close_freeform_window_for_landscape() {
+        return;
+    }
+
     if !Hachimi::instance().config.load().windows.freeform_window {
         return;
     }
@@ -201,25 +207,103 @@ fn queue_current_client_resize(hwnd: HWND) {
     }
 }
 
-pub fn apply_freeform_window_config() {
-    if !Hachimi::instance().config.load().windows.freeform_window {
-        Thread::main_thread().schedule(|| {
-            umamusume::StandaloneWindowResize::set_is_prevent_reshape(false);
-            umamusume::StandaloneWindowResize::set_is_window_dragging(false);
-            umamusume::StandaloneWindowResize::set_is_window_size_changing(false);
-            umamusume::StandaloneWindowResize::finish_window_update();
-            umamusume::UIManager::apply_ui_scale();
+fn is_freeform_window_supported() -> bool {
+    Hachimi::instance().game.region != Region::Global
+}
 
-            let hwnd = get_target_hwnd();
-            unsafe {
-                let _ = RedrawWindow(
-                    Some(hwnd),
-                    None,
-                    None,
-                    RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_FRAME
-                );
-            }
-        });
+fn apply_freeform_window_disabled() {
+    Thread::main_thread().schedule(|| {
+        umamusume::StandaloneWindowResize::set_is_prevent_reshape(false);
+        umamusume::StandaloneWindowResize::set_is_window_dragging(false);
+        umamusume::StandaloneWindowResize::set_is_window_size_changing(false);
+        umamusume::StandaloneWindowResize::finish_window_update();
+        umamusume::UIManager::apply_ui_scale();
+
+        let hwnd = get_target_hwnd();
+        unsafe {
+            let _ = RedrawWindow(
+                Some(hwnd),
+                None,
+                None,
+                RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_FRAME
+            );
+        }
+    });
+}
+
+fn disable_freeform_window_config() -> bool {
+    let hachimi = Hachimi::instance();
+    let config = hachimi.config.load();
+    if !config.windows.freeform_window {
+        return false;
+    }
+
+    let mut new_config = config.as_ref().clone();
+    drop(config);
+    new_config.windows.freeform_window = false;
+
+    if let Err(e) = hachimi.save_and_reload_config(new_config.clone()) {
+        error!("Failed to save disabled freeform window config: {}", e);
+        hachimi.config.store(Arc::new(new_config));
+    }
+
+    true
+}
+
+fn disable_freeform_window() -> bool {
+    if !disable_freeform_window_config() {
+        return false;
+    }
+
+    apply_freeform_window_disabled();
+    true
+}
+
+pub fn disable_freeform_window_if_unsupported() -> bool {
+    if is_freeform_window_supported() {
+        return false;
+    }
+
+    disable_freeform_window()
+}
+
+pub fn close_freeform_window_for_landscape() -> bool {
+    if disable_freeform_window_if_unsupported() {
+        return true;
+    }
+
+    if !umamusume::Screen::is_landscape_mode() {
+        return false;
+    }
+
+    if !Hachimi::instance().config.load().windows.freeform_window {
+        return false;
+    }
+
+    if FREEFORM_LANDSCAPE_CLOSE_IN_PROGRESS.swap(true, atomic::Ordering::AcqRel) {
+        return true;
+    }
+
+    if disable_freeform_window() {
+        gui::request_notification(gui::NotificationRequest::Custom(
+            t!("notification.freeform_window_disabled_landscape").into_owned()
+        ));
+    }
+    FREEFORM_LANDSCAPE_CLOSE_IN_PROGRESS.store(false, atomic::Ordering::Release);
+    true
+}
+
+pub fn apply_freeform_window_config() {
+    if disable_freeform_window_if_unsupported() {
+        return;
+    }
+
+    if close_freeform_window_for_landscape() {
+        return;
+    }
+
+    if !Hachimi::instance().config.load().windows.freeform_window {
+        apply_freeform_window_disabled();
         return;
     }
 

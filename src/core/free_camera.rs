@@ -33,13 +33,15 @@ pub const LIVE_POSITION_CHOICES: &[(&str, i32)] = &[
     ("Place16", 0x8000),
     ("Place17", 0x10000),
     ("Place18", 0x20000),
+    ("Place19", 0x40000),
+    ("Place20", 0x80000),
     ("Center", 0x1),
     ("Left", 0x2),
     ("Right", 0x4),
     ("Side", 0x6),
-    ("Back", 0x3fff8),
-    ("Other", 0x3fffe),
-    ("All", 0x3ffff),
+    ("Back", 0xffff8),
+    ("Other", 0xffffe),
+    ("All", 0xfffff),
 ];
 
 pub const LIVE_PART_CHOICES: &[(&str, i32)] = &[
@@ -63,7 +65,8 @@ pub const LIVE_PART_CHOICES: &[(&str, i32)] = &[
     ("InitialHeightFace", 0x11),
     ("InitialHeightChest", 0x12),
     ("InitialHeightWaist", 0x13),
-    ("Max", 0x14),
+    ("StartFrameFace", 0x14),
+    ("Max", 0x15),
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -164,6 +167,8 @@ impl Default for FreeCameraKeybinds {
 pub struct FreeCameraConfig {
     pub enabled: bool,
     pub remove_camera_effects: bool,
+    pub live_disable_character_teleport: bool,
+    pub live_force_all_characters_visible: bool,
     pub show_overlay: bool,
     pub selfie_use_head_transform: bool,
     pub live_selfie_horizontal_stabilization: f32,
@@ -200,6 +205,8 @@ impl Default for FreeCameraConfig {
         Self {
             enabled: false,
             remove_camera_effects: true,
+            live_disable_character_teleport: false,
+            live_force_all_characters_visible: false,
             show_overlay: true,
             selfie_use_head_transform: false,
             live_selfie_horizontal_stabilization: 0.0,
@@ -897,6 +904,20 @@ pub fn should_remove_camera_effects() -> bool {
         STATE.lock().unwrap().scene == CameraScene::Live
 }
 
+pub fn should_disable_live_character_teleport() -> bool {
+    let config = Hachimi::instance().config.load();
+    config.free_camera.enabled &&
+        config.free_camera.live_disable_character_teleport &&
+        STATE.lock().unwrap().scene == CameraScene::Live
+}
+
+pub fn should_force_live_characters_visible() -> bool {
+    let config = Hachimi::instance().config.load();
+    config.free_camera.enabled &&
+        config.free_camera.live_force_all_characters_visible &&
+        STATE.lock().unwrap().scene == CameraScene::Live
+}
+
 pub fn set_live_active() {
     let config = Hachimi::instance().config.load();
     if !config.free_camera.enabled {
@@ -943,15 +964,13 @@ pub fn live_position_index() -> i32 {
 pub fn live_character_position_index() -> i32 {
     let state = STATE.lock().unwrap();
     let index = state.live_target_position_index;
-    if index < 18 {
-        return index;
-    }
 
     LIVE_POSITION_CHOICES
         .get(index as usize)
         .and_then(|(_, flag)| {
             if flag.count_ones() == 1 {
-                Some(flag.trailing_zeros() as i32)
+                let index = flag.trailing_zeros() as i32;
+                Some(if index >= 18 { index + 2 } else { index })
             }
             else {
                 None

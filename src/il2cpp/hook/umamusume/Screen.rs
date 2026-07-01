@@ -17,9 +17,12 @@ use crate::{
 };
 
 #[cfg(target_os = "android")]
-extern "C" fn ChangeScreenOrientationLandscapeAsync_MoveNext(enumerator: *mut Il2CppObject) -> bool {
+extern "C" fn ChangeScreenOrientationLandscapeAsync_MoveNext(
+    enumerator: *mut Il2CppObject,
+) -> bool {
     use crate::il2cpp::symbols::MoveNextFn;
-    let moved = get_orig_fn!(ChangeScreenOrientationLandscapeAsync_MoveNext, MoveNextFn)(enumerator);
+    let moved =
+        get_orig_fn!(ChangeScreenOrientationLandscapeAsync_MoveNext, MoveNextFn)(enumerator);
     if !moved {
         super::UIManager::apply_ui_scale();
     }
@@ -37,11 +40,17 @@ extern "C" fn ChangeScreenOrientationPortraitAsync_MoveNext(enumerator: *mut Il2
 }
 
 #[cfg(target_os = "android")]
-type ChangeScreenOrientationLandscapeAsyncFn = extern "C" fn() -> crate::il2cpp::symbols::IEnumerator;
+type ChangeScreenOrientationLandscapeAsyncFn =
+    extern "C" fn() -> crate::il2cpp::symbols::IEnumerator;
 #[cfg(target_os = "android")]
 extern "C" fn ChangeScreenOrientationLandscapeAsync() -> crate::il2cpp::symbols::IEnumerator {
-    let enumerator = get_orig_fn!(ChangeScreenOrientationLandscapeAsync, ChangeScreenOrientationLandscapeAsyncFn)();
-    if Hachimi::instance().config.load().ui_scale == 1.0 { return enumerator; }
+    let enumerator = get_orig_fn!(
+        ChangeScreenOrientationLandscapeAsync,
+        ChangeScreenOrientationLandscapeAsyncFn
+    )();
+    if Hachimi::instance().config.load().ui_scale == 1.0 {
+        return enumerator;
+    }
 
     if let Err(e) = enumerator.hook_move_next(ChangeScreenOrientationLandscapeAsync_MoveNext) {
         error!("Failed to hook enumerator: {}", e);
@@ -51,11 +60,17 @@ extern "C" fn ChangeScreenOrientationLandscapeAsync() -> crate::il2cpp::symbols:
 }
 
 #[cfg(target_os = "android")]
-type ChangeScreenOrientationPortraitAsyncFn = extern "C" fn() -> crate::il2cpp::symbols::IEnumerator;
+type ChangeScreenOrientationPortraitAsyncFn =
+    extern "C" fn() -> crate::il2cpp::symbols::IEnumerator;
 #[cfg(target_os = "android")]
 extern "C" fn ChangeScreenOrientationPortraitAsync() -> crate::il2cpp::symbols::IEnumerator {
-    let enumerator = get_orig_fn!(ChangeScreenOrientationPortraitAsync, ChangeScreenOrientationPortraitAsyncFn)();
-    if Hachimi::instance().config.load().ui_scale == 1.0 { return enumerator; }
+    let enumerator = get_orig_fn!(
+        ChangeScreenOrientationPortraitAsync,
+        ChangeScreenOrientationPortraitAsyncFn
+    )();
+    if Hachimi::instance().config.load().ui_scale == 1.0 {
+        return enumerator;
+    }
 
     if let Err(e) = enumerator.hook_move_next(ChangeScreenOrientationPortraitAsync_MoveNext) {
         error!("Failed to hook enumerator: {}", e);
@@ -122,8 +137,14 @@ fn set_static_field<T>(field: *mut FieldInfo, value: T) {
 pub fn update_original_screen_size(width: i32, height: i32) {
     let is_portrait = width < height;
     unsafe {
-        set_static_field(ORIGINAL_SCREEN_WIDTH_FIELD, if is_portrait { height } else { width });
-        set_static_field(ORIGINAL_SCREEN_HEIGHT_FIELD, if is_portrait { width } else { height });
+        set_static_field(
+            ORIGINAL_SCREEN_WIDTH_FIELD,
+            if is_portrait { height } else { width },
+        );
+        set_static_field(
+            ORIGINAL_SCREEN_HEIGHT_FIELD,
+            if is_portrait { width } else { height },
+        );
     }
 }
 
@@ -137,11 +158,29 @@ extern "C" fn SetResolution(width: i32, height: i32, fullscreen: bool, force_upd
 }
 
 #[cfg(target_os = "windows")]
-type SetResolution2Fn = extern "C" fn(width: i32, height: i32, fullscreen: bool, force_update: bool, skip_keep_aspect: bool);
+type SetResolution2Fn = extern "C" fn(
+    width: i32,
+    height: i32,
+    fullscreen: bool,
+    force_update: bool,
+    skip_keep_aspect: bool,
+);
 #[cfg(target_os = "windows")]
-extern "C" fn SetResolution2(width: i32, height: i32, fullscreen: bool, force_update: bool, skip_keep_aspect: bool) {
+extern "C" fn SetResolution2(
+    width: i32,
+    height: i32,
+    fullscreen: bool,
+    force_update: bool,
+    skip_keep_aspect: bool,
+) {
     if !Hachimi::instance().config.load().windows.freeform_window {
-        get_orig_fn!(SetResolution2, SetResolution2Fn)(width, height, fullscreen, force_update, skip_keep_aspect);
+        get_orig_fn!(SetResolution2, SetResolution2Fn)(
+            width,
+            height,
+            fullscreen,
+            force_update,
+            skip_keep_aspect,
+        );
     }
 }
 
@@ -171,6 +210,10 @@ extern "C" fn WaitDeviceOrientation(target: ScreenOrientation) -> IEnumerator {
 
 #[cfg(target_os = "windows")]
 extern "C" fn WaitDeviceOrientation_MoveNext(_enumerator: *mut Il2CppObject) -> bool {
+    if crate::windows::wnd_hook::close_freeform_window_for_landscape() {
+        return get_orig_fn!(WaitDeviceOrientation_MoveNext, MoveNextFn)(_enumerator);
+    }
+
     if Hachimi::instance().config.load().windows.freeform_window {
         return false;
     }
@@ -179,10 +222,12 @@ extern "C" fn WaitDeviceOrientation_MoveNext(_enumerator: *mut Il2CppObject) -> 
 }
 
 #[cfg(target_os = "windows")]
-type ChangeScreenOrientationFn = extern "C" fn(target: ScreenOrientation, force: bool) -> IEnumerator;
+type ChangeScreenOrientationFn =
+    extern "C" fn(target: ScreenOrientation, force: bool) -> IEnumerator;
 #[cfg(target_os = "windows")]
 extern "C" fn ChangeScreenOrientation(target: ScreenOrientation, force: bool) -> IEnumerator {
-    let enumerator = get_orig_fn!(ChangeScreenOrientation, ChangeScreenOrientationFn)(target, force);
+    let enumerator =
+        get_orig_fn!(ChangeScreenOrientation, ChangeScreenOrientationFn)(target, force);
     if Hachimi::instance().config.load().windows.freeform_window {
         if let Err(e) = enumerator.hook_move_next(ChangeScreenOrientation_MoveNext) {
             error!("Failed to stop ChangeScreenOrientation: {}", e);
@@ -193,6 +238,10 @@ extern "C" fn ChangeScreenOrientation(target: ScreenOrientation, force: bool) ->
 
 #[cfg(target_os = "windows")]
 extern "C" fn ChangeScreenOrientation_MoveNext(_enumerator: *mut Il2CppObject) -> bool {
+    if crate::windows::wnd_hook::close_freeform_window_for_landscape() {
+        return get_orig_fn!(ChangeScreenOrientation_MoveNext, MoveNextFn)(_enumerator);
+    }
+
     if Hachimi::instance().config.load().windows.freeform_window {
         return false;
     }
@@ -209,7 +258,9 @@ extern "C" fn ChangeScreenOrientationLandscapeAsyncWindows() -> IEnumerator {
         ChangeScreenOrientationAsyncFn
     )();
     if Hachimi::instance().config.load().windows.freeform_window {
-        if let Err(e) = enumerator.hook_move_next(ChangeScreenOrientationLandscapeAsyncWindows_MoveNext) {
+        if let Err(e) =
+            enumerator.hook_move_next(ChangeScreenOrientationLandscapeAsyncWindows_MoveNext)
+        {
             error!("Failed to stop landscape orientation change: {}", e);
         }
     }
@@ -217,12 +268,24 @@ extern "C" fn ChangeScreenOrientationLandscapeAsyncWindows() -> IEnumerator {
 }
 
 #[cfg(target_os = "windows")]
-extern "C" fn ChangeScreenOrientationLandscapeAsyncWindows_MoveNext(_enumerator: *mut Il2CppObject) -> bool {
+extern "C" fn ChangeScreenOrientationLandscapeAsyncWindows_MoveNext(
+    _enumerator: *mut Il2CppObject,
+) -> bool {
+    if crate::windows::wnd_hook::close_freeform_window_for_landscape() {
+        return get_orig_fn!(
+            ChangeScreenOrientationLandscapeAsyncWindows_MoveNext,
+            MoveNextFn
+        )(_enumerator);
+    }
+
     if Hachimi::instance().config.load().windows.freeform_window {
         return false;
     }
 
-    get_orig_fn!(ChangeScreenOrientationLandscapeAsyncWindows_MoveNext, MoveNextFn)(_enumerator)
+    get_orig_fn!(
+        ChangeScreenOrientationLandscapeAsyncWindows_MoveNext,
+        MoveNextFn
+    )(_enumerator)
 }
 
 #[cfg(target_os = "windows")]
@@ -232,7 +295,9 @@ extern "C" fn ChangeScreenOrientationPortraitAsyncWindows() -> IEnumerator {
         ChangeScreenOrientationAsyncFn
     )();
     if Hachimi::instance().config.load().windows.freeform_window {
-        if let Err(e) = enumerator.hook_move_next(ChangeScreenOrientationPortraitAsyncWindows_MoveNext) {
+        if let Err(e) =
+            enumerator.hook_move_next(ChangeScreenOrientationPortraitAsyncWindows_MoveNext)
+        {
             error!("Failed to stop portrait orientation change: {}", e);
         }
     }
@@ -240,16 +305,33 @@ extern "C" fn ChangeScreenOrientationPortraitAsyncWindows() -> IEnumerator {
 }
 
 #[cfg(target_os = "windows")]
-extern "C" fn ChangeScreenOrientationPortraitAsyncWindows_MoveNext(_enumerator: *mut Il2CppObject) -> bool {
+extern "C" fn ChangeScreenOrientationPortraitAsyncWindows_MoveNext(
+    _enumerator: *mut Il2CppObject,
+) -> bool {
     if Hachimi::instance().config.load().windows.freeform_window {
         return false;
     }
 
-    get_orig_fn!(ChangeScreenOrientationPortraitAsyncWindows_MoveNext, MoveNextFn)(_enumerator)
+    get_orig_fn!(
+        ChangeScreenOrientationPortraitAsyncWindows_MoveNext,
+        MoveNextFn
+    )(_enumerator)
 }
 
 static mut GET_ISSPLITWINDOW_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_IsSplitWindow, GET_ISSPLITWINDOW_ADDR, bool,);
+
+#[cfg(target_os = "windows")]
+static mut GET_ISLANDSCAPE_MODE_ADDR: usize = 0;
+#[cfg(target_os = "windows")]
+pub fn is_landscape_mode() -> bool {
+    if unsafe { GET_ISLANDSCAPE_MODE_ADDR } == 0 {
+        return false;
+    }
+
+    let func: extern "C" fn() -> bool = unsafe { std::mem::transmute(GET_ISLANDSCAPE_MODE_ADDR) };
+    func()
+}
 
 static mut GET_ISVERTICAL_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_IsVertical, GET_ISVERTICAL_ADDR, bool,);
@@ -259,11 +341,19 @@ pub fn init(umamusume: *const Il2CppImage) {
 
     #[cfg(target_os = "android")]
     {
-        let ChangeScreenOrientationLandscapeAsync_addr = get_method_addr(Screen, c"ChangeScreenOrientationLandscapeAsync", 0);
-        let ChangeScreenOrientationPortraitAsync_addr = get_method_addr(Screen, c"ChangeScreenOrientationPortraitAsync", 0);
+        let ChangeScreenOrientationLandscapeAsync_addr =
+            get_method_addr(Screen, c"ChangeScreenOrientationLandscapeAsync", 0);
+        let ChangeScreenOrientationPortraitAsync_addr =
+            get_method_addr(Screen, c"ChangeScreenOrientationPortraitAsync", 0);
 
-        new_hook!(ChangeScreenOrientationLandscapeAsync_addr, ChangeScreenOrientationLandscapeAsync);
-        new_hook!(ChangeScreenOrientationPortraitAsync_addr, ChangeScreenOrientationPortraitAsync);
+        new_hook!(
+            ChangeScreenOrientationLandscapeAsync_addr,
+            ChangeScreenOrientationLandscapeAsync
+        );
+        new_hook!(
+            ChangeScreenOrientationPortraitAsync_addr,
+            ChangeScreenOrientationPortraitAsync
+        );
     }
 
     #[cfg(target_os = "windows")]
@@ -297,6 +387,7 @@ pub fn init(umamusume: *const Il2CppImage) {
         );
 
         unsafe {
+            GET_ISLANDSCAPE_MODE_ADDR = get_method_addr(Screen, c"get_IsLandscapeMode", 0);
             ORIGINAL_SCREEN_WIDTH_FIELD = get_field_from_name(Screen, c"_originalScreenWidth");
             ORIGINAL_SCREEN_HEIGHT_FIELD = get_field_from_name(Screen, c"_originalScreenHeight");
         }
