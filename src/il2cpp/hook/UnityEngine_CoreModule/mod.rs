@@ -21,6 +21,8 @@ pub mod Transform;
 pub mod RectOffset;
 
 #[cfg(target_os = "windows")]
+pub mod Camera;
+#[cfg(target_os = "windows")]
 pub mod QualitySettings;
 #[cfg(target_os = "windows")]
 pub mod Screen;
@@ -33,6 +35,7 @@ pub const TextureFormat_RGBA32: i32 = 4;
 
 pub const FullScreenMode_ExclusiveFullScreen: i32 = 0;
 pub const FullScreenMode_FullScreenWindow: i32 = 1;
+pub const FullScreenMode_Windowed: i32 = 3;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "UnityEngine.CoreModule.dll");
@@ -64,6 +67,7 @@ pub fn init() {
 
     #[cfg(target_os = "windows")]
     {
+        Camera::init(image);
         QualitySettings::init(image);
         Screen::init(image);
     }

@@ -27,6 +27,14 @@ mod StoryViewTextControllerLandscape;
 mod StoryViewTextControllerSingleMode;
 mod JikkyoDisplay;
 pub mod Screen;
+#[cfg(target_os = "windows")]
+pub mod StandaloneWindowResize;
+#[cfg(target_os = "windows")]
+mod GallopInput;
+#[cfg(target_os = "windows")]
+pub mod WindowsGamepadControl;
+#[cfg(target_os = "windows")]
+pub mod TapEffectController;
 mod TrainingParamChangePlate;
 mod SingleModeUtils;
 mod MasterSingleModeTurn;
@@ -70,6 +78,42 @@ pub mod SceneManager;
 #[cfg(target_os = "windows")]
 mod PaymentUtility;
 mod LowResolutionCamera;
+#[cfg(target_os = "windows")]
+mod free_camera;
+#[cfg(target_os = "windows")]
+mod LiveTimelineControl;
+#[cfg(target_os = "windows")]
+mod PostEffectUpdateInfo_DOF;
+#[cfg(target_os = "windows")]
+mod DOFUpdateInfoDelegate;
+#[cfg(target_os = "windows")]
+mod PostFilmUpdateInfoDelegate;
+#[cfg(target_os = "windows")]
+mod LiveTimelineKeyCameraPositionData;
+#[cfg(target_os = "windows")]
+mod LiveTimelineKeyCameraLookAtData;
+#[cfg(target_os = "windows")]
+mod CharacterObject;
+#[cfg(target_os = "windows")]
+mod LiveModelController;
+#[cfg(target_os = "windows")]
+mod ModelController;
+#[cfg(target_os = "windows")]
+mod RaceCameraManager;
+#[cfg(target_os = "windows")]
+mod RaceCameraEventBase;
+#[cfg(target_os = "windows")]
+mod RaceModelController;
+#[cfg(target_os = "windows")]
+mod RaceViewBase;
+#[cfg(target_os = "windows")]
+mod RaceEffectManager;
+#[cfg(target_os = "windows")]
+mod HorseData;
+#[cfg(target_os = "windows")]
+mod HorseRaceInfo;
+#[cfg(target_os = "windows")]
+mod HorseRaceInfoReplay;
 pub mod TweenAnimationTimelineComponent;
 pub mod TweenAnimationTimelineData;
 pub mod TweenAnimationTimelineSheetData;
@@ -140,6 +184,13 @@ pub fn init() {
     StoryViewTextControllerSingleMode::init(image);
     JikkyoDisplay::init(image);
     Screen::init(image);
+    #[cfg(target_os = "windows")]
+    {
+        StandaloneWindowResize::init(image);
+        GallopInput::init(image);
+        WindowsGamepadControl::init(image);
+        TapEffectController::init(image);
+    }
     TrainingParamChangePlate::init(image);
     SingleModeUtils::init(image);
     MasterSingleModeTurn::init(image);
@@ -188,6 +239,26 @@ pub fn init() {
         DownloadErrorProcessor::init(image);
     }
     LowResolutionCamera::init(image);
+    #[cfg(target_os = "windows")]
+    {
+        LiveTimelineControl::init(image);
+        PostEffectUpdateInfo_DOF::init(image);
+        DOFUpdateInfoDelegate::init(image);
+        PostFilmUpdateInfoDelegate::init(image);
+        LiveTimelineKeyCameraPositionData::init(image);
+        LiveTimelineKeyCameraLookAtData::init(image);
+        CharacterObject::init(image);
+        LiveModelController::init(image);
+        ModelController::init(image);
+        RaceCameraManager::init(image);
+        RaceCameraEventBase::init(image);
+        RaceModelController::init(image);
+        RaceViewBase::init(image);
+        RaceEffectManager::init(image);
+        HorseData::init(image);
+        HorseRaceInfo::init(image);
+        HorseRaceInfoReplay::init(image);
+    }
     CameraData::init(image);
     TweenAnimationTimelineComponent::init(image);
     TweenAnimationTimelineData::init(image);
