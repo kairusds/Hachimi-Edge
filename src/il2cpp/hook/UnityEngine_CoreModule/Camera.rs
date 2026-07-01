@@ -6,6 +6,11 @@ use crate::{
 type CameraGetFloatFn = extern "C" fn(this: *mut Il2CppObject) -> f32;
 type CameraSetFloatFn = extern "C" fn(this: *mut Il2CppObject, value: f32);
 
+fn should_override_near_clip() -> bool {
+    free_camera::is_scene_enabled(CameraScene::Live) ||
+        free_camera::is_scene_enabled(CameraScene::Race)
+}
+
 extern "C" fn Camera_get_fieldOfView(this: *mut Il2CppObject) -> f32 {
     let scene = free_camera::scene();
     if let Some(fov) = free_camera::fov_for_scene(scene) {
@@ -15,20 +20,14 @@ extern "C" fn Camera_get_fieldOfView(this: *mut Il2CppObject) -> f32 {
 }
 
 extern "C" fn Camera_set_nearClipPlane(this: *mut Il2CppObject, mut value: f32) {
-    if free_camera::is_live_first_person() ||
-        free_camera::is_live_selfie_stick() ||
-        free_camera::is_scene_enabled(CameraScene::Race)
-    {
+    if should_override_near_clip() {
         value = 0.001;
     }
     get_orig_fn!(Camera_set_nearClipPlane, CameraSetFloatFn)(this, value);
 }
 
 extern "C" fn Camera_get_nearClipPlane(this: *mut Il2CppObject) -> f32 {
-    if free_camera::is_live_first_person() ||
-        free_camera::is_live_selfie_stick() ||
-        free_camera::is_scene_enabled(CameraScene::Race)
-    {
+    if should_override_near_clip() {
         return 0.001;
     }
     get_orig_fn!(Camera_get_nearClipPlane, CameraGetFloatFn)(this)

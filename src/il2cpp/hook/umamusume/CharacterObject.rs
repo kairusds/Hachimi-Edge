@@ -6,6 +6,8 @@ use crate::il2cpp::{
 };
 
 static mut GET_LIVE_MODEL_CONTROLLER_ARRAY_ADDR: usize = 0;
+static mut SET_LIVE_CHARA_VISIBLE_ADDR: usize = 0;
+static mut APPLY_VISIBLE_ADDR: usize = 0;
 
 pub fn get_LiveModelControllerArray(this: *mut Il2CppObject) -> *mut Il2CppObject {
     if unsafe { GET_LIVE_MODEL_CONTROLLER_ARRAY_ADDR } == 0 {
@@ -16,11 +18,31 @@ pub fn get_LiveModelControllerArray(this: *mut Il2CppObject) -> *mut Il2CppObjec
     func(this)
 }
 
+pub fn set_liveCharaVisible(this: *mut Il2CppObject, value: bool) {
+    if unsafe { SET_LIVE_CHARA_VISIBLE_ADDR } == 0 {
+        return;
+    }
+    let func: extern "C" fn(*mut Il2CppObject, bool) =
+        unsafe { std::mem::transmute(SET_LIVE_CHARA_VISIBLE_ADDR) };
+    func(this, value);
+}
+
+pub fn ApplyVisible(this: *mut Il2CppObject) {
+    if unsafe { APPLY_VISIBLE_ADDR } == 0 {
+        return;
+    }
+    let func: extern "C" fn(*mut Il2CppObject) = unsafe { std::mem::transmute(APPLY_VISIBLE_ADDR) };
+    func(this);
+}
+
 pub fn init(umamusume: *const Il2CppImage) {
     if let Ok(character_object) = get_class(umamusume, c"Gallop.Live", c"CharacterObject") {
         unsafe {
             GET_LIVE_MODEL_CONTROLLER_ARRAY_ADDR =
                 get_method_addr(character_object, c"get_LiveModelControllerArray", 0);
+            SET_LIVE_CHARA_VISIBLE_ADDR =
+                get_method_addr(character_object, c"set_liveCharaVisible", 1);
+            APPLY_VISIBLE_ADDR = get_method_addr(character_object, c"ApplyVisible", 0);
         }
     }
 }

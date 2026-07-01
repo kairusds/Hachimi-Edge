@@ -84,6 +84,7 @@ notification:
   tl_repo_changed: "Translation repository changed. Localized data reloaded."
   tl_repo_folder_missing: "Translation data folder is missing. Please check for updates to restore translations."
   free_camera_input_disabled: "Free Camera is enabled. In-game keyboard and gamepad input have been disabled."
+  freeform_window_disabled_landscape: "Freeform window has been disabled because landscape mode is active."
 
 first_time_setup:
   title: "First Time Setup"
@@ -260,6 +261,8 @@ free_camera:
   section_race: "Race"
   section_keybinds: "Windows keybinds"
   remove_camera_effects: "Remove camera effects"
+  live_disable_character_teleport: "Disable character teleport"
+  live_force_all_characters_visible: "Always show all characters"
   show_overlay: "Show switch overlay"
   selfie_use_head_transform: "Use selfie stick in Follow Character"
   mode: "Mode"

@@ -2760,6 +2760,7 @@ impl ConfigEditor {
             #[cfg(target_os = "windows")]
             {
                 use crate::windows::hachimi_impl::{FullScreenMode, ResolutionScaling};
+                let supports_freeform_window = Hachimi::instance().game.region != Region::Global;
 
                 if should_show_option(search, &t!("config_editor.vsync")) {
                     ui.label(t!("config_editor.vsync"));
@@ -2773,13 +2774,15 @@ impl ConfigEditor {
                     ui.end_row();
                 }
 
-                if should_show_option(search, &t!("config_editor.freeform_window")) {
+                if supports_freeform_window &&
+                    should_show_option(search, &t!("config_editor.freeform_window"))
+                {
                     ui.label(t!("config_editor.freeform_window"));
                     ui.checkbox(&mut config.windows.freeform_window, "");
                     ui.end_row();
                 }
 
-                if config.windows.freeform_window {
+                if supports_freeform_window && config.windows.freeform_window {
                     if should_show_option(search, &t!("config_editor.freeform_ui_scale_auto")) {
                         ui.label(t!("config_editor.freeform_ui_scale_auto"));
                         ui.checkbox(&mut config.windows.freeform_ui_scale_auto, "");
@@ -3782,6 +3785,14 @@ impl Window for FreeCameraSettingsWindow {
 
                                 ui.strong(t!("free_camera.section_live"));
                                 ui.label("");
+                                ui.end_row();
+
+                                ui.label(t!("free_camera.live_disable_character_teleport"));
+                                ui.checkbox(&mut cfg.live_disable_character_teleport, "");
+                                ui.end_row();
+
+                                ui.label(t!("free_camera.live_force_all_characters_visible"));
+                                ui.checkbox(&mut cfg.live_force_all_characters_visible, "");
                                 ui.end_row();
 
                                 ui.label(t!("free_camera.live_target_position"));
