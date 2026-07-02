@@ -1,0 +1,375 @@
+hachimi: "Hachimi Edge"
+
+windows:
+  menu_open_key: "Стрелка вправо"
+
+android:
+  menu_open_key: "Громкость вверх + вниз\n\uf25a или трижды нажмите слева сверху"
+
+splash_sub: "\uf015 Нажмите %{open_key_str}, чтобы открыть меню."
+loading_label: "Загрузка..."
+search_filter: "Поиск..."
+open: "Открыть"
+cancel: "Отмена"
+save: "Сохранить"
+done: "Готово"
+next: "Далее"
+previous: "Назад"
+yes: "Да"
+no: "Нет"
+ok: "ОК"
+retry: "Повторить"
+default: "По умолчанию"
+off: "Выключено"
+on: "Включено"
+enable: "Включить"
+disabled: "Выключено"
+minutes: "минут(ы)"
+info: "Информация"
+warning: "Внимание"
+confirm_dialog_title: "Подтвердите"
+soft_restart_confirm_content: "Вы уверены, что хотите выполнить мягкую перезагрузку игры?"
+in_game_browser_confirm_content: "Вы уверены, что хотите открыть внутриигровой браузер?"
+browser_dialog_title: "Браузер"
+bind_key: "Назначить кнопку"
+edit: "Изменить"
+remove: "Удалить"
+add: "Добавить"
+save_changes: "Сохранить изменения?"
+
+menu:
+  check_for_updates: "\uf0aa Проверить обновления"
+  fps_text: "FPS: %{fps}"
+  close_menu: "\uf00d Закрыть меню"
+  stats_heading: "\uf022 Статистика"
+  localize_dict_entries: "Записей в localize_dict: %{count}"
+  hashed_dict_entries: "Записей в hashed_dict: %{count}"
+  config_heading: "\uf0ad Настройки"
+  open_config_editor: "\uf040 Открыть настройки"
+  reload_config: "\uf021 Перезагрузить настройки"
+  open_first_time_setup: "\uf135 Открыть первоначальную настройку"
+  graphics_heading: "\uf03e Графика"
+  fps_label: "FPS"
+  vsync_label: "VSync"
+  stay_on_top: "Поверх всех окон"
+  translation_heading: "\uf02d Перевод"
+  reload_localized_data: "\uf021 Перезагрузить данные локализации"
+  tl_check_for_updates: "\uf0aa Проверить обновления переводов"
+  tl_check_for_updates_pedantic: "\uf0aa Проверить обновления переводов (принудительно)"
+  dump_localize_dict: "Выгрузить данные localize_dict"
+  danger_zone_heading: "\uf071 Зона опасности"
+  danger_zone_warning: "Эти опции могут нести за собой непредвиденные последствия для игры. Используйте их с осторожностью!"
+  soft_restart: "\uf021 Мягкая перезагрузка"
+  open_in_game_browser: "\uf0ac Открыть внутриигровой браузер"
+  toggle_game_ui: "\uf06e Скрыть/показать интерфейс игры"
+  discord_rpc: "Discord RPC"
+  edit_excludes: "\uf040 Редактировать исключения"
+  change_translation_repo: "\uf0c1 Сменить репозиторий переводов"
+
+notification:
+  saved_localize_dump: "Сохранено в localize_dump.json"
+  config_reloaded: "Настройки перезагружены."
+  config_saved: "Настройки сохранены."
+  config_error: "Файл настроек поврежден. Возврат к значениям по умолчанию..."
+  localized_data_reloaded: "Данные локализации перезагружены."
+  checking_for_tl_updates: "Проверка обновлений переводов..."
+  no_tl_updates: "Нет доступных обновлений переводов."
+  update_failed: "Обновление не удалось: %{reason}"
+  update_completed: "Обновление завершено."
+  errors_during_update: "Во время обновления произошли ошибки (%{count}). Проверьте журнал для подробностей."
+  checking_for_updates: "Проверка обновлений..."
+  no_updates: "Нет доступных обновлений."
+  ipc_softreset_exec: "IPC: выполнена удаленная мягкая перезагрузка"
+  atlas_workaround_reset: "Файлы атласов изменены. Обход для перевода отключен."
+  tl_repo_changed: "Репозиторий переводов изменился. Данные локализации перезагружены."
+  tl_repo_folder_missing: "Папка данных переводов отсутствует. Для восстановления переводов, пожалуйста, проверьте наличие обновлений."
+
+first_time_setup:
+  title: "Первоначальная настройка"
+  welcome_heading: "Добро пожаловать"
+  welcome_content: >-
+    Hachimi теперь установлен! Это окно поможет вам выполнить первоначальную настройку.
+    Если вас не интересует перевод игры, вы можете пропустить настройку, закрыв это окно.
+
+
+    ВНИМАНИЕ: Hachimi - проект, развиваемый сообществом. Все переводы выполнены различными участниками этого сообщества.
+    Этот проект нарушает условия обслуживания игры и Cygames, Inc. не разрабатывает или поддерживает его.
+    Продолжая, вы принимаете, что используете его на свой страх и риск.
+  translation_repo_heading: "Репозиторий переводов"
+  select_translation_repo: "Выберите репозиторий переводов:"
+  no_compatible_repo: "Ни один репозиторий не совместим с этой версией игры."
+  skip_translation: "Пропустить перевод."
+  common_settings_heading: "Частые настройки"
+  common_settings_content: >-
+    Это часто используемые параметры, которые вы можете хотеть изменить.
+    Вы всегда сможете поменять их позже через окно настроек.
+  complete_heading: "Всё готово!"
+  complete_content: >-
+    Нажмите Готово, чтобы сохранить настройки.
+    Если вы выбрали репозиторий переводов, будет проверено наличие обновлений,
+    и вам будет предложено загрузить новые данные переводов.
+
+about:
+  title: "О Hachimi"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds и участники"
+  view_license: "Лицензии"
+  open_website: "Веб-сайт"
+  view_source_code: "Исходный код"
+  view_contributors: "Участники"
+
+license:
+  title: "Лицензии"
+  gpl_v3_only_notice: "GPL-3.0-only License Text"
+  ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
+  font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
+  font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
+  ofl_notice: "SIL OFL 1.1 License Text"
+  font_alibaba_header: "Alibaba PuHuiTi 3.0"
+  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
+
+tl_updater:
+  title: "Обновление..."
+  warning: "Переводы недоступны, пока идёт обновление"
+
+config_editor:
+  title: "Настройки"
+  general_tab: "\uf013 Основные"
+  graphics_tab: "\uf03e Графика"
+  gameplay_tab: "\uf11b Геймплей"
+  language: "Язык"
+  restore_defaults: "Вернуть по умолчанию"
+  disable_overlay: "Отключить интерфейс оверлея"
+  disable_overlay_warning: >-
+    Данная опция выключит оверлей Hachimi после перезапуска игры,
+    а это значит, что после этого вы НЕ СМОЖЕТЕ открыть окно настроек.
+    Если вы этого не хотите, закройте это окно и ВЫКЛЮЧИТЕ данную опцию.
+  ipv4_only: "Только IPv4-запросы"
+  meta_index_url: "Мета-URL переводов"
+  debug_mode: "Режим отладки"
+  enable_file_logging: "Включить журналирование в файл"
+  apply_atlas_workaround: "Применять обход для перевода атласов"
+  translator_mode: "Режим переводчика"
+  skip_first_time_setup: "Пропускать первоначальную настройку"
+  lazy_translation_updates: "Отложенное обновление переводов"
+  etag_translation_updates: "Ускоренное обновление переводов"
+  disable_auto_update_check: "Отключить авто-проверку обновлений"
+  tl_auto_updater_mode: "Авто-проверка обновлений переводов"
+  tl_auto_updater_periodic: "Периодическая (спрашивать)"
+  tl_auto_updater_silent: "Тихая (авто)"
+  tl_auto_updater_interval: "Интервал авто-проверки обновлений переводов"
+  disable_translations: "Отключить переводы"
+  enable_ipc: "Включить IPC"
+  ipc_listen_all: "IPC: слушать везде"
+  auto_translate_stories: "Авто-перевод сюжетов"
+  auto_tl_warning: >-
+    Внимание: эта функция не работает сама по себе и требует дополнительной настройки.
+    Для её включения требуется установка совместимого сервера-переводчика с таким API,
+    как у py3translationServer или Sugoi Toolkit, на ваш компьютер или облачный сервис.
+    Без рабочего сервера авто-перевод выполнятся не будет, и это может повлиять на геймплей.
+    Пожалуйста, не включайте эту функцию, если у вас нету сервера-переводчика.
+  auto_translate_ui: "Авто-перевод интерфейса (МОЖЕТ ЕГО СЛОМАТЬ)"
+  taskbar_show_progress_on_download: "Прогресс загрузки на панели задач"
+  taskbar_show_progress_on_connecting: "Прогресс подключения на панели задач"
+  target_fps: "Целевой FPS"
+  virtual_resolution_multiplier: "Множитель виртуального разрешения"
+  ui_scale: "Масштаб интерфейса"
+  gui_scale: "Масштаб оверлея"
+  gui_landscape_ratio: "Масштаб оверлея в альбомном режиме"
+  ui_animation_scale: "Масштаб анимаций интерфейса"
+  graphics_quality: "Качество графики"
+  vsync: "VSync"
+  auto_full_screen: "Автоматический полный экран"
+  full_screen_mode: "Полноэкранный режим"
+  full_screen_mode_exclusive: "Эксклюзивный"
+  full_screen_mode_borderless: "Безрамочный"
+  block_minimize_in_full_screen: "Блокировать сворачивание в полном экране"
+  resolution_scaling: "Масштабирование разрешения"
+  resolution_scaling_default: "По умолчанию (1080p)"
+  resolution_scaling_ssize: "Масштабировать до размера экрана"
+  resolution_scaling_wsize: "Масштабировать до размера окна"
+  window_always_on_top: "Поверх всех окон"
+  story_choice_auto_select_delay: "Задержка авто-выбора в сюжетах"
+  story_text_speed_multiplier: "Множитель скорости текста в сюжетах"
+  force_allow_dynamic_camera: "Принудительно разрешить динамическую камеру"
+  live_theater_allow_same_chara: "Разрешить одинаковых персонажей в концертах"
+  physics_update_mode: "Режим обновления физики"
+  cyspring_mono_uncap_frame_scale: "Неограниченный масштаб кадров CySpring Mono"
+  disable_skill_name_translation: "Отключить перевод названий навыков"
+  hide_ingame_ui_hotkey: "Включить кнопку скрытия интерфейса игры"
+  hide_ingame_ui_hotkey_info: >-
+    Эта опция позволяет переключать видимость внутриигрового интерфейса через горячую клавишу.
+    На Android, вы можете трижды нажать в левом верхнем углу экрана.
+    На PC или Android c клавиатурой, по умолчанию это кнопка Insert, и её можно сменить в настройках.
+  hide_ingame_ui_hotkey_bind: "Кнопка скрытия интерфейса игры"
+  live_slider_always_show: "Всегда показывать ползунок концертов"
+  live_playback_loop: "Зацикливать концерты"
+  champions_live_show_text: "Заменить надпись концерта Встречи Чемпионов"
+  champions_live_resource_id: "Название Встречи Чемпионов"
+  champions_live_year: "Год Встречи Чемпионов"
+  captions: "Субтитры"
+  caption_lines_char_count: "Субтитры: Кол-во символов в строке"
+  caption_font_size: "Субтитры: Размер шрифта"
+  caption_bg_alpha: "Субтитры: Прозрачность фона"
+  caption_pos_x: "Субтитры: Позиция по оси X"
+  caption_pos_y: "Субтитры: Позиция по оси Y"
+  caption_color: "Субтитры: Цвет текста"
+  caption_outline_color: "Субтитры: Цвет обводки"
+  caption_outline_size: "Субтитры: Размер обводки"
+  discord_rpc: "Discord RPC"
+  enable_smtc: "Включить медиа-клавиши Windows"
+  menu_open_key: "Кнопка открытия меню"
+  msaa: "MSAA"
+  render_scale: "Масштаб рендера"
+  aniso_level: "Анизотропная фильтрация"
+  live_vocals_swap: "Замена концерт-голосов"
+  live_vocals_swap_character_n: "Персонаж %{index}"
+  skill_info_dialog: "Кастомное окно свойств навыков"
+  homescreen_bgseason: "Время года на домашнем экране"
+  shadow_resolution: "Разрешение теней"
+  hide_now_loading: "Скрыть экран загрузки"
+  ui_loading_show_orientation_guide: "Скрыть подсказку ориентации на экране загрузки"
+  replace_to_builtin_font: "Использовать шрифт игры по умолчанию"
+  custom_title_name: "Пользовательский заголовок окна"
+
+theme_editor:
+  title: "Редактор темы"
+  ui_accent_color: "Цвет акцента"
+  ui_window_fill: "Цвет фона окон"
+  ui_panel_fill: "Цвет фона панелей"
+  ui_extreme_bg_color: "Цвет полей ввода"
+  ui_text_color: "Цвет текста"
+  ui_window_rounding: "Закругление углов"
+
+set_keybind:
+  title: "Назначить кнопку"
+  press_any_key: "Нажмите любую кнопку…"
+  bound_key: "Назначена кнопка: %{key}"
+
+excludes_editor:
+  title: "Редактор исключений"
+  no_paths_available: "Нет исключаемых путей"
+  saved: "Исключения сохранены успешно"
+  confirm_remove: "Вы уверены, что хотите удалить исключение \"%{path}\"?"
+
+change_translation_repo:
+  title: "Сменить репозиторий переводов"
+  no_repos: "Ещё нет загруженных репозиториев."
+  browse_repositories: "Просмотреть репозитории"
+  active: "Активен"
+  available: "Доступен"
+  confirm_remove: "Вы уверены, что хотите удалить \"%{name}\"?"
+  cannot_remove_active: "Невозможно удалить активный репозиторий. Сначала переключитесь на другой."
+  removing: "Удаление репозитория..."
+  remove_in_progress: "Невозможно удалить репозиторий. Сейчас уже удаляется другой."
+
+add_translation_repo:
+  title: "Добавить репозиторий переводов"
+  select_translation_repo: "Выберите репозиторий переводов:"
+  already_downloaded: "(уже загружен)"
+
+translation_repo_info:
+  details_title: "Свойства репозитория"
+  homepage: "Главная страница"
+  maintainer: "Мейнтейнер"
+  contributors: "Участники"
+  view_contributors: "Показать участников"
+  links: "Ссылки"
+
+tl_update_dialog:
+  title: "Доступно обновление"
+  content: "Доступно новое обновление переводов (%{size}). Хотите его загрузить?"
+  content_zip_warning: "Доступно новое обновление переводов (%{changed_size}). Вместо него будет скачан полный архив (%{download_size})."
+  show_changelog: "Показать изменения"
+  changelog_title: "Изменения"
+  changelog_fetch_failed: "Не удалось загрузить изменения"
+  changelog_invalid: "Данные изменений не являются текстовыми"
+
+update_prompt_dialog:
+  title: "Доступно обновление"
+  content: |
+    Доступна новая версия Hachimi (%{version}). Хотите её установить?
+    Игра перезапустится, чтобы примененить изменения.
+  android_content: |
+    Доступна новая версия Hachimi Edge (%{version}). Хотите её установить?
+
+    Нажмите Да, чтобы открыть UmaPatcher Edge и снова пропатчить игру.
+    (Заново скачивать игру или APK не требуется. Вам нужно просто пропатчить игру, как обычно, ведь UmaPatcher Edge всегда загружает последнюю версию Hachimi Edge.)
+
+updating_dialog:
+  title: "Обновление"
+  content: "Загрузка обновления, игра скоро перезапустится..."
+
+steam_overlay_conflict_dialog:
+  title: "Внимание"
+  content: >-
+    Внутриигровые покупки могут не работать с включенным оверлеем Hachimi. Если оверлей Steam уже
+    открылся для совершения покупки, пожалуйста, проигнорируйте это сообщение и нажмите Нет.
+    Если же он не появился, нажмите Да, чтобы временно отключить оверлей Hachimi. Игра закроется,
+    а при следующем запуске оверлей Hachimi будет отключен, и вы сможете совершить покупку.
+    После этого вы можете снова перезапустить игру, чтобы вернуть обратно оверлей Hachimi.
+
+key_names:
+  left: "Стрелка влево"
+  right: "Стрелка вправо"
+  up: "Стрелка вверх"
+  down: "Стрелка вниз"
+  back: "Back"
+  insert: "Insert"
+  delete: "Delete"
+  home: "Home"
+  end: "End"
+  page_up: "Page Up"
+  page_down: "Page Down"
+  escape: "Escape"
+  tab: "Tab"
+  enter: "Enter"
+  space: "Space"
+  backspace: "Backspace"
+  clear: "Clear"
+  pause: "Pause"
+  caps_lock: "Caps Lock"
+  scroll_lock: "Scroll Lock"
+  num_lock: "Num Lock"
+  print_screen: "Print Screen"
+  left_win: "Левый Win"
+  right_win: "Правый Win"
+  apps: "Menu"
+  alt: "Alt"
+  ctrl: "Ctrl"
+  shift: "Shift"
+  dpad_up: "Крестовина вверх"
+  dpad_down: "Крестовина вниз"
+  dpad_left: "Крестовина влево"
+  dpad_right: "Крестовина вправо"
+  volume_up: "Громкость вверх"
+  volume_down: "Громкость вниз"
+  copy: "Copy"
+  cut: "Cut"
+  paste: "Paste"
+  semicolon: ";"
+  comma: ","
+  backslash: "\\"
+  slash: "/"
+  left_bracket: "["
+  right_bracket: "]"
+  grave: "`"
+  minus: "-"
+  period: "."
+  plus: "+"
+  equals: "="
+  numpad_0: "Numpad 0"
+  numpad_1: "Numpad 1"
+  numpad_2: "Numpad 2"
+  numpad_3: "Numpad 3"
+  numpad_4: "Numpad 4"
+  numpad_5: "Numpad 5"
+  numpad_6: "Numpad 6"
+  numpad_7: "Numpad 7"
+  numpad_8: "Numpad 8"
+  numpad_9: "Numpad 9"
+  numpad_add: "Numpad +"
+  numpad_subtract: "Numpad -"
+  numpad_multiply: "Numpad *"
+  numpad_divide: "Numpad /"
+  numpad_decimal: "Numpad ."
+  unknown: "Кнопка %{code}"
