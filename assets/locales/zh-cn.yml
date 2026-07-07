@@ -65,7 +65,6 @@ menu:
   change_translation_repo: "\uf0c1 更换翻译仓库"
 
 notification:
-  freeform_window_disabled_landscape: "检测到横屏模式，自由窗口已自动关闭。"
   saved_localize_dump: "已保存到 localize_dump.json"
   config_reloaded: "配置已重新加载"
   config_saved: "配置已保存"
