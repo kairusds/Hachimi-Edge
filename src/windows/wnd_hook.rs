@@ -670,6 +670,9 @@ pub fn init() {
             // lmao
             w!("UmamusumePrettyDerby_Jpn")
         }
+        else if game.region == Region::Taiwan {
+            w!("komoeumamusume")
+        }
         else {
             // global technically has "Umamusume" as its title but this api
             // is case insensitive so it works. why am i surprised
