@@ -2760,7 +2760,6 @@ impl ConfigEditor {
             #[cfg(target_os = "windows")]
             {
                 use crate::windows::hachimi_impl::{FullScreenMode, ResolutionScaling};
-                let supports_freeform_window = Hachimi::instance().game.region != Region::Global;
 
                 if should_show_option(search, &t!("config_editor.vsync")) {
                     ui.label(t!("config_editor.vsync"));
@@ -2774,15 +2773,13 @@ impl ConfigEditor {
                     ui.end_row();
                 }
 
-                if supports_freeform_window &&
-                    should_show_option(search, &t!("config_editor.freeform_window"))
-                {
+                if should_show_option(search, &t!("config_editor.freeform_window")) {
                     ui.label(t!("config_editor.freeform_window"));
                     ui.checkbox(&mut config.windows.freeform_window, "");
                     ui.end_row();
                 }
 
-                if supports_freeform_window && config.windows.freeform_window {
+                if config.windows.freeform_window {
                     if should_show_option(search, &t!("config_editor.freeform_ui_scale_auto")) {
                         ui.label(t!("config_editor.freeform_ui_scale_auto"));
                         ui.checkbox(&mut config.windows.freeform_ui_scale_auto, "");
