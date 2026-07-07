@@ -2773,35 +2773,6 @@ impl ConfigEditor {
                     ui.end_row();
                 }
 
-                if should_show_option(search, &t!("config_editor.freeform_window")) {
-                    ui.label(t!("config_editor.freeform_window"));
-                    ui.checkbox(&mut config.windows.freeform_window, "");
-                    ui.end_row();
-                }
-
-                if config.windows.freeform_window {
-                    if should_show_option(search, &t!("config_editor.freeform_ui_scale_auto")) {
-                        ui.label(t!("config_editor.freeform_ui_scale_auto"));
-                        ui.checkbox(&mut config.windows.freeform_ui_scale_auto, "");
-                        ui.end_row();
-                    }
-
-                    if config.windows.freeform_ui_scale_auto &&
-                        should_show_option(search, &t!("config_editor.freeform_ui_scale_auto_ratio"))
-                    {
-                        ui.label(t!("config_editor.freeform_ui_scale_auto_ratio"));
-                        ui.add(
-                            egui::Slider::new(
-                                &mut config.windows.freeform_ui_scale_auto_ratio,
-                                0.25..=3.0
-                            )
-                                .step_by(0.05)
-                                .fixed_decimals(2)
-                        );
-                        ui.end_row();
-                    }
-                }
-
                 if should_show_option(search, &t!("config_editor.full_screen_mode")) {
                     ui.label(t!("config_editor.full_screen_mode"));
                     Gui::run_combo(ui, "full_screen_mode", &mut config.windows.full_screen_mode, &[
@@ -3291,7 +3262,6 @@ fn save_and_reload_config(config: hachimi::Config) {
     let notif = match Hachimi::instance().save_and_reload_config(config) {
         Ok(_) => {
             #[cfg(target_os = "windows")]
-            crate::windows::wnd_hook::apply_freeform_window_config();
             free_camera::reload_runtime_config();
 
             t!("notification.config_saved").into_owned()
