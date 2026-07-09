@@ -109,7 +109,7 @@ jobs:
           cd ..
 
       - name: Check out FunnyHoney
-        run: git clone --depth 1 --revision 418b5348bd9b7376cc7485c591ca69d49aa4d805 https://codeberg.org/LeadRDRK/FunnyHoney.git
+        run: git clone --depth 1 --revision 418b5348bd9b7376cc7485c591ca69d49aa4d805 https://gitlab.com/LeadRDRK/FunnyHoney.git
 
       - name: Build Installer
         run: |
