@@ -695,7 +695,6 @@ pub fn init() {
         }
 
         taskbar::init(hwnd);
-        free_camera::init_windows_gamepad_capture();
 
         if let Ok(umamusume) = get_assembly_image(c"umamusume.dll") {
             if let Ok(mono_behaviour_extension) =
@@ -794,7 +793,6 @@ pub fn init() {
 pub fn uninit() {
     unsafe {
         restore_original_wnd_proc(get_target_hwnd());
-        free_camera::uninit_windows_gamepad_capture();
         Hachimi::instance().interceptor.unhook(set_window_long_ptr_w_hook as *const () as _);
         Hachimi::instance().interceptor.unhook(set_window_long_ptr_a_hook as *const () as _);
 

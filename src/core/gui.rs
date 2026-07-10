@@ -1024,7 +1024,10 @@ impl Gui {
         let free_camera_input_capture = free_camera::wants_windows_input_capture();
 
         // Store these as atomic values so the input thread can check them without locking the gui
-        GUI_INPUT_ACTIVE.store(self.is_consuming_input(), atomic::Ordering::Release);
+        GUI_INPUT_ACTIVE.store(
+            self.menu_visible || !self.windows.is_empty(),
+            atomic::Ordering::Release
+        );
         IS_CONSUMING_INPUT.store(
             self.is_consuming_input() || has_interactive_widgets || free_camera_input_capture,
             atomic::Ordering::Release

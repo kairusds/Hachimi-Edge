@@ -1,13 +1,26 @@
 use std::ptr::null_mut;
 
-use crate::il2cpp::{
-    symbols::{get_class, get_method_addr, SingletonLike},
-    types::*,
+use crate::{
+    core::free_camera,
+    il2cpp::{
+        symbols::{get_class, get_method_addr, SingletonLike},
+        types::*,
+    },
 };
 
 static mut CLASS: *mut Il2CppClass = null_mut();
 static mut UPDATE_INPUT_CONTROLS_ADDR: usize = 0;
 static mut CREATE_RENDER_TEXTURE_FROM_SCREEN_ADDR: usize = 0;
+
+type CheckGamepadInputFn = extern "C" fn(this: *mut Il2CppObject) -> bool;
+extern "C" fn CheckGamepadInput(this: *mut Il2CppObject) -> bool {
+    if free_camera::is_enabled() {
+        false
+    }
+    else {
+        get_orig_fn!(CheckGamepadInput, CheckGamepadInputFn)(this)
+    }
+}
 
 pub fn update_input_controls() {
     let class = unsafe { CLASS };
@@ -64,4 +77,7 @@ pub fn init(umamusume: *const Il2CppImage) {
         UPDATE_INPUT_CONTROLS_ADDR = get_method_addr(class, c"UpdateInputControls", 0);
         CREATE_RENDER_TEXTURE_FROM_SCREEN_ADDR = get_method_addr(class, c"CreateRenderTextureFromScreen", 0);
     }
+
+    let check_gamepad_input_addr = get_method_addr(class, c"CheckGamepadInput", 0);
+    new_hook!(check_gamepad_input_addr, CheckGamepadInput);
 }

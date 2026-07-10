@@ -1,6 +1,8 @@
 use crate::{core::{Hachimi, game::Region}, il2cpp::{symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr}, types::*}};
 #[cfg(target_os = "windows")]
 use crate::core::free_camera;
+#[cfg(target_os = "windows")]
+use super::Director;
 // use std::sync::atomic::{AtomicBool, Ordering};
 
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
@@ -26,6 +28,14 @@ type GameSystemUpdateFn = extern "C" fn(this: *mut Il2CppObject);
 extern "C" fn GameSystem_Update(this: *mut Il2CppObject) {
     free_camera::tick();
     get_orig_fn!(GameSystem_Update, GameSystemUpdateFn)(this);
+}
+
+#[cfg(target_os = "windows")]
+type GameSystemLateUpdateFn = extern "C" fn(this: *mut Il2CppObject);
+#[cfg(target_os = "windows")]
+extern "C" fn GameSystem_LateUpdate(this: *mut Il2CppObject) {
+    get_orig_fn!(GameSystem_LateUpdate, GameSystemLateUpdateFn)(this);
+    Director::apply_paused_free_camera();
 }
 
 // good hook for initializing values i guess
@@ -101,5 +111,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     {
         let GameSystem_Update_addr = get_method_addr(GameSystem, c"Update", 0);
         new_hook!(GameSystem_Update_addr, GameSystem_Update);
+        let GameSystem_LateUpdate_addr = get_method_addr(GameSystem, c"LateUpdate", 0);
+        new_hook!(GameSystem_LateUpdate_addr, GameSystem_LateUpdate);
     }
 }

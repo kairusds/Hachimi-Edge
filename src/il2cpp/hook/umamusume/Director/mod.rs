@@ -26,7 +26,7 @@ use super::{
 #[cfg(target_os = "windows")]
 use crate::{
     core::free_camera::{self, CameraScene},
-    il2cpp::hook::UnityEngine_CoreModule::{GameObject, Transform},
+    il2cpp::hook::UnityEngine_CoreModule::{Camera, GameObject, Transform},
 };
 
 #[cfg(target_os = "windows")]
@@ -76,6 +76,16 @@ impl_addr_wrapper_fn!(get_LoadSettings, GET_LOADSETTINGS_ADDR, *mut Il2CppObject
 
 static mut GET_LIVETIMECONTROLLER_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_LiveTimeController, GET_LIVETIMECONTROLLER_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
+
+#[cfg(target_os = "windows")]
+static mut GET_MAIN_CAMERA_OBJECT_ADDR: usize = 0;
+#[cfg(target_os = "windows")]
+impl_addr_wrapper_fn!(get_MainCameraObject, GET_MAIN_CAMERA_OBJECT_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
+
+#[cfg(target_os = "windows")]
+static mut GET_MAIN_CAMERA_TRANSFORM_ADDR: usize = 0;
+#[cfg(target_os = "windows")]
+impl_addr_wrapper_fn!(get_MainCameraTransform, GET_MAIN_CAMERA_TRANSFORM_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
 
 static mut REGISTER_DOWNLOAD_EXTRA_RESOURCE_ADDR: usize = 0;
 impl_addr_wrapper_fn!(
@@ -261,20 +271,7 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
 type DirectorAlterUpdateFn =
     extern "C" fn(this: *mut Il2CppObject, delta_time: f32, is_update_delta_time: bool);
 #[cfg(target_os = "windows")]
-extern "C" fn Director_AlterUpdate(
-    this: *mut Il2CppObject,
-    delta_time: f32,
-    is_update_delta_time: bool,
-) {
-    free_camera::begin_live_director_update();
-    get_orig_fn!(Director_AlterUpdate, DirectorAlterUpdateFn)(
-        this,
-        delta_time,
-        is_update_delta_time,
-    );
-    free_camera::set_live_active();
-    apply_live_character_options(this);
-
+fn update_live_free_camera_target(this: *mut Il2CppObject) {
     let first_person = free_camera::is_live_first_person();
     let selfie_stick = free_camera::is_live_selfie_stick();
     let head_selfie = selfie_stick && free_camera::is_live_head_selfie();
@@ -342,6 +339,66 @@ extern "C" fn Director_AlterUpdate(
 }
 
 #[cfg(target_os = "windows")]
+pub fn apply_paused_free_camera() {
+    if !is_live_paused() {
+        return;
+    }
+
+    let director = instance();
+    if director.is_null() {
+        return;
+    }
+
+    free_camera::set_live_active();
+    if !free_camera::is_scene_enabled(CameraScene::Live) {
+        return;
+    }
+
+    update_live_free_camera_target(director);
+    free_camera::refresh_paused_live_camera();
+
+    let camera_transform = get_MainCameraTransform(director);
+    if camera_transform.is_null() {
+        return;
+    }
+
+    let mut position = free_camera::camera_pos();
+    Transform::set_position_Injected(camera_transform, &mut position);
+    if let Some(mut rotation) = free_camera::camera_rotation() {
+        Transform::set_rotation_Injected(camera_transform, &mut rotation);
+    }
+    else {
+        let mut look_at = free_camera::camera_look_at();
+        let mut world_up = Vector3_t { x: 0.0, y: 1.0, z: 0.0 };
+        Transform::Internal_LookAt_Injected(camera_transform, &mut look_at, &mut world_up);
+    }
+
+    let camera = get_MainCameraObject(director);
+    if !camera.is_null() {
+        if let Some(fov) = free_camera::fov_for_scene(CameraScene::Live) {
+            Camera::set_fieldOfView(camera, fov);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+extern "C" fn Director_AlterUpdate(
+    this: *mut Il2CppObject,
+    delta_time: f32,
+    is_update_delta_time: bool,
+) {
+    free_camera::begin_live_director_update();
+    get_orig_fn!(Director_AlterUpdate, DirectorAlterUpdateFn)(
+        this,
+        delta_time,
+        is_update_delta_time,
+    );
+    free_camera::set_live_active();
+    apply_live_character_options(this);
+    update_live_free_camera_target(this);
+}
+
+#[cfg(target_os = "windows")]
 type SetupOrientationFn = extern "C" fn(this: *mut Il2CppObject, target_display_mode: i32);
 
 #[cfg(target_os = "windows")]
@@ -380,6 +437,9 @@ pub fn init(umamusume: *const Il2CppImage) {
         _LIVECURRENTTIME_FIELD = get_field_from_name(Director, c"_liveCurrentTime");
         #[cfg(target_os = "windows")]
         {
+            GET_MAIN_CAMERA_OBJECT_ADDR = get_method_addr(Director, c"get_MainCameraObject", 0);
+            GET_MAIN_CAMERA_TRANSFORM_ADDR =
+                get_method_addr(Director, c"get_MainCameraTransform", 0);
             GET_CHARACTER_OBJECT_FROM_POSITION_ID_ADDR =
                 get_method_addr(Director, c"GetCharacterObjectFromPositionId", 1);
         }
