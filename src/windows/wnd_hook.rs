@@ -535,7 +535,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         WM_RBUTTONDOWN => {
             if !Gui::is_gui_input_active_atomic() {
                 free_camera::on_mouse_button(true);
-                if free_camera::is_enabled() {
+                if free_camera::is_game_input_capture_active() {
                     return LRESULT(0);
                 }
             }
@@ -543,7 +543,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         WM_RBUTTONUP => {
             if !Gui::is_gui_input_active_atomic() {
                 free_camera::on_mouse_button(false);
-                if free_camera::is_enabled() {
+                if free_camera::is_game_input_capture_active() {
                     return LRESULT(0);
                 }
             }
@@ -562,13 +562,13 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
             if !Gui::is_gui_input_active_atomic() {
                 let delta = (wparam.0 >> 16) as u16 as i16;
                 free_camera::on_mouse_wheel(delta);
-                if free_camera::is_enabled() {
+                if free_camera::is_game_input_capture_active() {
                     return LRESULT(0);
                 }
             }
         },
         WM_INPUT => {
-            if !Gui::is_gui_input_active_atomic() && free_camera::is_enabled() {
+            if !Gui::is_gui_input_active_atomic() && free_camera::is_game_input_capture_active() {
                 return LRESULT(0);
             }
         },

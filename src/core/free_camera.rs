@@ -723,6 +723,14 @@ pub fn is_enabled() -> bool {
     Hachimi::instance().config.load().free_camera.enabled
 }
 
+pub fn is_game_input_capture_active() -> bool {
+    if !is_enabled() {
+        return false;
+    }
+
+    matches!(STATE.lock().unwrap().scene, CameraScene::Live | CameraScene::Race)
+}
+
 pub fn overlay_message() -> Option<(String, f32)> {
     let config = Hachimi::instance().config.load();
     if !config.free_camera.enabled || !config.free_camera.show_overlay {
@@ -1447,11 +1455,11 @@ pub fn slerp_quaternion(a: Quaternion_t, b: Quaternion_t, t: f32) -> Quaternion_
 
 #[cfg(target_os = "windows")]
 pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
-    let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !is_game_input_capture_active() {
         return;
     }
 
+    let config = Hachimi::instance().config.load();
     let kb = &config.free_camera.keybinds;
     let mut state = STATE.lock().unwrap();
     set_key_flag(&mut state.key_state, vk, pressed, kb);
@@ -1485,11 +1493,11 @@ pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
 
 #[cfg(target_os = "windows")]
 pub fn is_windows_key_bound(vk: u16) -> bool {
-    let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !is_game_input_capture_active() {
         return false;
     }
 
+    let config = Hachimi::instance().config.load();
     let kb = &config.free_camera.keybinds;
     vk == kb.move_forward ||
         vk == kb.move_back ||
@@ -1569,7 +1577,7 @@ pub fn wants_windows_input_capture() -> bool {
 }
 
 pub fn on_mouse_button(right_down: bool) {
-    if !is_enabled() {
+    if !is_game_input_capture_active() {
         return;
     }
 
@@ -1602,7 +1610,7 @@ pub fn on_mouse_move(x: i32, y: i32) {
 }
 
 pub fn on_mouse_wheel(delta: i16) {
-    if !is_enabled() {
+    if !is_game_input_capture_active() {
         return;
     }
 
@@ -1675,6 +1683,10 @@ pub fn tick() {
     }
     state.last_enabled = config.enabled;
     if !config.enabled {
+        return;
+    }
+    if !matches!(state.scene, CameraScene::Live | CameraScene::Race) {
+        state.last_tick = Instant::now();
         return;
     }
     if state.scene == CameraScene::Race && state.mode != state.last_overlay_mode {

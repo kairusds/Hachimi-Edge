@@ -2884,17 +2884,7 @@ impl ConfigEditor {
             {
                 if should_show_option(search, &t!("config_editor.free_camera")) {
                     ui.label(t!("config_editor.free_camera"));
-                    let was_enabled = config.free_camera.enabled;
-                    if ui.checkbox(&mut config.free_camera.enabled, "").changed() &&
-                        !was_enabled &&
-                        config.free_camera.enabled
-                    {
-                        thread::spawn(|| {
-                            Gui::instance().unwrap()
-                                .lock().unwrap()
-                                .show_notification(&t!("notification.free_camera_input_disabled"));
-                        });
-                    }
+                    ui.checkbox(&mut config.free_camera.enabled, "");
                     ui.end_row();
 
                     ui.label("");
