@@ -82,7 +82,6 @@ notification:
   atlas_workaround_reset: "检测到 Atlas 文件更新: 已重新应用 Atlas 翻译..."
   tl_repo_changed: "翻译仓库已更换，本地化数据已重新加载。"
   tl_repo_folder_missing: "翻译数据文件夹缺失。请检查更新以恢复翻译。"
-  free_camera_input_disabled: "已开启自由视角，游戏内键盘及手柄输入已被禁用。"
 
 first_time_setup:
   title: "初始化设置"

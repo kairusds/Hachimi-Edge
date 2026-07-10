@@ -14,7 +14,7 @@ static mut CREATE_RENDER_TEXTURE_FROM_SCREEN_ADDR: usize = 0;
 
 type CheckGamepadInputFn = extern "C" fn(this: *mut Il2CppObject) -> bool;
 extern "C" fn CheckGamepadInput(this: *mut Il2CppObject) -> bool {
-    if free_camera::is_enabled() {
+    if free_camera::is_game_input_capture_active() {
         false
     }
     else {

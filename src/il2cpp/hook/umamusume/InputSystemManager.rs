@@ -16,7 +16,7 @@ type BackKeyTriggeredFn = extern "C" fn() -> bool;
 type BackMouseTriggeredFn = extern "C" fn(this: *mut Il2CppObject) -> bool;
 
 fn should_block_game_input() -> bool {
-    free_camera::is_enabled()
+    free_camera::is_game_input_capture_active()
 }
 
 macro_rules! block_input_button {
