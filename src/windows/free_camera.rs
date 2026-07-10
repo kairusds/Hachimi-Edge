@@ -21,8 +21,6 @@ use crate::{
     }
 };
 
-use super::xinput;
-
 const LOOK_RADIUS: f32 = 5.0;
 const OVERLAY_FADE_IN: f32 = 0.18;
 const OVERLAY_HOLD: f32 = 1.6;
@@ -1065,6 +1063,32 @@ fn update_live_follow_camera_locked(
     state.camera_rotation = None;
 }
 
+pub fn refresh_paused_live_camera() {
+    let config = Hachimi::instance().config.load();
+    if !config.free_camera.enabled || config.free_camera.selfie_use_head_transform {
+        return;
+    }
+
+    let mut state = STATE.lock().unwrap();
+    if state.scene != CameraScene::Live || state.mode != FreeCameraMode::SelfieStick {
+        return;
+    }
+
+    let Some(position_target) = state.live_follow_target else {
+        return;
+    };
+    let look_at = position_target + state.live_follow_lookat_offset;
+    let angle = state.live_follow_offset.x.to_radians();
+    let distance = state.live_follow_offset.z;
+    state.camera_pos = Vec3::new(
+        look_at.x - angle.sin() * distance,
+        look_at.y + state.live_follow_offset.y,
+        look_at.z - angle.cos() * distance,
+    );
+    state.camera_look_at = look_at;
+    state.camera_rotation = None;
+}
+
 fn apply_live_selfie_dead_zone_locked(
     state: &mut FreeCameraState,
     config: &FreeCameraConfig,
@@ -1663,7 +1687,7 @@ pub fn tick() {
         ).into_owned());
     }
 
-    poll_xinput_locked(&mut state, config);
+    poll_unity_gamepad_locked(&mut state, config);
 
     let now = Instant::now();
     let delta = now.duration_since(state.last_tick).as_secs_f32();
@@ -2035,16 +2059,10 @@ fn next_live_part_locked(state: &mut FreeCameraState) {
     }
 }
 
-pub fn init_windows_gamepad_capture() {
-    xinput::ensure_hook();
-}
+fn poll_unity_gamepad_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
+    use crate::il2cpp::hook::Unity_InputSystem as input;
 
-pub fn uninit_windows_gamepad_capture() {
-    xinput::unhook();
-}
-
-fn poll_xinput_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
-    let Some(xstate) = xinput::get_state(0) else {
+    let Some(gamepad) = input::current_gamepad_state() else {
         state.gamepad.axes = GamepadAxes::default();
         state.gamepad.lb = false;
         state.gamepad.rb = false;
@@ -2052,31 +2070,30 @@ fn poll_xinput_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
         return;
     };
 
-    let gp = xstate.gamepad;
     state.gamepad.axes = GamepadAxes {
-        left_x: normalize_thumb(gp.thumb_lx),
-        left_y: normalize_thumb(gp.thumb_ly),
-        right_x: normalize_thumb(gp.thumb_rx),
-        right_y: normalize_thumb(gp.thumb_ry),
-        left_trigger: gp.left_trigger as f32 / 255.0,
-        right_trigger: gp.right_trigger as f32 / 255.0,
+        left_x: gamepad.left_x,
+        left_y: gamepad.left_y,
+        right_x: gamepad.right_x,
+        right_y: gamepad.right_y,
+        left_trigger: gamepad.left_trigger,
+        right_trigger: gamepad.right_trigger,
     };
-    state.gamepad.lb = gp.buttons & xinput::LEFT_SHOULDER != 0;
-    state.gamepad.rb = gp.buttons & xinput::RIGHT_SHOULDER != 0;
+    state.gamepad.lb = gamepad.buttons & input::LEFT_SHOULDER != 0;
+    state.gamepad.rb = gamepad.buttons & input::RIGHT_SHOULDER != 0;
 
-    let pressed = gp.buttons & !state.gamepad.last_buttons;
-    state.gamepad.last_buttons = gp.buttons;
+    let pressed = gamepad.buttons & !state.gamepad.last_buttons;
+    state.gamepad.last_buttons = gamepad.buttons;
 
     for (mask, button) in [
-        (xinput::A, GamepadButton::A),
-        (xinput::B, GamepadButton::B),
-        (xinput::X, GamepadButton::X),
-        (xinput::Y, GamepadButton::Y),
-        (xinput::DPAD_UP, GamepadButton::DpadUp),
-        (xinput::DPAD_DOWN, GamepadButton::DpadDown),
-        (xinput::DPAD_LEFT, GamepadButton::DpadLeft),
-        (xinput::DPAD_RIGHT, GamepadButton::DpadRight),
-        (xinput::START, GamepadButton::Start),
+        (input::BUTTON_SOUTH, GamepadButton::A),
+        (input::BUTTON_EAST, GamepadButton::B),
+        (input::BUTTON_WEST, GamepadButton::X),
+        (input::BUTTON_NORTH, GamepadButton::Y),
+        (input::DPAD_UP, GamepadButton::DpadUp),
+        (input::DPAD_DOWN, GamepadButton::DpadDown),
+        (input::DPAD_LEFT, GamepadButton::DpadLeft),
+        (input::DPAD_RIGHT, GamepadButton::DpadRight),
+        (input::START, GamepadButton::Start),
     ] {
         if pressed & mask != 0 {
             match button {
@@ -2094,16 +2111,6 @@ fn poll_xinput_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
         }
     }
 }
-
-fn normalize_thumb(value: i16) -> f32 {
-    if value >= 0 {
-        value as f32 / i16::MAX as f32
-    }
-    else {
-        value as f32 / -(i16::MIN as f32)
-    }
-}
-
 pub type DisabledHeadStore = Lazy<Mutex<HashMap<i32, HashSet<usize>>>>;
 
 pub fn new_disabled_head_store() -> Mutex<HashMap<i32, HashSet<usize>>> {

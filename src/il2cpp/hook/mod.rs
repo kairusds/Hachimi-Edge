@@ -129,6 +129,8 @@ pub mod Unity_TextMeshPro;
 
 #[cfg(target_os = "windows")]
 pub mod UnityEngine_InputLegacyModule;
+#[cfg(target_os = "windows")]
+pub mod Unity_InputSystem;
 
 pub mod LibNative_Runtime;
 pub mod umamusume;
@@ -159,7 +161,10 @@ pub fn init() {
     Unity_TextMeshPro::init();
 
     #[cfg(target_os = "windows")]
-    UnityEngine_InputLegacyModule::init();
+    {
+        UnityEngine_InputLegacyModule::init();
+        Unity_InputSystem::init();
+    }
 
     // Umamusume
     LibNative_Runtime::init();

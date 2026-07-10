@@ -6,6 +6,9 @@ use crate::{
 type CameraGetFloatFn = extern "C" fn(this: *mut Il2CppObject) -> f32;
 type CameraSetFloatFn = extern "C" fn(this: *mut Il2CppObject, value: f32);
 
+static mut SET_FIELD_OF_VIEW_ADDR: usize = 0;
+impl_addr_wrapper_fn!(set_fieldOfView, SET_FIELD_OF_VIEW_ADDR, (), this: *mut Il2CppObject, value: f32);
+
 fn should_override_near_clip() -> bool {
     free_camera::is_scene_enabled(CameraScene::Live) ||
         free_camera::is_scene_enabled(CameraScene::Race)
@@ -50,6 +53,10 @@ extern "C" fn Camera_get_farClipPlane(this: *mut Il2CppObject) -> f32 {
 pub fn init(_UnityEngine_CoreModule: *const Il2CppImage) {
     let get_fieldOfView_addr =
         il2cpp_resolve_icall(c"UnityEngine.Camera::get_fieldOfView()".as_ptr());
+    unsafe {
+        SET_FIELD_OF_VIEW_ADDR =
+            il2cpp_resolve_icall(c"UnityEngine.Camera::set_fieldOfView(System.Single)".as_ptr());
+    }
     let set_nearClipPlane_addr =
         il2cpp_resolve_icall(c"UnityEngine.Camera::set_nearClipPlane(System.Single)".as_ptr());
     let get_nearClipPlane_addr =
