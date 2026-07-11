@@ -29,6 +29,7 @@ static ALT_ENTER_PRESSED: AtomicBool = AtomicBool::new(false);
 static WNDPROC_ORIG: AtomicIsize = AtomicIsize::new(0);
 static GAME_WNDPROC_ORIG: AtomicIsize = AtomicIsize::new(0);
 static RESTORING_WNDPROC: AtomicBool = AtomicBool::new(false);
+static WNDPROC_INLINE_HOOKED: AtomicBool = AtomicBool::new(false);
 static RESIZE_WAIT_ACTIVE: AtomicBool = AtomicBool::new(false);
 static RESIZE_WAIT_FRAMES: AtomicI32 = AtomicI32::new(0);
 static RESIZE_GENERATION: AtomicU32 = AtomicU32::new(0);
@@ -393,6 +394,10 @@ unsafe extern "system" fn set_window_long_ptr_a_hook(
 }
 
 fn restore_original_wnd_proc(hwnd: HWND) {
+    if WNDPROC_INLINE_HOOKED.load(atomic::Ordering::Acquire) {
+        return;
+    }
+
     let freeform_orig = WNDPROC_ORIG.swap(0, atomic::Ordering::AcqRel);
     let game_orig = GAME_WNDPROC_ORIG.swap(0, atomic::Ordering::AcqRel);
     let orig = if game_orig != 0 { game_orig } else { freeform_orig };
@@ -409,7 +414,9 @@ fn restore_original_wnd_proc(hwnd: HWND) {
 
 extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let freeform_window = Hachimi::instance().config.load().windows.freeform_window;
-    let orig_addr = if freeform_window {
+    let inline_hooked = WNDPROC_INLINE_HOOKED.load(atomic::Ordering::Acquire);
+
+    let orig_addr = if inline_hooked || freeform_window {
         WNDPROC_ORIG.load(atomic::Ordering::Acquire)
     }
     else {
@@ -709,6 +716,27 @@ pub fn init() {
         else {
             WNDPROC_ORIG.store(wnd_proc_orig, atomic::Ordering::Release);
             GAME_WNDPROC_ORIG.store(wnd_proc_orig, atomic::Ordering::Release);
+
+            let actual_wndproc = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
+            if actual_wndproc != 0 && actual_wndproc != wnd_proc as *const () as isize {
+                info!("SetWindowLongPtrW was swallowed (localify detected), falling back to inline WndProc hook");
+                match hachimi.interceptor.hook(
+                    actual_wndproc as usize,
+                    wnd_proc as *const () as _
+                ) {
+                    Ok(_) => {
+                        let trampoline = hachimi.interceptor.get_trampoline_addr(
+                            wnd_proc as *const () as usize
+                        );
+                        WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
+                        GAME_WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
+                        WNDPROC_INLINE_HOOKED.store(true, atomic::Ordering::Release);
+                    }
+                    Err(e) => {
+                        error!("Failed to inline-hook window procedure: {}", e);
+                    }
+                }
+            }
 
             if let Ok(user32) = GetModuleHandleW(w!("user32.dll")) {
                 let set_window_long_ptr_w_addr = utils::get_proc_address(user32, c"SetWindowLongPtrW");
