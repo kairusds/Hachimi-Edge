@@ -35,6 +35,8 @@ static RESIZE_WAIT_FRAMES: AtomicI32 = AtomicI32::new(0);
 static RESIZE_GENERATION: AtomicU32 = AtomicU32::new(0);
 static RESIZE_WAIT_FOR_END_FRAME_ADDR: AtomicUsize = AtomicUsize::new(0);
 static FREEFORM_LANDSCAPE_CLOSE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+static SET_WINDOW_LONG_PTR_W_HOOK_ID: AtomicBool = AtomicBool::new(false);
+static SET_WINDOW_LONG_PTR_A_HOOK_ID: AtomicBool = AtomicBool::new(true);
 
 pub fn get_target_hwnd() -> HWND {
     HWND(TARGET_HWND.load(atomic::Ordering::Relaxed) as *mut _)
@@ -340,6 +342,7 @@ unsafe extern "system" fn set_window_long_ptr_w_hook(
     index: WINDOW_LONG_PTR_INDEX,
     new_long: isize
 ) -> isize {
+    std::hint::black_box(SET_WINDOW_LONG_PTR_W_HOOK_ID.load(atomic::Ordering::Relaxed));
     let orig_fn = get_orig_fn!(set_window_long_ptr_w_hook, SetWindowLongPtrFn);
     let target_hwnd = get_target_hwnd();
 
@@ -369,6 +372,7 @@ unsafe extern "system" fn set_window_long_ptr_a_hook(
     index: WINDOW_LONG_PTR_INDEX,
     new_long: isize
 ) -> isize {
+    std::hint::black_box(SET_WINDOW_LONG_PTR_A_HOOK_ID.load(atomic::Ordering::Relaxed));
     let orig_fn = get_orig_fn!(set_window_long_ptr_a_hook, SetWindowLongPtrFn);
     let target_hwnd = get_target_hwnd();
 

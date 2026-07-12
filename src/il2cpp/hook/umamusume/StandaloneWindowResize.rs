@@ -1,4 +1,4 @@
-use std::ptr::null_mut;
+use std::{ptr::null_mut, sync::atomic::{AtomicU8, Ordering}};
 
 use crate::{
     core::Hachimi,
@@ -19,6 +19,16 @@ static mut IS_WINDOW_DRAGGING_FIELD: *mut FieldInfo = null_mut();
 
 static mut SAVE_CHANGED_WIDTH_ADDR: usize = 0;
 static mut ENABLE_WINDOW_HIT_TEST_ADDR: usize = 0;
+static GET_LIMIT_SIZE_HOOK_ID: AtomicU8 = AtomicU8::new(1);
+static DISABLE_MAXIMIZEBOX_HOOK_ID: AtomicU8 = AtomicU8::new(2);
+static RESHAPE_ASPECT_RATIO_HOOK_ID: AtomicU8 = AtomicU8::new(3);
+static RESHAPE_ASPECT_RATIO2_HOOK_ID: AtomicU8 = AtomicU8::new(4);
+static KEEP_ASPECT_RATIO_HOOK_ID: AtomicU8 = AtomicU8::new(5);
+
+#[inline(always)]
+fn preserve_hook_identity(identity: &AtomicU8) {
+    std::hint::black_box(identity.load(Ordering::Relaxed));
+}
 
 fn enabled() -> bool {
     Hachimi::instance().config.load().windows.freeform_window
@@ -34,6 +44,7 @@ fn set_static_field<T>(field: *mut FieldInfo, value: T) {
 
 type GetLimitSizeFn = extern "C" fn() -> Vector2_t;
 extern "C" fn GetLimitSize() -> Vector2_t {
+    preserve_hook_identity(&GET_LIMIT_SIZE_HOOK_ID);
     if enabled() {
         return Vector2_t { x: f32::MAX, y: f32::MAX };
     }
@@ -43,6 +54,7 @@ extern "C" fn GetLimitSize() -> Vector2_t {
 
 type NoArgsFn = extern "C" fn();
 extern "C" fn DisableMaximizebox() {
+    preserve_hook_identity(&DISABLE_MAXIMIZEBOX_HOOK_ID);
     if enabled() {
         crate::windows::wnd_hook::apply_freeform_window_style();
         return;
@@ -52,6 +64,7 @@ extern "C" fn DisableMaximizebox() {
 }
 
 extern "C" fn ReshapeAspectRatio() {
+    preserve_hook_identity(&RESHAPE_ASPECT_RATIO_HOOK_ID);
     if !enabled() {
         get_orig_fn!(ReshapeAspectRatio, NoArgsFn)();
     }
@@ -59,12 +72,14 @@ extern "C" fn ReshapeAspectRatio() {
 
 type ResizeFn = extern "C" fn(width: f32, height: f32);
 extern "C" fn ReshapeAspectRatio2(width: f32, height: f32) {
+    preserve_hook_identity(&RESHAPE_ASPECT_RATIO2_HOOK_ID);
     if !enabled() {
         get_orig_fn!(ReshapeAspectRatio2, ResizeFn)(width, height);
     }
 }
 
 extern "C" fn KeepAspectRatio(width: f32, height: f32) {
+    preserve_hook_identity(&KEEP_ASPECT_RATIO_HOOK_ID);
     if enabled() {
         crate::windows::wnd_hook::apply_freeform_window_style();
         return;
