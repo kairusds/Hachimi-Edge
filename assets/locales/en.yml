@@ -36,6 +36,7 @@ edit: "Edit"
 remove: "Remove"
 add: "Add"
 save_changes: "Save changes?"
+back: "Back"
 
 menu:
   check_for_updates: "\uf0aa Check for updates"
@@ -239,7 +240,7 @@ config_editor:
   ui_loading_show_orientation_guide: "Hide now loading orientation guide"
   replace_to_builtin_font: "Use default game font"
   custom_title_name: "Custom window title"
-  open_external_link_with_hachimi: "Open external link with Hachimi"
+  open_external_link_ingame: "Open external link ingame"
 
 theme_editor:
   title: "GUI Theme Editor"
@@ -386,11 +387,10 @@ steam_overlay_conflict_dialog:
     the game again to re-enable the Hachimi overlay.
 
 external_link_dialog:
-  back: "Back"
-  open_origin_link: "Open Origin Link"
+  open_original_link: "Open Original Link"
   title:
     notice: "Notice"
-    general: "External Link"
+    general: "Ingame Browser"
     gacha: "Gacha"
     help: "Help"
 

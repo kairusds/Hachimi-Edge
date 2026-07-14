@@ -1,7 +1,7 @@
 use crate::core::game::Region;
 use crate::core::gui::Window;
-use crate::core::Gui;
 use crate::core::Hachimi;
+use crate::core::{gui, Gui};
 use crate::il2cpp::types::Il2CppString;
 use crate::windows::wnd_hook::get_target_hwnd;
 use egui::Context;
@@ -195,7 +195,7 @@ impl Drop for InnerWebView {
 static mut DIALOG_WEBVIEW: Lazy<DialogWebView> =
     Lazy::new(|| DialogWebView::new(get_target_hwnd()));
 
-pub fn process_massage(umsg: c_uint, lparam: LPARAM) {
+pub fn process_message(umsg: c_uint, lparam: LPARAM) {
     unsafe {
         match umsg {
             WM_OPEN_WEBVIEW => {
@@ -260,17 +260,8 @@ fn general_url(
             url_type = base_url[33..pos].to_string();
         }
         let translated_title_key = format!("external_link_dialog.title.{url_type}");
-        let title = {
-            if let Some(translated) =
-                crate::_rust_i18n_try_translate(&rust_i18n::locale(), &translated_title_key)
-            {
-                translated.into()
-            } else {
-                rust_i18n::CowStr::from(t!("external_link_dialog.title.general").to_string())
-                    .into_inner()
-            }
-        }
-        .to_string();
+        let title = crate::_rust_i18n_try_translate(&rust_i18n::locale(), &translated_title_key)
+            .unwrap_or(t!("external_link_dialog.title.general"));
         let api_url: Option<String> = match url_type.as_str() {
             "gacha" => gacha_url(url, params),
             _ => Some(url.replacen("https://www.games.umamusume.jp/#/", BASE_API_URL, 1)),
@@ -287,7 +278,7 @@ fn il2cppstring_as_string(string: &Il2CppString) -> String {
         unsafe { std::slice::from_raw_parts(string.chars.as_ptr(), string.length as usize) };
     String::from_utf16_lossy(slice)
 }
-fn pares_url(url: &String) -> (String, HashMap<String, String>) {
+fn parse_url(url: &String) -> (String, HashMap<String, String>) {
     if let Some(pos) = url.find('?') {
         (
             url[..pos].to_string(),
@@ -310,14 +301,14 @@ pub fn open(url: *mut Il2CppString) -> bool {
             .config
             .load()
             .windows
-            .open_external_link_with_hachimi
+            .open_external_link_ingame
     {
         return false;
     }
 
     let url_string = il2cppstring_as_string(unsafe { &*url });
 
-    let (base_url, params) = pares_url(&url_string);
+    let (base_url, params) = parse_url(&url_string);
     for handler in URL_HANDLER {
         if let Some((api_url, title)) = handler(&url_string, &base_url, &params) {
             unsafe {
@@ -360,12 +351,13 @@ impl Window for ExternalLinkDialog {
         let view_width = view_rect.width();
         let view_height = view_rect.height();
 
-        let target_height = view_height * 0.9;
-        let target_width = if view_width * 0.9 > 300f32 {
-            300f32
-        } else {
-            view_width * 0.9
-        };
+        let gui_scale = gui::get_scale(ctx);
+
+        let target_height = view_height * gui_scale;
+        let mut target_width = view_width * gui_scale;
+        if target_width > 320f32 {
+            target_width = 320f32;
+        }
 
         let resp = egui::Window::new(self.title.clone())
             .pivot(egui::Align2::CENTER_CENTER)
@@ -382,7 +374,7 @@ impl Window for ExternalLinkDialog {
                 ui.add_space(4.0);
                 unsafe {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                        if ui.button(t!("external_link_dialog.back")).clicked() {
+                        if ui.button(t!("back")).clicked() {
                             let _ = PostMessageW(
                                 Some(get_target_hwnd()),
                                 WM_WEBVIEW_GOBACK,
@@ -391,7 +383,7 @@ impl Window for ExternalLinkDialog {
                             );
                         }
                         if ui
-                            .button(t!("external_link_dialog.open_origin_link"))
+                            .button(t!("external_link_dialog.open_original_link"))
                             .clicked()
                         {
                             ShellExecuteW(
@@ -476,7 +468,9 @@ pub fn has_available_webview() -> bool {
                     if version_info.to_string().is_ok() {
                         available = true
                     }
-                    windows::Win32::System::Com::CoTaskMemFree(Some(version_info.as_ptr() as *const _));
+                    windows::Win32::System::Com::CoTaskMemFree(Some(
+                        version_info.as_ptr() as *const _
+                    ));
                 }
                 available
             }
