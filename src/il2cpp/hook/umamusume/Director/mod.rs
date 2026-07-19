@@ -4,8 +4,8 @@ use crate::{
         ext::StringExt,
         sql,
         symbols::{
-            get_assembly_image, get_class, get_field_from_name, get_method_addr, Array, IList,
-            SingletonLike,
+            get_assembly_image, get_class, get_field_from_name, get_field_object_value,
+            get_method_addr, Array, IList, SingletonLike,
         },
         types::*,
     },
@@ -32,6 +32,11 @@ use crate::{
 #[cfg(target_os = "windows")]
 static LIVE_DISABLED_HEADS: free_camera_hooks::DisabledHeadStore =
     once_cell::sync::Lazy::new(free_camera_hooks::new_disabled_head_store);
+
+#[cfg(target_os = "windows")]
+static mut MULTI_CAMERA_FINAL_COMPOSITE_ARRAY_FIELD: *mut FieldInfo = null_mut();
+#[cfg(target_os = "windows")]
+static mut SET_MULTI_CAMERA_FADE_VALUE_ADDR: usize = 0;
 
 #[cfg(target_os = "windows")]
 const LIVE_CHARACTER_POSITIONS: &[i32] = &[
@@ -256,11 +261,54 @@ fn patch_champions_live(this: *mut Il2CppObject) {
 }
 
 type AwakeFn = extern "C" fn(this: *mut Il2CppObject);
+
+#[cfg(target_os = "windows")]
+fn update_free_camera_live_availability(this: *mut Il2CppObject) {
+    let load_settings = get_LoadSettings(this);
+    if !load_settings.is_null() {
+        free_camera::set_live_music_id(LiveLoadSettings::get_MusicId(load_settings));
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn force_free_camera_fullscreen(this: *mut Il2CppObject) {
+    if this.is_null() || !free_camera::is_scene_enabled(CameraScene::Live) {
+        return;
+    }
+
+    let field = unsafe { MULTI_CAMERA_FINAL_COMPOSITE_ARRAY_FIELD };
+    let setter_addr = unsafe { SET_MULTI_CAMERA_FADE_VALUE_ADDR };
+    if field.is_null() || setter_addr == 0 {
+        return;
+    }
+
+    let composites = get_field_object_value::<Il2CppArray>(this, field);
+    if composites.is_null() {
+        return;
+    }
+
+    let set_fade_value: extern "C" fn(*mut Il2CppObject, f32) =
+        unsafe { std::mem::transmute(setter_addr) };
+    let composites = Array::<*mut Il2CppObject>::from(composites);
+    for composite in unsafe { composites.as_slice() }.iter().copied() {
+        if !composite.is_null() {
+            set_fade_value(composite, 0.0);
+        }
+    }
+}
+
 extern "C" fn Awake(this: *mut Il2CppObject) {
     IS_LIVE_SCENE.store(true, Ordering::Release);
+
+    #[cfg(target_os = "windows")]
+    update_free_camera_live_availability(this);
+
     get_orig_fn!(Awake, AwakeFn)(this);
 
     IS_LIVE_PAUSED.store(IsPauseLive(this), Ordering::Release);
+
+    #[cfg(target_os = "windows")]
+    update_free_camera_live_availability(this);
 
     if Hachimi::instance().config.load().champions_live_show_text {
         patch_champions_live(this);
@@ -339,23 +387,10 @@ fn update_live_free_camera_target(this: *mut Il2CppObject) {
 }
 
 #[cfg(target_os = "windows")]
-pub fn apply_paused_free_camera() {
-    if !is_live_paused() {
-        return;
-    }
-
-    let director = instance();
-    if director.is_null() {
-        return;
-    }
-
-    free_camera::set_live_active();
+fn apply_free_camera_to_main_camera(director: *mut Il2CppObject) {
     if !free_camera::is_scene_enabled(CameraScene::Live) {
         return;
     }
-
-    update_live_free_camera_target(director);
-    free_camera::refresh_paused_live_camera();
 
     let camera_transform = get_MainCameraTransform(director);
     if camera_transform.is_null() {
@@ -382,6 +417,33 @@ pub fn apply_paused_free_camera() {
 }
 
 #[cfg(target_os = "windows")]
+pub(crate) fn enforce_live_free_camera_output(director: *mut Il2CppObject) {
+    force_free_camera_fullscreen(director);
+    apply_free_camera_to_main_camera(director);
+}
+
+#[cfg(target_os = "windows")]
+pub fn apply_paused_free_camera() {
+    if !is_live_paused() {
+        return;
+    }
+
+    let director = instance();
+    if director.is_null() {
+        return;
+    }
+
+    free_camera::set_live_active();
+    if !free_camera::is_scene_enabled(CameraScene::Live) {
+        return;
+    }
+
+    update_live_free_camera_target(director);
+    free_camera::refresh_paused_live_camera();
+    enforce_live_free_camera_output(director);
+}
+
+#[cfg(target_os = "windows")]
 extern "C" fn Director_AlterUpdate(
     this: *mut Il2CppObject,
     delta_time: f32,
@@ -396,6 +458,7 @@ extern "C" fn Director_AlterUpdate(
     free_camera::set_live_active();
     apply_live_character_options(this);
     update_live_free_camera_target(this);
+    enforce_live_free_camera_output(this);
 }
 
 #[cfg(target_os = "windows")]
@@ -442,6 +505,18 @@ pub fn init(umamusume: *const Il2CppImage) {
                 get_method_addr(Director, c"get_MainCameraTransform", 0);
             GET_CHARACTER_OBJECT_FROM_POSITION_ID_ADDR =
                 get_method_addr(Director, c"GetCharacterObjectFromPositionId", 1);
+            MULTI_CAMERA_FINAL_COMPOSITE_ARRAY_FIELD =
+                get_field_from_name(Director, c"_multiCameraFinalCompositeArray");
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    if let Ok(multi_camera_final_composite) =
+        get_class(umamusume, c"Gallop.Live", c"MultiCameraFinalComposite")
+    {
+        unsafe {
+            SET_MULTI_CAMERA_FADE_VALUE_ADDR =
+                get_method_addr(multi_camera_final_composite, c"set_fadeValue", 1);
         }
     }
 

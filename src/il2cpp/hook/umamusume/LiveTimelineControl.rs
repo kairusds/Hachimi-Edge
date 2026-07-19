@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::{
     core::free_camera::{self, CameraScene},
     il2cpp::{
-        symbols::{get_class, get_method_addr},
+        symbols::{get_class, get_field_from_name, get_field_object_value, get_method_addr},
         types::*,
     },
 };
@@ -11,6 +11,38 @@ use crate::{
 use super::{Director, PostEffectUpdateInfo_DOF};
 
 static LIVE_TIMELINE_CONTROL: AtomicUsize = AtomicUsize::new(0);
+static mut POST_FILM_KEYS_FIELD: *mut FieldInfo = std::ptr::null_mut();
+static mut POST_FILM_2_KEYS_FIELD: *mut FieldInfo = std::ptr::null_mut();
+static mut POST_FILM_3_KEYS_FIELD: *mut FieldInfo = std::ptr::null_mut();
+static mut CLEAR_POST_FILM_KEYS_ADDR: usize = 0;
+
+fn clear_live_screen_effects(sheet: *mut Il2CppObject) {
+    if sheet.is_null() || !free_camera::should_remove_live_screen_effects() {
+        return;
+    }
+
+    let clear_addr = unsafe { CLEAR_POST_FILM_KEYS_ADDR };
+    if clear_addr == 0 {
+        return;
+    }
+    let clear: extern "C" fn(this: *mut Il2CppObject) =
+        unsafe { std::mem::transmute(clear_addr) };
+
+    for field in unsafe {
+        [
+            POST_FILM_KEYS_FIELD,
+            POST_FILM_2_KEYS_FIELD,
+            POST_FILM_3_KEYS_FIELD,
+        ]
+    } {
+        if !field.is_null() {
+            let keys = get_field_object_value::<Il2CppObject>(sheet, field);
+            if !keys.is_null() {
+                clear(keys);
+            }
+        }
+    }
+}
 
 pub(crate) fn set_current(this: *mut Il2CppObject) {
     if !this.is_null() {
@@ -25,6 +57,11 @@ fn clear_current() {
 fn should_remove_live_camera_effects() -> bool {
     free_camera::set_live_active();
     free_camera::should_remove_camera_effects()
+}
+
+fn should_override_live_camera() -> bool {
+    free_camera::set_live_active();
+    free_camera::is_scene_enabled(CameraScene::Live)
 }
 
 fn apply_current_live_character_options() {
@@ -52,6 +89,8 @@ type LiveCameraLookAtFn = extern "C" fn(
 );
 type LiveVoidFrameFn =
     extern "C" fn(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32);
+type LiveBoolFrameFn =
+    extern "C" fn(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32) -> bool;
 type LiveVoidFrameTimeFn = extern "C" fn(
     this: *mut Il2CppObject,
     sheet: *mut Il2CppObject,
@@ -87,10 +126,13 @@ extern "C" fn AlterUpdate_CameraPos(
     current_frame: i32,
     current_time: f32,
     sheet_index: i32,
-    is_use_camera_motion: bool,
+    mut is_use_camera_motion: bool,
 ) {
     free_camera::set_live_active();
-    let frame = if free_camera::is_scene_enabled(CameraScene::Live) {
+    clear_live_screen_effects(sheet);
+    let free_camera_active = free_camera::is_scene_enabled(CameraScene::Live);
+    let frame = if free_camera_active {
+        is_use_camera_motion = false;
         0
     } else {
         current_frame
@@ -113,6 +155,7 @@ extern "C" fn AlterUpdate_CameraLookAt(
     out_look_at: *mut Vector3_t,
 ) {
     free_camera::set_live_active();
+    clear_live_screen_effects(sheet);
     get_orig_fn!(AlterUpdate_CameraLookAt, LiveCameraLookAtFn)(
         this,
         sheet,
@@ -134,6 +177,10 @@ extern "C" fn LiveTimelineControl_AlterLateUpdate(this: *mut Il2CppObject) {
     free_camera::tick();
     get_orig_fn!(LiveTimelineControl_AlterLateUpdate, NoArgsFn)(this);
     apply_current_live_character_options();
+    let director = Director::instance();
+    if !director.is_null() {
+        Director::enforce_live_free_camera_output(director);
+    }
 }
 
 extern "C" fn LiveTimelineControl_OnDestroy(this: *mut Il2CppObject) {
@@ -206,7 +253,27 @@ macro_rules! live_skip_void_frame {
     };
 }
 
-macro_rules! live_skip_void_frame_time {
+macro_rules! live_secondary_camera_void_frame {
+    ($hook:ident, $type:ty) => {
+        extern "C" fn $hook(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32) {
+            let _guard = free_camera::begin_live_secondary_camera_update();
+            get_orig_fn!($hook, $type)(this, sheet, current_frame);
+        }
+    };
+}
+
+macro_rules! live_main_camera_void_frame {
+    ($hook:ident, $type:ty) => {
+        extern "C" fn $hook(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32) {
+            if should_override_live_camera() {
+                return;
+            }
+            get_orig_fn!($hook, $type)(this, sheet, current_frame);
+        }
+    };
+}
+
+macro_rules! live_secondary_camera_void_frame_time {
     ($hook:ident, $type:ty) => {
         extern "C" fn $hook(
             this: *mut Il2CppObject,
@@ -214,31 +281,43 @@ macro_rules! live_skip_void_frame_time {
             current_frame: i32,
             current_time: f32,
         ) {
-            if should_remove_live_camera_effects() {
-                return;
-            }
+            let _guard = free_camera::begin_live_secondary_camera_update();
             get_orig_fn!($hook, $type)(this, sheet, current_frame, current_time);
         }
     };
 }
 
-live_skip_void_frame_time!(AlterUpdate_MultiCameraPosition, LiveVoidFrameTimeFn);
-live_skip_void_frame_time!(AlterUpdate_MultiCameraLookAt, LiveVoidFrameTimeFn);
-live_skip_void_frame!(AlterUpdate_MultiCameraRadialBlur, LiveVoidFrameFn);
-live_skip_void_frame_time!(AlterUpdate_EyeCameraPosition, LiveVoidFrameTimeFn);
+live_secondary_camera_void_frame_time!(AlterUpdate_MultiCameraPosition, LiveVoidFrameTimeFn);
+live_secondary_camera_void_frame_time!(AlterUpdate_MultiCameraLookAt, LiveVoidFrameTimeFn);
+live_secondary_camera_void_frame!(AlterUpdate_MultiCameraRadialBlur, LiveVoidFrameFn);
+live_secondary_camera_void_frame_time!(AlterUpdate_EyeCameraPosition, LiveVoidFrameTimeFn);
+live_secondary_camera_void_frame_time!(AlterUpdate_MonitorCameraPosition, LiveVoidFrameTimeFn);
 live_skip_void_frame!(AlterUpdate_PostEffect_BloomDiffusion, LiveVoidFrameFn);
 live_skip_void_frame!(AlterUpdate_TiltShift, LiveVoidFrameFn);
-live_skip_void_frame!(AlterUpdate_CameraLayer, LiveVoidFrameFn);
-live_skip_void_frame!(AlterUpdate_CameraSwitcher, LiveVoidFrameFn);
-live_skip_void_frame_time!(AlterUpdate_MonitorCameraLookAt, LiveVoidFrameTimeFn);
-live_skip_void_frame_time!(AlterUpdate_EyeCameraLookAt, LiveVoidFrameTimeFn);
+live_main_camera_void_frame!(AlterUpdate_CameraLayer, LiveVoidFrameFn);
+live_main_camera_void_frame!(AlterUpdate_CameraSwitcher, LiveVoidFrameFn);
+live_main_camera_void_frame!(AlterUpdate_CameraMotion, LiveVoidFrameFn);
+live_main_camera_void_frame!(AlterUpdate_HandShakeCamera, LiveVoidFrameFn);
+live_secondary_camera_void_frame_time!(AlterUpdate_MonitorCameraLookAt, LiveVoidFrameTimeFn);
+live_secondary_camera_void_frame_time!(AlterUpdate_EyeCameraLookAt, LiveVoidFrameTimeFn);
+
+extern "C" fn AlterLateUpdate_CameraMotion(
+    this: *mut Il2CppObject,
+    sheet: *mut Il2CppObject,
+    current_frame: i32,
+) -> bool {
+    if should_override_live_camera() {
+        return false;
+    }
+    get_orig_fn!(AlterLateUpdate_CameraMotion, LiveBoolFrameFn)(this, sheet, current_frame)
+}
 
 extern "C" fn AlterUpdate_CameraFov(
     this: *mut Il2CppObject,
     sheet: *mut Il2CppObject,
     current_frame: i32,
 ) {
-    if should_remove_live_camera_effects() {
+    if should_override_live_camera() {
         return;
     }
     get_orig_fn!(AlterUpdate_CameraFov, LiveVoidFrameFn)(this, sheet, current_frame);
@@ -249,7 +328,7 @@ extern "C" fn AlterUpdate_CameraRoll(
     sheet: *mut Il2CppObject,
     current_frame: i32,
 ) {
-    if should_remove_live_camera_effects() {
+    if should_override_live_camera() {
         return;
     }
     get_orig_fn!(AlterUpdate_CameraRoll, LiveVoidFrameFn)(this, sheet, current_frame);
@@ -288,6 +367,27 @@ pub fn init(umamusume: *const Il2CppImage) {
     if let Ok(live_timeline_control) =
         get_class(umamusume, c"Gallop.Live.Cutt", c"LiveTimelineControl")
     {
+        if let Ok(live_timeline_work_sheet) =
+            get_class(umamusume, c"Gallop.Live.Cutt", c"LiveTimelineWorkSheet")
+        {
+            unsafe {
+                POST_FILM_KEYS_FIELD =
+                    get_field_from_name(live_timeline_work_sheet, c"postFilmKeys");
+                POST_FILM_2_KEYS_FIELD =
+                    get_field_from_name(live_timeline_work_sheet, c"postFilm2Keys");
+                POST_FILM_3_KEYS_FIELD =
+                    get_field_from_name(live_timeline_work_sheet, c"postFilm3Keys");
+            }
+        }
+
+        if let Ok(post_film_keys) =
+            get_class(umamusume, c"Gallop.Live.Cutt", c"LiveTimelineKeyPostFilmDataList")
+        {
+            unsafe {
+                CLEAR_POST_FILM_KEYS_ADDR = get_method_addr(post_film_keys, c"Clear", 0);
+            }
+        }
+
         let AlterUpdate_CameraPos_addr =
             get_method_addr(live_timeline_control, c"AlterUpdate_CameraPos", 5);
         let AlterUpdate_CameraLookAt_addr =
@@ -309,6 +409,8 @@ pub fn init(umamusume: *const Il2CppImage) {
         );
         let AlterUpdate_EyeCameraPosition_addr =
             get_method_addr(live_timeline_control, c"AlterUpdate_EyeCameraPosition", 3);
+        let AlterUpdate_MonitorCameraPosition_addr =
+            get_method_addr(live_timeline_control, c"AlterUpdate_MonitorCameraPosition", 3);
         let AlterUpdate_PostEffect_BloomDiffusion_addr = get_method_addr(
             live_timeline_control,
             c"AlterUpdate_PostEffect_BloomDiffusion",
@@ -322,6 +424,12 @@ pub fn init(umamusume: *const Il2CppImage) {
             get_method_addr(live_timeline_control, c"AlterUpdate_CameraFov", 2);
         let AlterUpdate_CameraRoll_addr =
             get_method_addr(live_timeline_control, c"AlterUpdate_CameraRoll", 2);
+        let AlterUpdate_CameraMotion_addr =
+            get_method_addr(live_timeline_control, c"AlterUpdate_CameraMotion", 2);
+        let AlterLateUpdate_CameraMotion_addr =
+            get_method_addr(live_timeline_control, c"AlterLateUpdate_CameraMotion", 2);
+        let AlterUpdate_HandShakeCamera_addr =
+            get_method_addr(live_timeline_control, c"AlterUpdate_HandShakeCamera", 2);
         let AlterUpdate_CameraSwitcher_addr =
             get_method_addr(live_timeline_control, c"AlterUpdate_CameraSwitcher", 2);
         let AlterUpdate_MonitorCameraLookAt_addr =
@@ -357,6 +465,10 @@ pub fn init(umamusume: *const Il2CppImage) {
             AlterUpdate_EyeCameraPosition
         );
         new_hook!(
+            AlterUpdate_MonitorCameraPosition_addr,
+            AlterUpdate_MonitorCameraPosition
+        );
+        new_hook!(
             AlterUpdate_PostEffect_BloomDiffusion_addr,
             AlterUpdate_PostEffect_BloomDiffusion
         );
@@ -364,6 +476,15 @@ pub fn init(umamusume: *const Il2CppImage) {
         new_hook!(AlterUpdate_CameraLayer_addr, AlterUpdate_CameraLayer);
         new_hook!(AlterUpdate_CameraFov_addr, AlterUpdate_CameraFov);
         new_hook!(AlterUpdate_CameraRoll_addr, AlterUpdate_CameraRoll);
+        new_hook!(AlterUpdate_CameraMotion_addr, AlterUpdate_CameraMotion);
+        new_hook!(
+            AlterLateUpdate_CameraMotion_addr,
+            AlterLateUpdate_CameraMotion
+        );
+        new_hook!(
+            AlterUpdate_HandShakeCamera_addr,
+            AlterUpdate_HandShakeCamera
+        );
         new_hook!(AlterUpdate_CameraSwitcher_addr, AlterUpdate_CameraSwitcher);
         new_hook!(
             AlterUpdate_MonitorCameraLookAt_addr,

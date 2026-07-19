@@ -3780,6 +3780,10 @@ impl Window for FreeCameraSettingsWindow {
                                 ui.label("");
                                 ui.end_row();
 
+                                ui.label(t!("free_camera.live_remove_screen_effects"));
+                                ui.checkbox(&mut cfg.live_remove_screen_effects, "");
+                                ui.end_row();
+
                                 ui.label(t!("free_camera.live_disable_character_teleport"));
                                 ui.checkbox(&mut cfg.live_disable_character_teleport, "");
                                 ui.end_row();

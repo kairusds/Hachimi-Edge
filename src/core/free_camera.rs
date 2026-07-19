@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     sync::{Mutex, atomic::{AtomicBool, Ordering}},
     time::Instant,
 };
@@ -7,12 +8,13 @@ use once_cell::sync::Lazy;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
-use crate::{core::Hachimi, il2cpp::types::{Quaternion_t, Vector3_t}};
+use crate::{core::{gui, Hachimi}, il2cpp::types::{Quaternion_t, Vector3_t}};
 
 const LOOK_RADIUS: f32 = 5.0;
 const OVERLAY_FADE_IN: f32 = 0.18;
 const OVERLAY_HOLD: f32 = 1.6;
 const OVERLAY_FADE_OUT: f32 = 0.35;
+const UNSUPPORTED_LIVE_MUSIC_ID: i32 = 1157;
 
 pub const LIVE_POSITION_CHOICES: &[(&str, i32)] = &[
     ("Place01", 0x1),
@@ -167,6 +169,7 @@ impl Default for FreeCameraKeybinds {
 pub struct FreeCameraConfig {
     pub enabled: bool,
     pub remove_camera_effects: bool,
+    pub live_remove_screen_effects: bool,
     pub live_disable_character_teleport: bool,
     pub live_force_all_characters_visible: bool,
     pub show_overlay: bool,
@@ -205,6 +208,7 @@ impl Default for FreeCameraConfig {
         Self {
             enabled: false,
             remove_camera_effects: true,
+            live_remove_screen_effects: false,
             live_disable_character_teleport: false,
             live_force_all_characters_visible: false,
             show_overlay: true,
@@ -714,13 +718,64 @@ impl FreeCameraState {
 static STATE: Lazy<Mutex<FreeCameraState>> = Lazy::new(|| Mutex::new(FreeCameraState::new()));
 static OVERLAY_MESSAGE: Lazy<Mutex<Option<OverlayMessage>>> = Lazy::new(|| Mutex::new(None));
 static RELOAD_CONFIG_REQUESTED: AtomicBool = AtomicBool::new(false);
+static LIVE_UNSUPPORTED: AtomicBool = AtomicBool::new(false);
+
+thread_local! {
+    static LIVE_SECONDARY_CAMERA_UPDATE_DEPTH: Cell<u32> = const { Cell::new(0) };
+}
+
+pub struct LiveSecondaryCameraUpdateGuard;
+
+impl Drop for LiveSecondaryCameraUpdateGuard {
+    fn drop(&mut self) {
+        LIVE_SECONDARY_CAMERA_UPDATE_DEPTH.with(|depth| {
+            depth.set(depth.get().saturating_sub(1));
+        });
+    }
+}
+
+pub fn begin_live_secondary_camera_update() -> LiveSecondaryCameraUpdateGuard {
+    LIVE_SECONDARY_CAMERA_UPDATE_DEPTH.with(|depth| {
+        depth.set(depth.get().saturating_add(1));
+    });
+    LiveSecondaryCameraUpdateGuard
+}
+
+pub fn is_live_secondary_camera_update() -> bool {
+    LIVE_SECONDARY_CAMERA_UPDATE_DEPTH.with(|depth| depth.get() != 0)
+}
 
 pub fn reload_runtime_config() {
     RELOAD_CONFIG_REQUESTED.store(true, Ordering::Release);
 }
 
 pub fn is_enabled() -> bool {
-    Hachimi::instance().config.load().free_camera.enabled
+    Hachimi::instance().config.load().free_camera.enabled &&
+        !LIVE_UNSUPPORTED.load(Ordering::Acquire)
+}
+
+pub fn set_live_music_id(music_id: i32) {
+    let unsupported = music_id == UNSUPPORTED_LIVE_MUSIC_ID;
+    let was_unsupported = LIVE_UNSUPPORTED.swap(unsupported, Ordering::AcqRel);
+
+    if !unsupported {
+        return;
+    }
+
+    let config = Hachimi::instance().config.load();
+    let mut state = STATE.lock().unwrap();
+    if state.scene == CameraScene::Live {
+        state.scene = CameraScene::None;
+        state.reset_with_config(&config.free_camera);
+    }
+    drop(state);
+    *OVERLAY_MESSAGE.lock().unwrap() = None;
+
+    if !was_unsupported && config.free_camera.enabled {
+        gui::request_notification(gui::NotificationRequest::Custom(
+            t!("notification.free_camera_unavailable_live_1157").into_owned(),
+        ));
+    }
 }
 
 pub fn is_game_input_capture_active() -> bool {
@@ -821,7 +876,9 @@ pub fn scene() -> CameraScene {
 
 pub fn is_scene_enabled(scene: CameraScene) -> bool {
     let config = Hachimi::instance().config.load();
-    config.free_camera.enabled && STATE.lock().unwrap().scene == scene
+    config.free_camera.enabled &&
+        !LIVE_UNSUPPORTED.load(Ordering::Acquire) &&
+        STATE.lock().unwrap().scene == scene
 }
 
 pub fn mode() -> FreeCameraMode {
@@ -912,6 +969,14 @@ pub fn should_remove_camera_effects() -> bool {
         STATE.lock().unwrap().scene == CameraScene::Live
 }
 
+pub fn should_remove_live_screen_effects() -> bool {
+    let config = Hachimi::instance().config.load();
+    config.free_camera.enabled &&
+        config.free_camera.live_remove_screen_effects &&
+        !LIVE_UNSUPPORTED.load(Ordering::Acquire) &&
+        STATE.lock().unwrap().scene == CameraScene::Live
+}
+
 pub fn should_disable_live_character_teleport() -> bool {
     let config = Hachimi::instance().config.load();
     config.free_camera.enabled &&
@@ -928,7 +993,7 @@ pub fn should_force_live_characters_visible() -> bool {
 
 pub fn set_live_active() {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.free_camera.enabled || LIVE_UNSUPPORTED.load(Ordering::Acquire) {
         return;
     }
 
@@ -949,6 +1014,10 @@ pub fn set_race_active() {
 }
 
 pub fn end_scene(scene: CameraScene) {
+    if scene == CameraScene::Live {
+        LIVE_UNSUPPORTED.store(false, Ordering::Release);
+    }
+
     let config = Hachimi::instance().config.load();
     let mut state = STATE.lock().unwrap();
     if state.scene == scene {
