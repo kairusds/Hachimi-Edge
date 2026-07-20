@@ -719,6 +719,7 @@ static STATE: Lazy<Mutex<FreeCameraState>> = Lazy::new(|| Mutex::new(FreeCameraS
 static OVERLAY_MESSAGE: Lazy<Mutex<Option<OverlayMessage>>> = Lazy::new(|| Mutex::new(None));
 static RELOAD_CONFIG_REQUESTED: AtomicBool = AtomicBool::new(false);
 static LIVE_UNSUPPORTED: AtomicBool = AtomicBool::new(false);
+static TOGGLE_LIVE_PAUSE_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 thread_local! {
     static LIVE_SECONDARY_CAMERA_UPDATE_DEPTH: Cell<u32> = const { Cell::new(0) };
@@ -1016,6 +1017,7 @@ pub fn set_race_active() {
 pub fn end_scene(scene: CameraScene) {
     if scene == CameraScene::Live {
         LIVE_UNSUPPORTED.store(false, Ordering::Release);
+        TOGGLE_LIVE_PAUSE_REQUESTED.store(false, Ordering::Release);
     }
 
     let config = Hachimi::instance().config.load();
@@ -1023,6 +1025,16 @@ pub fn end_scene(scene: CameraScene) {
     if state.scene == scene {
         state.scene = CameraScene::None;
         state.reset_with_config(&config.free_camera);
+    }
+}
+
+pub fn take_toggle_live_pause_request() -> bool {
+    TOGGLE_LIVE_PAUSE_REQUESTED.swap(false, Ordering::AcqRel)
+}
+
+fn request_toggle_live_pause_locked(state: &FreeCameraState) {
+    if state.scene == CameraScene::Live {
+        TOGGLE_LIVE_PAUSE_REQUESTED.store(true, Ordering::Release);
     }
 }
 
@@ -1706,8 +1718,8 @@ pub fn on_gamepad_button(button: GamepadButton, pressed: bool) {
         GamepadButton::LeftBumper => state.gamepad.lb = pressed,
         GamepadButton::RightBumper => state.gamepad.rb = pressed,
         _ if pressed => match button {
-            GamepadButton::A => next_target_locked(&mut state),
-            GamepadButton::B => previous_target_locked(&mut state),
+            GamepadButton::A => request_toggle_live_pause_locked(&state),
+            GamepadButton::B => reverse_locked(&mut state),
             GamepadButton::X => cycle_mode_locked(&mut state),
             GamepadButton::Y => {
                 let config = Hachimi::instance().config.load();
@@ -1717,7 +1729,6 @@ pub fn on_gamepad_button(button: GamepadButton, pressed: bool) {
             GamepadButton::DpadRight => next_target_locked(&mut state),
             GamepadButton::DpadUp => next_live_part_locked(&mut state),
             GamepadButton::DpadDown => previous_live_part_locked(&mut state),
-            GamepadButton::Start => reverse_locked(&mut state),
             _ => (),
         },
         _ => (),
@@ -1736,7 +1747,6 @@ pub enum GamepadButton {
     DpadDown,
     DpadLeft,
     DpadRight,
-    Start,
 }
 
 pub fn tick() {
@@ -2174,19 +2184,17 @@ fn poll_unity_gamepad_locked(state: &mut FreeCameraState, config: &FreeCameraCon
         (input::DPAD_DOWN, GamepadButton::DpadDown),
         (input::DPAD_LEFT, GamepadButton::DpadLeft),
         (input::DPAD_RIGHT, GamepadButton::DpadRight),
-        (input::START, GamepadButton::Start),
     ] {
         if pressed & mask != 0 {
             match button {
-                GamepadButton::A => next_target_locked(state),
-                GamepadButton::B => previous_target_locked(state),
+                GamepadButton::A => request_toggle_live_pause_locked(state),
+                GamepadButton::B => reverse_locked(state),
                 GamepadButton::X => cycle_mode_locked(state),
                 GamepadButton::Y => state.reset_current_mode_camera(config),
                 GamepadButton::DpadLeft => previous_target_locked(state),
                 GamepadButton::DpadRight => next_target_locked(state),
                 GamepadButton::DpadUp => next_live_part_locked(state),
                 GamepadButton::DpadDown => previous_live_part_locked(state),
-                GamepadButton::Start => reverse_locked(state),
                 _ => (),
             }
         }

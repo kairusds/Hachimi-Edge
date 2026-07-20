@@ -1,6 +1,6 @@
 use crate::{core::{Hachimi, game::Region}, il2cpp::{symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr}, types::*}};
 #[cfg(target_os = "windows")]
-use crate::core::free_camera::{self, CameraScene};
+use crate::core::{free_camera::{self, CameraScene}, live_utils};
 #[cfg(target_os = "windows")]
 use super::Director;
 // use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,11 +25,22 @@ impl_addr_wrapper_fn!(SoftwareReset, SOFTWARERESET_ADDR, (), this: *mut Il2CppOb
 #[cfg(target_os = "windows")]
 type GameSystemUpdateFn = extern "C" fn(this: *mut Il2CppObject);
 #[cfg(target_os = "windows")]
+fn apply_free_camera_live_pause_request() {
+    if !free_camera::take_toggle_live_pause_request() {
+        return;
+    }
+    live_utils::toggle_live_pause();
+}
+
+#[cfg(target_os = "windows")]
 extern "C" fn GameSystem_Update(this: *mut Il2CppObject) {
+    apply_free_camera_live_pause_request();
+
     // Live and race normally tick from their camera LateUpdate hooks. Keep the
     // global update path only as a fallback while LiveTimelineControl is paused.
     if Director::is_live_paused() && free_camera::scene() == CameraScene::Live {
         free_camera::tick();
+        apply_free_camera_live_pause_request();
     }
     get_orig_fn!(GameSystem_Update, GameSystemUpdateFn)(this);
 }

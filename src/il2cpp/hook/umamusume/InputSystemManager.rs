@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicU8, Ordering};
+
 use crate::{
     core::free_camera,
     il2cpp::{
@@ -15,13 +17,30 @@ type StaticInputTriggeredFn = extern "C" fn() -> bool;
 type BackKeyTriggeredFn = extern "C" fn() -> bool;
 type BackMouseTriggeredFn = extern "C" fn(this: *mut Il2CppObject) -> bool;
 
+static GET_BUTTON_HOOK_ID: AtomicU8 = AtomicU8::new(1);
+static GET_BUTTON_DOWN_HOOK_ID: AtomicU8 = AtomicU8::new(2);
+static GET_BUTTON_UP_HOOK_ID: AtomicU8 = AtomicU8::new(3);
+static GET_AXIS_HOOK_ID: AtomicU8 = AtomicU8::new(4);
+static GET_VECTOR2_HOOK_ID: AtomicU8 = AtomicU8::new(5);
+static KEYBOARD_TRIGGER_HOOK_ID: AtomicU8 = AtomicU8::new(6);
+static GAMEPAD_TRIGGER_HOOK_ID: AtomicU8 = AtomicU8::new(7);
+static ANY_KEY_TRIGGER_HOOK_ID: AtomicU8 = AtomicU8::new(8);
+static BACK_KEY_TRIGGER_HOOK_ID: AtomicU8 = AtomicU8::new(9);
+static BACK_MOUSE_TRIGGER_HOOK_ID: AtomicU8 = AtomicU8::new(10);
+
+#[inline(always)]
+fn preserve_hook_identity(identity: &AtomicU8) {
+    std::hint::black_box(identity.load(Ordering::Relaxed));
+}
+
 fn should_block_game_input() -> bool {
     free_camera::is_game_input_capture_active()
 }
 
 macro_rules! block_input_button {
-    ($hook:ident) => {
+    ($hook:ident, $identity:ident) => {
         extern "C" fn $hook(this: *mut Il2CppObject, action_name: *mut Il2CppString) -> bool {
+            preserve_hook_identity(&$identity);
             if should_block_game_input() {
                 false
             } else {
@@ -31,11 +50,12 @@ macro_rules! block_input_button {
     };
 }
 
-block_input_button!(GetButton);
-block_input_button!(GetButtonDown);
-block_input_button!(GetButtonUp);
+block_input_button!(GetButton, GET_BUTTON_HOOK_ID);
+block_input_button!(GetButtonDown, GET_BUTTON_DOWN_HOOK_ID);
+block_input_button!(GetButtonUp, GET_BUTTON_UP_HOOK_ID);
 
 extern "C" fn GetAxis(this: *mut Il2CppObject, action_name: *mut Il2CppString) -> f32 {
+    preserve_hook_identity(&GET_AXIS_HOOK_ID);
     if should_block_game_input() {
         0.0
     } else {
@@ -44,6 +64,7 @@ extern "C" fn GetAxis(this: *mut Il2CppObject, action_name: *mut Il2CppString) -
 }
 
 extern "C" fn GetVector2(this: *mut Il2CppObject, action_name: *mut Il2CppString) -> Vector2_t {
+    preserve_hook_identity(&GET_VECTOR2_HOOK_ID);
     if should_block_game_input() {
         Vector2_t::default()
     } else {
@@ -52,6 +73,7 @@ extern "C" fn GetVector2(this: *mut Il2CppObject, action_name: *mut Il2CppString
 }
 
 extern "C" fn IsActionKeyTriggeredInKeyboard(this: *mut Il2CppObject) -> bool {
+    preserve_hook_identity(&KEYBOARD_TRIGGER_HOOK_ID);
     if should_block_game_input() {
         false
     } else {
@@ -60,6 +82,7 @@ extern "C" fn IsActionKeyTriggeredInKeyboard(this: *mut Il2CppObject) -> bool {
 }
 
 extern "C" fn IsActionButtonTriggeredInGamepad(this: *mut Il2CppObject) -> bool {
+    preserve_hook_identity(&GAMEPAD_TRIGGER_HOOK_ID);
     if should_block_game_input() {
         false
     } else {
@@ -68,6 +91,7 @@ extern "C" fn IsActionButtonTriggeredInGamepad(this: *mut Il2CppObject) -> bool 
 }
 
 extern "C" fn get_IsAnyKeyTriggeredInKeyboard() -> bool {
+    preserve_hook_identity(&ANY_KEY_TRIGGER_HOOK_ID);
     if should_block_game_input() {
         false
     } else {
@@ -76,6 +100,7 @@ extern "C" fn get_IsAnyKeyTriggeredInKeyboard() -> bool {
 }
 
 extern "C" fn IsTriggeredBackKey() -> bool {
+    preserve_hook_identity(&BACK_KEY_TRIGGER_HOOK_ID);
     if should_block_game_input() {
         false
     } else {
@@ -84,6 +109,7 @@ extern "C" fn IsTriggeredBackKey() -> bool {
 }
 
 extern "C" fn get_IsRightMouseButtonPressedForBack(this: *mut Il2CppObject) -> bool {
+    preserve_hook_identity(&BACK_MOUSE_TRIGGER_HOOK_ID);
     if should_block_game_input() {
         false
     } else {
