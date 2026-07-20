@@ -50,6 +50,20 @@ fn get_live_view_controller() -> Option<*mut Il2CppObject> {
     }
 }
 
+pub fn toggle_live_pause() -> bool {
+    let Some(live_view_controller) = get_live_view_controller() else {
+        return false;
+    };
+
+    match LiveViewController::get__state(live_view_controller) {
+        0 => LiveViewController::PauseLive(live_view_controller),
+        1 => LiveViewController::ResumeLive(live_view_controller),
+        _ => return false,
+    }
+
+    true
+}
+
 pub fn begin_live_drag() {
     let director = Director::instance();
     let was_paused = if director.is_null() {
