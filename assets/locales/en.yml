@@ -240,7 +240,7 @@ config_editor:
   ui_loading_show_orientation_guide: "Hide now loading orientation guide"
   replace_to_builtin_font: "Use default game font"
   custom_title_name: "Custom window title"
-  open_external_link_ingame: "Open external link ingame"
+  ingame_webview: "Use webview for external links"
 
 theme_editor:
   title: "GUI Theme Editor"
@@ -386,8 +386,8 @@ steam_overlay_conflict_dialog:
     the Hachimi overlay will be disabled and you will be able to make a purchase. After that, you may restart
     the game again to re-enable the Hachimi overlay.
 
-external_link_dialog:
-  open_original_link: "Open Original Link"
+ingame_webview_dialog:
+  open_browser: "Open in Browser"
   title:
     notice: "Notice"
     general: "Ingame Browser"

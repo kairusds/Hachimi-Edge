@@ -2,7 +2,6 @@ use std::sync::{atomic};
 
 use crate::{core::Hachimi, il2cpp::{api::il2cpp_resolve_icall, symbols::get_method_addr, types::*}};
 
-
 type SetTargetFrameRateFn = extern "C" fn(value: i32);
 pub extern "C" fn set_targetFrameRate(mut value: i32) {
     let target_fps = Hachimi::instance().target_fps.load(atomic::Ordering::Relaxed);
@@ -11,20 +10,15 @@ pub extern "C" fn set_targetFrameRate(mut value: i32) {
     }
     get_orig_fn!(set_targetFrameRate, SetTargetFrameRateFn)(value);
 }
-type OpenURLFn = extern "system" fn(il2cpp_url:*mut Il2CppString);
 
-#[allow(non_snake_case)]
-pub extern "system" fn OpenURL(url:*mut Il2CppString){
-    #[cfg(target_os="windows")]
-    {
-        if !crate::windows::external_link::open(url) {
-            get_orig_fn!(OpenURL,OpenURLFn)(url);
-        }
+#[cfg(target_os = "windows")]
+type OpenURLFn = extern "C" fn(il2cpp_url:*mut Il2CppString);
+#[cfg(target_os = "windows")]
+pub extern "C" fn OpenURL(url: *mut Il2CppString){
+    if !crate::windows::webview::open(url){
+        get_orig_fn!(OpenURL, OpenURLFn)(url);
     }
-    #[cfg(not(target_os="windows"))]
-    get_orig_fn!(OpenURL,OpenURLFn);
 }
-
 
 static mut GET_PERSISTENTDATAPATH_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_persistentDataPath, GET_PERSISTENTDATAPATH_ADDR, *mut Il2CppString,);
@@ -43,8 +37,11 @@ pub fn init(UnityEngine_CoreModule: *const Il2CppImage) {
     );
     new_hook!(set_targetFrameRate_addr, set_targetFrameRate);
 
-    let openurl_addr= get_method_addr(Application, c"OpenURL", 1);
-    new_hook!(openurl_addr, OpenURL);
+    #[cfg(target_os="windows")]
+    {
+        let openurl_addr = get_method_addr(Application, c"OpenURL", 1);
+        new_hook!(openurl_addr, OpenURL);
+    }
 
     unsafe {
         GET_PERSISTENTDATAPATH_ADDR = get_method_addr(Application, c"get_persistentDataPath", 0);
