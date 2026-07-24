@@ -2675,6 +2675,17 @@ impl ConfigEditor {
                     ui.end_row();
                 }
             }
+
+            #[cfg(target_os = "windows")]
+            {
+                if Hachimi::instance().game.region == Region::Japan
+                    && crate::windows::external_link::has_available_webview()
+                    && should_show_option(search,&t!("config_editor.open_external_link_ingame")) {
+                    ui.label(t!("config_editor.open_external_link_ingame"));
+                    ui.checkbox(&mut config.windows.open_external_link_ingame, "");
+                    ui.end_row();
+                }
+            }
         }
         // General tab end
 

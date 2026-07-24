@@ -22,7 +22,7 @@ use windows::{core::{w, HSTRING}, Win32::{
 
 use crate::{core::{free_camera, game::Region, gui, Gui, Hachimi}, il2cpp::{hook::{umamusume, UnityEngine_CoreModule}, symbols::{create_delegate, get_assembly_image, get_class, get_method_addr, Thread}, types::{Il2CppDelegate, RefreshRate}}, windows::utils};
 
-use super::{gui_impl::input, discord, smtc, taskbar};
+use super::{gui_impl::input, discord, smtc, taskbar, external_link};
 
 static TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
 static ALT_ENTER_PRESSED: AtomicBool = AtomicBool::new(false);
@@ -484,6 +484,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         }
     }
 
+    external_link::process_message(umsg, lparam);
     match umsg {
         WM_KEYDOWN | WM_SYSKEYDOWN => {
             let current_key = wparam.0 as u16;
