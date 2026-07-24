@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
-    core::free_camera::{self, CameraScene},
+    windows::free_camera::{self, CameraScene},
     il2cpp::{
         symbols::{get_class, get_method_addr},
         types::*,

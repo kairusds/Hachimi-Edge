@@ -6,11 +6,12 @@ use std::{
 use once_cell::sync::Lazy;
 
 use crate::{
-    core::{free_camera, Hachimi},
+    core::Hachimi,
     il2cpp::{
         symbols::{get_class, get_method_addr},
         types::*,
     },
+    windows::free_camera,
 };
 
 use super::{HorseData, HorseRaceInfo};
@@ -49,7 +50,7 @@ extern "C" fn HorseRaceInfoReplay_ctor(
 extern "C" fn HorseRaceInfoReplay_get_RunMotionSpeed(this: *mut Il2CppObject) -> f32 {
     let result = get_orig_fn!(HorseRaceInfoReplay_get_RunMotionSpeed, GetRunMotionSpeedFn)(this);
 
-    if !Hachimi::instance().config.load().free_camera.enabled {
+    if !Hachimi::instance().config.load().windows.free_camera.enabled {
         return result;
     }
 

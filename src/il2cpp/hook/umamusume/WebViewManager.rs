@@ -52,11 +52,12 @@ extern "C" fn GetUrl(this: *mut Il2CppObject, url_type: i32) -> *mut Il2CppStrin
     get_orig_fn!(GetUrl, GetUrlFn)(this, url_type)
 }
 
-type GetGachaUrlFn=extern "C" fn(gacha_id:i32, stepup_id:i32)->*mut Il2CppString;
 #[cfg(target_os = "windows")]
-extern "C" fn GetGachaUrl(gacha_id:i32, stepup_id:i32)->*mut Il2CppString {
-    let url=get_orig_fn!(GetGachaUrl,GetGachaUrlFn)(gacha_id, stepup_id);
-    crate::windows::webview::add_gacha_url(url,gacha_id);
+type GetGachaUrlFn = extern "C" fn(gacha_id: i32, stepup_id: i32) -> *mut Il2CppString;
+#[cfg(target_os = "windows")]
+extern "C" fn GetGachaUrl(gacha_id: i32, stepup_id: i32) -> *mut Il2CppString {
+    let url = get_orig_fn!(GetGachaUrl, GetGachaUrlFn)(gacha_id, stepup_id);
+    crate::windows::webview::add_gacha_url(url, gacha_id);
     url
 }
 
@@ -64,8 +65,8 @@ pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, WebViewManager);
 
     let GetUrl_addr = get_method_addr(WebViewManager, c"GetUrl", 1);
-
     new_hook!(GetUrl_addr, GetUrl);
+
     #[cfg(target_os = "windows")]
     {
         let GetGachaUrl_addr = get_method_addr(WebViewManager, c"GetGachaUrl", 2);

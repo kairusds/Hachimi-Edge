@@ -1,5 +1,5 @@
 use crate::{
-    core::free_camera::{self, CameraScene},
+    windows::free_camera::{self, CameraScene},
     il2cpp::{api::il2cpp_resolve_icall, types::*}
 };
 

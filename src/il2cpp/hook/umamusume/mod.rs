@@ -79,8 +79,6 @@ pub mod SceneManager;
 mod PaymentUtility;
 mod LowResolutionCamera;
 #[cfg(target_os = "windows")]
-mod free_camera;
-#[cfg(target_os = "windows")]
 mod LiveTimelineControl;
 #[cfg(target_os = "windows")]
 mod PostEffectUpdateInfo_DOF;
@@ -97,7 +95,7 @@ mod CharacterObject;
 #[cfg(target_os = "windows")]
 mod LiveModelController;
 #[cfg(target_os = "windows")]
-mod ModelController;
+pub mod ModelController;
 #[cfg(target_os = "windows")]
 mod RaceCameraManager;
 #[cfg(target_os = "windows")]

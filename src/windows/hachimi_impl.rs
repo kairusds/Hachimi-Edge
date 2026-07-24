@@ -99,6 +99,8 @@ pub struct Config {
     pub custom_title_name: Option<String>,
     #[serde(default = "Config::default_true")]
     pub ingame_webview: bool,
+    #[serde(default)]
+    pub free_camera: super::free_camera::FreeCameraConfig,
 }
 
 impl Config {

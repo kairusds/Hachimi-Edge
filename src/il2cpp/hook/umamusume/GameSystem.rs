@@ -1,6 +1,6 @@
 use crate::{core::{Hachimi, game::Region}, il2cpp::{symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr}, types::*}};
 #[cfg(target_os = "windows")]
-use crate::core::free_camera;
+use crate::windows::free_camera;
 // use std::sync::atomic::{AtomicBool, Ordering};
 
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);

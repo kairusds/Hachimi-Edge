@@ -1,7 +1,7 @@
 use std::ptr::null_mut;
 
 use crate::{
-    core::free_camera::{self, CameraScene},
+    windows::free_camera::{self, CameraScene},
     il2cpp::{
         ext::StringExt,
         hook::UnityEngine_CoreModule::Transform,
@@ -10,10 +10,10 @@ use crate::{
     },
 };
 
-use super::{RaceModelController, free_camera as free_camera_hooks};
+use super::{RaceModelController};
 
-static RACE_DISABLED_HEADS: free_camera_hooks::DisabledHeadStore =
-    once_cell::sync::Lazy::new(free_camera_hooks::new_disabled_head_store);
+static RACE_DISABLED_HEADS: free_camera::DisabledHeadStore =
+    once_cell::sync::Lazy::new(free_camera::new_disabled_head_store);
 
 static mut GET_MODEL_CONTROLLER_ADDR: usize = 0;
 
@@ -27,7 +27,7 @@ pub fn GetModelController(this: *mut Il2CppObject, index: i32) -> *mut Il2CppObj
 }
 
 pub(crate) fn restore_race_disabled_heads(current_index: i32, force_all: bool) {
-    free_camera_hooks::restore_disabled_heads(&RACE_DISABLED_HEADS, current_index, force_all);
+    free_camera::restore_disabled_heads(&RACE_DISABLED_HEADS, current_index, force_all);
 }
 
 type NoArgsFn = extern "C" fn(this: *mut Il2CppObject);
@@ -61,7 +61,7 @@ extern "C" fn RaceViewBase_LateUpdateView(this: *mut Il2CppObject) {
                 let rot = free_camera::slerp_quaternion(rot_left, rot_right, 0.5);
                 if first_person {
                     free_camera::update_first_person(CameraScene::Race, pos, rot, None);
-                    free_camera_hooks::hide_head_parts(&RACE_DISABLED_HEADS, model_controller, index);
+                    free_camera::hide_head_parts(&RACE_DISABLED_HEADS, model_controller, index);
                     restore_race_disabled_heads(index, false);
                 }
                 else {

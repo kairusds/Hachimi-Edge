@@ -8,8 +8,9 @@ use crate::{
         types::*
     }
 };
+
 #[cfg(target_os = "windows")]
-use crate::core::free_camera::{self, CameraScene};
+use crate::windows::free_camera::{self, CameraScene};
 
 static mut TYPE_OBJECT: *mut Il2CppObject = 0 as _;
 pub fn type_object() -> *mut Il2CppObject {

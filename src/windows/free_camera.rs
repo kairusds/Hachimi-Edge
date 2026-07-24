@@ -1,4 +1,6 @@
 use std::{
+    collections::{HashMap, HashSet},
+    ptr::null_mut,
     sync::{Mutex, atomic::{AtomicBool, Ordering}},
     time::Instant,
 };
@@ -7,7 +9,19 @@ use once_cell::sync::Lazy;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
-use crate::{core::Hachimi, il2cpp::types::{Quaternion_t, Vector3_t}};
+use crate::{
+    core::Hachimi, il2cpp::{
+        ext::Il2CppStringExt,
+        hook::{
+            UnityEngine_CoreModule::{Component, GameObject, Object, Transform},
+            umamusume::ModelController,
+        },
+        symbols::IEnumerable,
+        types::*,
+    }
+};
+
+use super::xinput;
 
 const LOOK_RADIUS: f32 = 5.0;
 const OVERLAY_FADE_IN: f32 = 0.18;
@@ -102,7 +116,6 @@ impl Default for Vec3Config {
     }
 }
 
-#[cfg(target_os = "windows")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct FreeCameraKeybinds {
@@ -131,7 +144,6 @@ pub struct FreeCameraKeybinds {
     pub reverse: u16,
 }
 
-#[cfg(target_os = "windows")]
 impl Default for FreeCameraKeybinds {
     fn default() -> Self {
         Self {
@@ -195,8 +207,6 @@ pub struct FreeCameraConfig {
     pub gamepad_deadzone: f32,
     pub gamepad_move_speed: f32,
     pub gamepad_look_speed: f32,
-
-    #[cfg(target_os = "windows")]
     pub keybinds: FreeCameraKeybinds,
 }
 
@@ -233,8 +243,6 @@ impl Default for FreeCameraConfig {
             gamepad_deadzone: 0.18,
             gamepad_move_speed: 1.0,
             gamepad_look_speed: 1.0,
-
-            #[cfg(target_os = "windows")]
             keybinds: FreeCameraKeybinds::default(),
         }
     }
@@ -720,12 +728,12 @@ pub fn reload_runtime_config() {
 }
 
 pub fn is_enabled() -> bool {
-    Hachimi::instance().config.load().free_camera.enabled
+    Hachimi::instance().config.load().windows.free_camera.enabled
 }
 
 pub fn overlay_message() -> Option<(String, f32)> {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled || !config.free_camera.show_overlay {
+    if !config.windows.free_camera.enabled || !config.windows.free_camera.show_overlay {
         return None;
     }
 
@@ -753,7 +761,7 @@ pub fn overlay_message() -> Option<(String, f32)> {
 
 pub fn has_overlay_message() -> bool {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled || !config.free_camera.show_overlay {
+    if !config.windows.free_camera.enabled || !config.windows.free_camera.show_overlay {
         return false;
     }
 
@@ -766,7 +774,7 @@ pub fn has_overlay_message() -> bool {
 }
 
 fn set_overlay_message(content: String) {
-    if !Hachimi::instance().config.load().free_camera.show_overlay {
+    if !Hachimi::instance().config.load().windows.free_camera.show_overlay {
         return;
     }
 
@@ -813,7 +821,7 @@ pub fn scene() -> CameraScene {
 
 pub fn is_scene_enabled(scene: CameraScene) -> bool {
     let config = Hachimi::instance().config.load();
-    config.free_camera.enabled && STATE.lock().unwrap().scene == scene
+    config.windows.free_camera.enabled && STATE.lock().unwrap().scene == scene
 }
 
 pub fn mode() -> FreeCameraMode {
@@ -849,7 +857,7 @@ pub fn is_race_first_person() -> bool {
 
 pub fn is_live_head_selfie() -> bool {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled || !config.free_camera.selfie_use_head_transform {
+    if !config.windows.free_camera.enabled || !config.windows.free_camera.selfie_use_head_transform {
         return false;
     }
 
@@ -859,7 +867,7 @@ pub fn is_live_head_selfie() -> bool {
 
 pub fn is_race_head_selfie() -> bool {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled || !config.free_camera.selfie_use_head_transform {
+    if !config.windows.free_camera.enabled || !config.windows.free_camera.selfie_use_head_transform {
         return false;
     }
 
@@ -881,7 +889,7 @@ pub fn camera_rotation() -> Option<Quaternion_t> {
 
 pub fn fov_for_scene(scene: CameraScene) -> Option<f32> {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return None;
     }
 
@@ -899,32 +907,32 @@ pub fn fov_for_scene(scene: CameraScene) -> Option<f32> {
 
 pub fn should_remove_camera_effects() -> bool {
     let config = Hachimi::instance().config.load();
-    config.free_camera.enabled &&
-        config.free_camera.remove_camera_effects &&
+    config.windows.free_camera.enabled &&
+        config.windows.free_camera.remove_camera_effects &&
         STATE.lock().unwrap().scene == CameraScene::Live
 }
 
 pub fn should_disable_live_character_teleport() -> bool {
     let config = Hachimi::instance().config.load();
-    config.free_camera.enabled &&
-        config.free_camera.live_disable_character_teleport &&
+    config.windows.free_camera.enabled &&
+        config.windows.free_camera.live_disable_character_teleport &&
         STATE.lock().unwrap().scene == CameraScene::Live
 }
 
 pub fn should_force_live_characters_visible() -> bool {
     let config = Hachimi::instance().config.load();
-    config.free_camera.enabled &&
-        config.free_camera.live_force_all_characters_visible &&
+    config.windows.free_camera.enabled &&
+        config.windows.free_camera.live_force_all_characters_visible &&
         STATE.lock().unwrap().scene == CameraScene::Live
 }
 
 pub fn set_live_active() {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
-    STATE.lock().unwrap().set_scene(CameraScene::Live, &config.free_camera);
+    STATE.lock().unwrap().set_scene(CameraScene::Live, &config.windows.free_camera);
 }
 
 pub fn begin_live_director_update() {
@@ -933,11 +941,11 @@ pub fn begin_live_director_update() {
 
 pub fn set_race_active() {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
-    STATE.lock().unwrap().set_scene(CameraScene::Race, &config.free_camera);
+    STATE.lock().unwrap().set_scene(CameraScene::Race, &config.windows.free_camera);
 }
 
 pub fn end_scene(scene: CameraScene) {
@@ -945,7 +953,7 @@ pub fn end_scene(scene: CameraScene) {
     let mut state = STATE.lock().unwrap();
     if state.scene == scene {
         state.scene = CameraScene::None;
-        state.reset_with_config(&config.free_camera);
+        state.reset_with_config(&config.windows.free_camera);
     }
 }
 
@@ -994,7 +1002,7 @@ pub fn race_model_index() -> i32 {
 
 pub fn update_live_follow_target(target: Vector3_t) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
@@ -1002,12 +1010,12 @@ pub fn update_live_follow_target(target: Vector3_t) {
     let target = Vec3::from(target);
     state.live_follow_precise_target = true;
     state.live_follow_timeline_updated = true;
-    update_live_follow_camera_locked(&mut state, &config.free_camera, target);
+    update_live_follow_camera_locked(&mut state, &config.windows.free_camera, target);
 }
 
 pub fn update_live_follow_position_target(target: Vector3_t) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
@@ -1021,7 +1029,7 @@ pub fn update_live_follow_position_target(target: Vector3_t) {
     state.live_follow_precise_target = true;
     state.live_follow_timeline_updated = true;
     state.live_selfie_last_head_pos = state.live_selfie_head_pos;
-    update_live_follow_camera_locked(&mut state, &config.free_camera, position_target);
+    update_live_follow_camera_locked(&mut state, &config.windows.free_camera, position_target);
 }
 
 fn update_live_follow_camera_locked(
@@ -1132,7 +1140,7 @@ fn has_selfie_manual_input(state: &FreeCameraState) -> bool {
 
 pub fn update_live_head_part_target(target: Vector3_t) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled || !config.free_camera.selfie_use_head_transform {
+    if !config.windows.free_camera.enabled || !config.windows.free_camera.selfie_use_head_transform {
         return;
     }
 
@@ -1169,10 +1177,10 @@ pub fn update_live_director_follow_target(
     forward: Option<Vector3_t>,
 ) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
-    if config.free_camera.selfie_use_head_transform {
+    if config.windows.free_camera.selfie_use_head_transform {
         return;
     }
 
@@ -1182,7 +1190,7 @@ pub fn update_live_director_follow_target(
         .map(|value| value.normalized())
         .unwrap_or_else(|| rot.rotate_vec(Vec3::new(0.0, 0.0, 1.0)).normalized());
     let mut state = STATE.lock().unwrap();
-    state.set_scene(CameraScene::Live, &config.free_camera);
+    state.set_scene(CameraScene::Live, &config.windows.free_camera);
     if state.mode != FreeCameraMode::SelfieStick {
         return;
     }
@@ -1215,22 +1223,22 @@ pub fn update_live_director_follow_target(
             state.live_follow_position_target = Some(position_target);
         }
         state.live_selfie_last_head_pos = Some(head_pos);
-        update_live_follow_camera_locked(&mut state, &config.free_camera, position_target);
+        update_live_follow_camera_locked(&mut state, &config.windows.free_camera, position_target);
         return;
     }
     state.live_follow_position_target = Some(position_target);
     state.live_selfie_last_head_pos = Some(head_pos);
-    update_live_follow_camera_locked(&mut state, &config.free_camera, position_target);
+    update_live_follow_camera_locked(&mut state, &config.windows.free_camera, position_target);
 }
 
 pub fn update_live_head_follow(pos: Vector3_t, rot: Quaternion_t, forward: Option<Vector3_t>) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled || !config.free_camera.selfie_use_head_transform {
+    if !config.windows.free_camera.enabled || !config.windows.free_camera.selfie_use_head_transform {
         return;
     }
 
     let mut state = STATE.lock().unwrap();
-    state.set_scene(CameraScene::Live, &config.free_camera);
+    state.set_scene(CameraScene::Live, &config.windows.free_camera);
     if state.mode != FreeCameraMode::SelfieStick {
         return;
     }
@@ -1265,12 +1273,12 @@ pub fn update_first_person(
     forward: Option<Vector3_t>,
 ) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
     let mut state = STATE.lock().unwrap();
-    state.set_scene(scene, &config.free_camera);
+    state.set_scene(scene, &config.windows.free_camera);
     if state.mode != FreeCameraMode::FirstPerson {
         return;
     }
@@ -1304,12 +1312,12 @@ pub fn update_first_person(
 
 pub fn update_race_head_follow(pos: Vector3_t, rot: Quaternion_t) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled || !config.free_camera.selfie_use_head_transform {
+    if !config.windows.free_camera.enabled || !config.windows.free_camera.selfie_use_head_transform {
         return;
     }
 
     let mut state = STATE.lock().unwrap();
-    state.set_scene(CameraScene::Race, &config.free_camera);
+    state.set_scene(CameraScene::Race, &config.windows.free_camera);
     if state.mode != FreeCameraMode::SelfieStick {
         return;
     }
@@ -1337,7 +1345,7 @@ pub fn update_race_head_follow(pos: Vector3_t, rot: Quaternion_t) {
 
 pub fn update_race_target(index: i32, pos: Vector3_t, rot: Quaternion_t) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
@@ -1361,7 +1369,7 @@ pub fn update_race_target(index: i32, pos: Vector3_t, rot: Quaternion_t) {
     state.race_target_rot = Quat::from_quaternion(rot);
     state.race_target_seen = true;
 
-    if state.mode == FreeCameraMode::SelfieStick && !config.free_camera.selfie_use_head_transform {
+    if state.mode == FreeCameraMode::SelfieStick && !config.windows.free_camera.selfie_use_head_transform {
         update_race_follow_locked(&mut state);
     }
 }
@@ -1369,7 +1377,7 @@ pub fn update_race_target(index: i32, pos: Vector3_t, rot: Quaternion_t) {
 pub fn race_camera_pos(current: Vector3_t) -> Vector3_t {
     let config = Hachimi::instance().config.load();
     let mut state = STATE.lock().unwrap();
-    if state.mode == FreeCameraMode::SelfieStick && !config.free_camera.selfie_use_head_transform {
+    if state.mode == FreeCameraMode::SelfieStick && !config.windows.free_camera.selfie_use_head_transform {
         update_race_follow_locked(&mut state);
     }
     else if state.mode == FreeCameraMode::Free {
@@ -1419,14 +1427,13 @@ pub fn slerp_quaternion(a: Quaternion_t, b: Quaternion_t, t: f32) -> Quaternion_
         .to_quaternion()
 }
 
-#[cfg(target_os = "windows")]
 pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
-    let kb = &config.free_camera.keybinds;
+    let kb = &config.windows.free_camera.keybinds;
     let mut state = STATE.lock().unwrap();
     set_key_flag(&mut state.key_state, vk, pressed, kb);
 
@@ -1435,7 +1442,7 @@ pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
     }
 
     if vk == kb.reset {
-        state.reset_current_mode_camera(&config.free_camera);
+        state.reset_current_mode_camera(&config.windows.free_camera);
     }
     else if vk == kb.cycle_mode {
         cycle_mode_locked(&mut state);
@@ -1457,14 +1464,13 @@ pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
     }
 }
 
-#[cfg(target_os = "windows")]
 pub fn is_windows_key_bound(vk: u16) -> bool {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return false;
     }
 
-    let kb = &config.free_camera.keybinds;
+    let kb = &config.windows.free_camera.keybinds;
     vk == kb.move_forward ||
         vk == kb.move_back ||
         vk == kb.move_left ||
@@ -1490,7 +1496,6 @@ pub fn is_windows_key_bound(vk: u16) -> bool {
         vk == kb.reverse
 }
 
-#[cfg(target_os = "windows")]
 fn set_key_flag(state: &mut KeyState, vk: u16, pressed: bool, kb: &FreeCameraKeybinds) {
     if vk == kb.move_forward { state.forward = pressed; }
     if vk == kb.move_back { state.back = pressed; }
@@ -1510,10 +1515,9 @@ fn set_key_flag(state: &mut KeyState, vk: u16, pressed: bool, kb: &FreeCameraKey
     if vk == kb.follow_offset_right { state.follow_offset_right = pressed; }
 }
 
-#[cfg(target_os = "windows")]
 pub fn wants_windows_input_capture() -> bool {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return false;
     }
 
@@ -1554,7 +1558,7 @@ pub fn on_mouse_button(right_down: bool) {
 
 pub fn on_mouse_move(x: i32, y: i32) {
     let config = Hachimi::instance().config.load();
-    if !config.free_camera.enabled {
+    if !config.windows.free_camera.enabled {
         return;
     }
 
@@ -1571,7 +1575,7 @@ pub fn on_mouse_move(x: i32, y: i32) {
     state.last_mouse_pos = Some((x, y));
     let dx = (x - last_x) as f32;
     let dy = (y - last_y) as f32;
-    let speed = config.free_camera.mouse_speed / 100.0;
+    let speed = config.windows.free_camera.mouse_speed / 100.0;
     apply_look_delta_locked(&mut state, -dx * speed, -dy * speed, true);
 }
 
@@ -1608,7 +1612,7 @@ pub fn on_gamepad_button(button: GamepadButton, pressed: bool) {
             GamepadButton::X => cycle_mode_locked(&mut state),
             GamepadButton::Y => {
                 let config = Hachimi::instance().config.load();
-                state.reset_current_mode_camera(&config.free_camera);
+                state.reset_current_mode_camera(&config.windows.free_camera);
             },
             GamepadButton::DpadLeft => previous_target_locked(&mut state),
             GamepadButton::DpadRight => next_target_locked(&mut state),
@@ -1638,7 +1642,7 @@ pub enum GamepadButton {
 
 pub fn tick() {
     let config = Hachimi::instance().config.load();
-    let config = &config.free_camera;
+    let config = &config.windows.free_camera;
     let mut state = STATE.lock().unwrap();
 
     if RELOAD_CONFIG_REQUESTED.swap(false, Ordering::AcqRel) ||
@@ -1659,7 +1663,6 @@ pub fn tick() {
         ).into_owned());
     }
 
-    #[cfg(target_os = "windows")]
     poll_xinput_locked(&mut state, config);
 
     let now = Instant::now();
@@ -1761,7 +1764,7 @@ fn move_forward_locked(state: &mut FreeCameraState, amount: f32) {
             state.camera_look_at = state.camera_look_at + dir * amount;
         },
         FreeCameraMode::SelfieStick => {
-            let head_selfie = Hachimi::instance().config.load().free_camera.selfie_use_head_transform;
+            let head_selfie = Hachimi::instance().config.load().windows.free_camera.selfie_use_head_transform;
             if state.scene == CameraScene::Live {
                 state.live_follow_offset.z -= amount / 2.0;
             }
@@ -1791,7 +1794,7 @@ fn move_side_locked(state: &mut FreeCameraState, amount: f32) {
             state.camera_look_at = state.camera_look_at + dir * amount;
         },
         FreeCameraMode::SelfieStick => {
-            let head_selfie = Hachimi::instance().config.load().free_camera.selfie_use_head_transform;
+            let head_selfie = Hachimi::instance().config.load().windows.free_camera.selfie_use_head_transform;
             if state.scene == CameraScene::Live && !head_selfie {
                 state.live_follow_lookat_offset.x += amount;
             }
@@ -1810,7 +1813,7 @@ fn move_vertical_locked(state: &mut FreeCameraState, amount: f32) {
             state.camera_look_at.y += amount;
         },
         FreeCameraMode::SelfieStick => {
-            let head_selfie = Hachimi::instance().config.load().free_camera.selfie_use_head_transform;
+            let head_selfie = Hachimi::instance().config.load().windows.free_camera.selfie_use_head_transform;
             if state.scene == CameraScene::Live && !head_selfie {
                 state.live_follow_lookat_offset.y += amount / 2.0;
             }
@@ -2032,160 +2035,14 @@ fn next_live_part_locked(state: &mut FreeCameraState) {
     }
 }
 
-#[cfg(target_os = "windows")]
-mod xinput {
-    use once_cell::sync::OnceCell;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use windows::{core::PCSTR, Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA}};
-
-    use crate::core::Hachimi;
-
-    #[repr(C)]
-    #[derive(Clone, Copy, Default)]
-    pub struct XInputGamepad {
-        pub buttons: u16,
-        pub left_trigger: u8,
-        pub right_trigger: u8,
-        pub thumb_lx: i16,
-        pub thumb_ly: i16,
-        pub thumb_rx: i16,
-        pub thumb_ry: i16,
-    }
-
-    #[repr(C)]
-    #[derive(Clone, Copy, Default)]
-    pub struct XInputState {
-        pub packet_number: u32,
-        pub gamepad: XInputGamepad,
-    }
-
-    type XInputGetStateFn = unsafe extern "system" fn(u32, *mut XInputState) -> u32;
-
-    static GET_STATE: OnceCell<Option<XInputGetStateFn>> = OnceCell::new();
-    static GET_STATE_ORIG: AtomicUsize = AtomicUsize::new(0);
-    static GET_STATE_1_4_ORIG: AtomicUsize = AtomicUsize::new(0);
-    static GET_STATE_1_3_ORIG: AtomicUsize = AtomicUsize::new(0);
-    static GET_STATE_9_1_0_ORIG: AtomicUsize = AtomicUsize::new(0);
-
-    pub const DPAD_UP: u16 = 0x0001;
-    pub const DPAD_DOWN: u16 = 0x0002;
-    pub const DPAD_LEFT: u16 = 0x0004;
-    pub const DPAD_RIGHT: u16 = 0x0008;
-    pub const START: u16 = 0x0010;
-    pub const LEFT_SHOULDER: u16 = 0x0100;
-    pub const RIGHT_SHOULDER: u16 = 0x0200;
-    pub const A: u16 = 0x1000;
-    pub const B: u16 = 0x2000;
-    pub const X: u16 = 0x4000;
-    pub const Y: u16 = 0x8000;
-
-    pub fn get_state(user_index: u32) -> Option<XInputState> {
-        let get_state = GET_STATE.get_or_init(load_get_state).as_ref().copied()?;
-        let mut state = XInputState::default();
-        let result = unsafe { get_state(user_index, &mut state) };
-        if result == 0 {
-            Some(state)
-        }
-        else {
-            None
-        }
-    }
-
-    pub fn ensure_hook() {
-        let _ = GET_STATE.get_or_init(load_get_state);
-    }
-
-    pub fn unhook() {
-        let interceptor = &Hachimi::instance().interceptor;
-        interceptor.unhook(get_state_1_4_hook as *const () as usize);
-        interceptor.unhook(get_state_1_3_hook as *const () as usize);
-        interceptor.unhook(get_state_9_1_0_hook as *const () as usize);
-    }
-
-    unsafe fn call_get_state_hook(
-        orig_addr: usize,
-        user_index: u32,
-        state: *mut XInputState,
-    ) -> u32 {
-        let orig_fn: XInputGetStateFn = std::mem::transmute(orig_addr);
-        let result = orig_fn(user_index, state);
-        if result == 0 &&
-            !state.is_null() &&
-            Hachimi::instance().config.load().free_camera.enabled
-        {
-            (*state).gamepad = XInputGamepad::default();
-        }
-        result
-    }
-
-    unsafe extern "system" fn get_state_1_4_hook(user_index: u32, state: *mut XInputState) -> u32 {
-        call_get_state_hook(GET_STATE_1_4_ORIG.load(Ordering::Acquire), user_index, state)
-    }
-
-    unsafe extern "system" fn get_state_1_3_hook(user_index: u32, state: *mut XInputState) -> u32 {
-        call_get_state_hook(GET_STATE_1_3_ORIG.load(Ordering::Acquire), user_index, state)
-    }
-
-    unsafe extern "system" fn get_state_9_1_0_hook(user_index: u32, state: *mut XInputState) -> u32 {
-        call_get_state_hook(GET_STATE_9_1_0_ORIG.load(Ordering::Acquire), user_index, state)
-    }
-
-    fn load_get_state() -> Option<XInputGetStateFn> {
-        let dlls: [(&[u8], unsafe extern "system" fn(u32, *mut XInputState) -> u32, &AtomicUsize); 3] = [
-            (b"xinput1_4.dll\0", get_state_1_4_hook, &GET_STATE_1_4_ORIG),
-            (b"xinput1_3.dll\0", get_state_1_3_hook, &GET_STATE_1_3_ORIG),
-            (b"xinput9_1_0.dll\0", get_state_9_1_0_hook, &GET_STATE_9_1_0_ORIG),
-        ];
-        for (dll, hook, orig_slot) in dlls {
-            let Ok(module) = (unsafe { LoadLibraryA(PCSTR(dll.as_ptr())) }) else {
-                continue;
-            };
-            let Some(proc) = (unsafe { GetProcAddress(module, PCSTR(b"XInputGetState\0".as_ptr())) }) else {
-                continue;
-            };
-            let proc_addr = proc as usize;
-            if orig_slot.load(Ordering::Acquire) == 0 {
-                match Hachimi::instance().interceptor.hook(
-                    proc_addr,
-                    hook as *const () as usize
-                ) {
-                    Ok(orig) => {
-                        orig_slot.store(orig, Ordering::Release);
-                        if GET_STATE_ORIG.load(Ordering::Acquire) == 0 {
-                            GET_STATE_ORIG.store(orig, Ordering::Release);
-                        }
-                    },
-                    Err(e) => {
-                        error!("Failed to hook XInputGetState: {}", e);
-                        orig_slot.store(proc_addr, Ordering::Release);
-                        if GET_STATE_ORIG.load(Ordering::Acquire) == 0 {
-                            GET_STATE_ORIG.store(proc_addr, Ordering::Release);
-                        }
-                    },
-                }
-            }
-        }
-        let orig = GET_STATE_ORIG.load(Ordering::Acquire);
-        if orig == 0 {
-            None
-        }
-        else {
-            Some(unsafe { std::mem::transmute(orig) })
-        }
-    }
-}
-
-#[cfg(target_os = "windows")]
 pub fn init_windows_gamepad_capture() {
     xinput::ensure_hook();
 }
 
-#[cfg(target_os = "windows")]
 pub fn uninit_windows_gamepad_capture() {
     xinput::unhook();
 }
 
-#[cfg(target_os = "windows")]
 fn poll_xinput_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
     let Some(xstate) = xinput::get_state(0) else {
         state.gamepad.axes = GamepadAxes::default();
@@ -2238,12 +2095,92 @@ fn poll_xinput_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
     }
 }
 
-#[cfg(target_os = "windows")]
 fn normalize_thumb(value: i16) -> f32 {
     if value >= 0 {
         value as f32 / i16::MAX as f32
     }
     else {
         value as f32 / -(i16::MIN as f32)
+    }
+}
+
+pub type DisabledHeadStore = Lazy<Mutex<HashMap<i32, HashSet<usize>>>>;
+
+pub fn new_disabled_head_store() -> Mutex<HashMap<i32, HashSet<usize>>> {
+    Mutex::new(HashMap::new())
+}
+
+pub fn first_enumerable_item(value: *mut Il2CppObject) -> *mut Il2CppObject {
+    let enumerable = IEnumerable::<*mut Il2CppObject>::from(value);
+    let Some(enumerator) = enumerable.enumerator() else {
+        return null_mut();
+    };
+    let Some(mut iter) = enumerator.iter() else {
+        return null_mut();
+    };
+    iter.find(|item| !item.is_null()).unwrap_or(null_mut())
+}
+
+pub fn hide_head_parts(
+    store: &DisabledHeadStore,
+    model_controller: *mut Il2CppObject,
+    index: i32,
+) {
+    let owner = ModelController::get_OwnerObject(model_controller);
+    if owner.is_null() {
+        return;
+    }
+
+    let transform = GameObject::get_transform(owner);
+    if transform.is_null() {
+        return;
+    }
+
+    let count = Transform::get_childCount(transform);
+    for i in 0..count {
+        let child = Transform::GetChild(transform, i);
+        if child.is_null() {
+            continue;
+        }
+        let game_object = Component::get_gameObject(child);
+        if game_object.is_null() {
+            continue;
+        }
+        let name = Object::get_name(game_object);
+        if name.is_null() {
+            continue;
+        }
+        let name = unsafe { (*name).as_utf16str().to_string() };
+        if name == "M_Hair" || name == "M_Face" {
+            store.lock().unwrap().entry(index).or_default().insert(game_object as usize);
+            GameObject::SetActive(game_object, false);
+        }
+    }
+}
+
+pub fn restore_disabled_heads(
+    store: &DisabledHeadStore,
+    current_index: i32,
+    force_all: bool,
+) {
+    let mut store = store.lock().unwrap();
+    let mut restored = Vec::new();
+
+    for (index, objects) in store.iter() {
+        if *index == current_index && !force_all {
+            continue;
+        }
+
+        for obj in objects {
+            let obj = *obj as *mut Il2CppObject;
+            if Object::IsNativeObjectAlive(obj) {
+                GameObject::SetActive(obj, true);
+            }
+        }
+        restored.push(*index);
+    }
+
+    for index in restored {
+        store.remove(&index);
     }
 }

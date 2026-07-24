@@ -1,5 +1,5 @@
 use crate::{
-    core::free_camera,
+    windows::free_camera,
     il2cpp::{
         symbols::{get_class, get_method_addr},
         types::*,

@@ -1,5 +1,5 @@
 use crate::{
-    core::free_camera::{self, CameraScene},
+    windows::free_camera::{self, CameraScene},
     il2cpp::{
         hook::UnityEngine_CoreModule::Transform,
         symbols::{get_class, get_method_addr},

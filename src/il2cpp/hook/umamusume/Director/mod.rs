@@ -21,17 +21,17 @@ use LiveLoadSettings::{CharacterInfo, RaceInfo};
 
 #[cfg(target_os = "windows")]
 use super::{
-    free_camera as free_camera_hooks, CharacterObject, LiveModelController, ModelController,
+    CharacterObject, LiveModelController, ModelController,
 };
 #[cfg(target_os = "windows")]
 use crate::{
-    core::free_camera::{self, CameraScene},
+    windows::free_camera::{self, CameraScene},
     il2cpp::hook::UnityEngine_CoreModule::{GameObject, Transform},
 };
 
 #[cfg(target_os = "windows")]
-static LIVE_DISABLED_HEADS: free_camera_hooks::DisabledHeadStore =
-    once_cell::sync::Lazy::new(free_camera_hooks::new_disabled_head_store);
+static LIVE_DISABLED_HEADS: free_camera::DisabledHeadStore =
+    once_cell::sync::Lazy::new(free_camera::new_disabled_head_store);
 
 #[cfg(target_os = "windows")]
 const LIVE_CHARACTER_POSITIONS: &[i32] = &[
@@ -102,7 +102,7 @@ pub fn GetCharacterObjectFromPositionId(this: *mut Il2CppObject, index: i32) -> 
 
 #[cfg(target_os = "windows")]
 pub(crate) fn restore_live_disabled_heads(current_index: i32, force_all: bool) {
-    free_camera_hooks::restore_disabled_heads(&LIVE_DISABLED_HEADS, current_index, force_all);
+    free_camera::restore_disabled_heads(&LIVE_DISABLED_HEADS, current_index, force_all);
 }
 
 #[cfg(target_os = "windows")]
@@ -300,7 +300,7 @@ extern "C" fn Director_AlterUpdate(
     }
 
     let model_array = CharacterObject::get_LiveModelControllerArray(chara_object);
-    let model_controller = free_camera_hooks::first_enumerable_item(model_array);
+    let model_controller = free_camera::first_enumerable_item(model_array);
     if model_controller.is_null() {
         restore_live_disabled_heads(index, true);
         return;
@@ -330,7 +330,7 @@ extern "C" fn Director_AlterUpdate(
 
     if first_person {
         free_camera::update_first_person(CameraScene::Live, pos, rot, Some(forward));
-        free_camera_hooks::hide_head_parts(&LIVE_DISABLED_HEADS, model_controller, index);
+        free_camera::hide_head_parts(&LIVE_DISABLED_HEADS, model_controller, index);
         restore_live_disabled_heads(index, false);
     } else if head_selfie {
         free_camera::update_live_head_follow(pos, rot, Some(forward));
