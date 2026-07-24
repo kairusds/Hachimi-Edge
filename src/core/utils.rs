@@ -628,17 +628,15 @@ pub fn get_data_path() -> String {
     #[cfg(target_os = "windows")]
     {
         use crate::{
-            core::game::Region,
             il2cpp::hook::UnityEngine_CoreModule::Application,
-            windows::utils::get_game_dir
+            windows::utils::{get_game_dir, get_exec_path}
         };
 
-        let game = &Hachimi::instance().game;
-        let jp_steam_data_path = get_game_dir()
-            .join("UmamusumePrettyDerby_Jpn_Data")
-            .join("Persistent");
-        let new_jp_dmm_data_path = get_game_dir()
-            .join("umamusume_Data")
+        let exec_name = get_exec_path().file_stem().unwrap_or_default().to_string_lossy().into_owned();
+        let data_folder_name = format!("{}_Data", exec_name);
+
+        let local_data_path = get_game_dir()
+            .join(data_folder_name)
             .join("Persistent");
 
         let dir_ok = |path: &std::path::Path| {
@@ -649,10 +647,8 @@ pub fn get_data_path() -> String {
                 && path.join("master").join("master.mdb").exists()
         };
 
-        if game.region == Region::Japan && game.is_steam_release && dir_ok(&jp_steam_data_path) {
-            jp_steam_data_path.to_string_lossy().to_string()
-        } else if game.region == Region::Japan && !game.is_steam_release && dir_ok(&new_jp_dmm_data_path) {
-            new_jp_dmm_data_path.to_string_lossy().to_string()
+        if dir_ok(&local_data_path) {
+            local_data_path.to_string_lossy().to_string()
         } else {
             unsafe { (*Application::get_persistentDataPath()).as_utf16str() }.to_string()
         }
@@ -662,6 +658,29 @@ pub fn get_data_path() -> String {
 pub fn get_masterdb_path() -> String {
     info!("get_masterdb_path base: {}", get_data_path());
     format!("{}/master/master.mdb", get_data_path())
+}
+
+pub fn get_meta_path() -> String {
+    #[cfg(target_os = "android")]
+    {
+        format!("{}/meta", get_data_path())
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use crate::{
+            core::game::Region,
+            windows::utils::get_game_dir
+        };
+
+        let game = &Hachimi::instance().game;
+
+        if game.region == Region::Taiwan {
+            get_game_dir().join("meta").to_string_lossy().to_string()
+        } else {
+            std::path::PathBuf::from(get_data_path()).join("meta").to_string_lossy().to_string()
+        }
+    }
 }
 
 // Intentionally dumb png loader implementation that only loads RGBA8 images
