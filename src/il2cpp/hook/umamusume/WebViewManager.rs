@@ -56,7 +56,7 @@ type GetGachaUrlFn=extern "C" fn(gacha_id:i32, stepup_id:i32)->*mut Il2CppString
 #[cfg(target_os = "windows")]
 extern "C" fn GetGachaUrl(gacha_id:i32, stepup_id:i32)->*mut Il2CppString {
     let url=get_orig_fn!(GetGachaUrl,GetGachaUrlFn)(gacha_id, stepup_id);
-    crate::windows::external_link::add_gacha_url(url,gacha_id);
+    crate::windows::webview::add_gacha_url(url,gacha_id);
     url
 }
 
