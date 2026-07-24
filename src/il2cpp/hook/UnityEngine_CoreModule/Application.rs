@@ -23,8 +23,10 @@ pub extern "C" fn OpenURL(url: *mut Il2CppString){
 static mut GET_PERSISTENTDATAPATH_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_persistentDataPath, GET_PERSISTENTDATAPATH_ADDR, *mut Il2CppString,);
 
-// static mut OPENURL_ADDR: usize = 0;
-// impl_addr_wrapper_fn!(OpenURL, OPENURL_ADDR, (), url: *mut Il2CppString);
+#[cfg(target_os = "android")]
+static mut OPENURL_ADDR: usize = 0;
+#[cfg(target_os = "android")]
+impl_addr_wrapper_fn!(OpenURL, OPENURL_ADDR, (), url: *mut Il2CppString);
 
 static mut GET_SYSTEMLANGUAGE_ADDR: usize = 0;
 impl_addr_wrapper_fn!(systemLanguage, GET_SYSTEMLANGUAGE_ADDR, i32, );
