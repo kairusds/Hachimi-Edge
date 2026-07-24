@@ -1024,7 +1024,10 @@ impl Gui {
         let free_camera_input_capture = free_camera::wants_windows_input_capture();
 
         // Store these as atomic values so the input thread can check them without locking the gui
-        GUI_INPUT_ACTIVE.store(self.is_consuming_input(), atomic::Ordering::Release);
+        GUI_INPUT_ACTIVE.store(
+            self.menu_visible || !self.windows.is_empty(),
+            atomic::Ordering::Release
+        );
         IS_CONSUMING_INPUT.store(
             self.is_consuming_input() || has_interactive_widgets || free_camera_input_capture,
             atomic::Ordering::Release
@@ -2892,17 +2895,7 @@ impl ConfigEditor {
             {
                 if should_show_option(search, &t!("config_editor.free_camera")) {
                     ui.label(t!("config_editor.free_camera"));
-                    let was_enabled = config.free_camera.enabled;
-                    if ui.checkbox(&mut config.free_camera.enabled, "").changed() &&
-                        !was_enabled &&
-                        config.free_camera.enabled
-                    {
-                        thread::spawn(|| {
-                            Gui::instance().unwrap()
-                                .lock().unwrap()
-                                .show_notification(&t!("notification.free_camera_input_disabled"));
-                        });
-                    }
+                    ui.checkbox(&mut config.free_camera.enabled, "");
                     ui.end_row();
 
                     ui.label("");
@@ -3796,6 +3789,10 @@ impl Window for FreeCameraSettingsWindow {
 
                                 ui.strong(t!("free_camera.section_live"));
                                 ui.label("");
+                                ui.end_row();
+
+                                ui.label(t!("free_camera.live_remove_screen_effects"));
+                                ui.checkbox(&mut cfg.live_remove_screen_effects, "");
                                 ui.end_row();
 
                                 ui.label(t!("free_camera.live_disable_character_teleport"));

@@ -84,8 +84,8 @@ notification:
   atlas_workaround_reset: "Atlas files modified: workaround disabled."
   tl_repo_changed: "Translation repository changed. Localized data reloaded."
   tl_repo_folder_missing: "Translation data folder is missing. Please check for updates to restore translations."
-  free_camera_input_disabled: "Free Camera is enabled. In-game keyboard and gamepad input have been disabled."
   freeform_window_disabled_landscape: "Freeform window has been disabled because landscape mode is active."
+  free_camera_unavailable_live_1157: "Free Camera is unavailable in this Live because of a known issue. It has been disabled for this Live."
 
 first_time_setup:
   title: "First Time Setup"
@@ -263,6 +263,7 @@ free_camera:
   section_race: "Race"
   section_keybinds: "Windows keybinds"
   remove_camera_effects: "Remove camera effects"
+  live_remove_screen_effects: "Remove screen effects"
   live_disable_character_teleport: "Disable character teleport"
   live_force_all_characters_visible: "Always show all characters"
   show_overlay: "Show switch overlay"

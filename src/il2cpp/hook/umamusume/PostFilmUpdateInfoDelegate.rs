@@ -127,20 +127,10 @@ extern "C" fn MultiCameraPostFilmUpdateInfoDelegate_Invoke(
     update_info: *mut PostFilmUpdateInfo,
     multi_camera_no: i32,
 ) {
-    free_camera::set_live_active();
-    let remove_camera_effects = free_camera::should_remove_camera_effects();
-    if remove_camera_effects {
-        disable(update_info);
-    }
-
     get_orig_fn!(
         MultiCameraPostFilmUpdateInfoDelegate_Invoke,
         MultiCameraPostFilmUpdateInfoDelegateInvokeFn
     )(this, update_info, multi_camera_no);
-
-    if remove_camera_effects {
-        disable(update_info);
-    }
 }
 
 pub fn init(umamusume: *const Il2CppImage) {

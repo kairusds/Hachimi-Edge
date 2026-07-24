@@ -1,6 +1,8 @@
 use crate::{core::{Hachimi, game::Region}, il2cpp::{symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr}, types::*}};
 #[cfg(target_os = "windows")]
-use crate::core::free_camera;
+use crate::core::{free_camera::{self, CameraScene}, live_utils};
+#[cfg(target_os = "windows")]
+use super::Director;
 // use std::sync::atomic::{AtomicBool, Ordering};
 
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
@@ -23,9 +25,32 @@ impl_addr_wrapper_fn!(SoftwareReset, SOFTWARERESET_ADDR, (), this: *mut Il2CppOb
 #[cfg(target_os = "windows")]
 type GameSystemUpdateFn = extern "C" fn(this: *mut Il2CppObject);
 #[cfg(target_os = "windows")]
+fn apply_free_camera_live_pause_request() {
+    if !free_camera::take_toggle_live_pause_request() {
+        return;
+    }
+    live_utils::toggle_live_pause();
+}
+
+#[cfg(target_os = "windows")]
 extern "C" fn GameSystem_Update(this: *mut Il2CppObject) {
-    free_camera::tick();
+    apply_free_camera_live_pause_request();
+
+    // Live and race normally tick from their camera LateUpdate hooks. Keep the
+    // global update path only as a fallback while LiveTimelineControl is paused.
+    if Director::is_live_paused() && free_camera::scene() == CameraScene::Live {
+        free_camera::tick();
+        apply_free_camera_live_pause_request();
+    }
     get_orig_fn!(GameSystem_Update, GameSystemUpdateFn)(this);
+}
+
+#[cfg(target_os = "windows")]
+type GameSystemLateUpdateFn = extern "C" fn(this: *mut Il2CppObject);
+#[cfg(target_os = "windows")]
+extern "C" fn GameSystem_LateUpdate(this: *mut Il2CppObject) {
+    get_orig_fn!(GameSystem_LateUpdate, GameSystemLateUpdateFn)(this);
+    Director::apply_paused_free_camera();
 }
 
 // good hook for initializing values i guess
@@ -101,5 +126,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     {
         let GameSystem_Update_addr = get_method_addr(GameSystem, c"Update", 0);
         new_hook!(GameSystem_Update_addr, GameSystem_Update);
+        let GameSystem_LateUpdate_addr = get_method_addr(GameSystem, c"LateUpdate", 0);
+        new_hook!(GameSystem_LateUpdate_addr, GameSystem_LateUpdate);
     }
 }

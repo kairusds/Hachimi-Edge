@@ -34,6 +34,20 @@ extern "C" fn GetCharacterWorldPos(
     free_camera::set_live_active();
     LiveTimelineControl::set_current(timeline_control);
 
+    if free_camera::is_live_secondary_camera_update() {
+        return get_orig_fn!(GetCharacterWorldPos, GetCharacterWorldPosFn)(
+            ret,
+            timeline_control,
+            pos_flag,
+            chara_parts,
+            chara_pos,
+            offset,
+            is_attached_to_props,
+            props_index,
+            props_attach_node_index,
+        );
+    }
+
     let is_selfie_stick = free_camera::is_scene_enabled(CameraScene::Live)
         && free_camera::mode() == FreeCameraMode::SelfieStick;
     let is_head_selfie = free_camera::is_live_head_selfie();

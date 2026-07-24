@@ -32,6 +32,8 @@ pub mod StandaloneWindowResize;
 #[cfg(target_os = "windows")]
 mod GallopInput;
 #[cfg(target_os = "windows")]
+mod InputSystemManager;
+#[cfg(target_os = "windows")]
 pub mod WindowsGamepadControl;
 #[cfg(target_os = "windows")]
 pub mod TapEffectController;
@@ -188,6 +190,7 @@ pub fn init() {
     {
         StandaloneWindowResize::init(image);
         GallopInput::init(image);
+        InputSystemManager::init(image);
         WindowsGamepadControl::init(image);
         TapEffectController::init(image);
     }

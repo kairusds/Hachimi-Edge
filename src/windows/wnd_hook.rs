@@ -35,6 +35,8 @@ static RESIZE_WAIT_FRAMES: AtomicI32 = AtomicI32::new(0);
 static RESIZE_GENERATION: AtomicU32 = AtomicU32::new(0);
 static RESIZE_WAIT_FOR_END_FRAME_ADDR: AtomicUsize = AtomicUsize::new(0);
 static FREEFORM_LANDSCAPE_CLOSE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+static SET_WINDOW_LONG_PTR_W_HOOK_ID: AtomicBool = AtomicBool::new(false);
+static SET_WINDOW_LONG_PTR_A_HOOK_ID: AtomicBool = AtomicBool::new(true);
 
 pub fn get_target_hwnd() -> HWND {
     HWND(TARGET_HWND.load(atomic::Ordering::Relaxed) as *mut _)
@@ -340,6 +342,7 @@ unsafe extern "system" fn set_window_long_ptr_w_hook(
     index: WINDOW_LONG_PTR_INDEX,
     new_long: isize
 ) -> isize {
+    std::hint::black_box(SET_WINDOW_LONG_PTR_W_HOOK_ID.load(atomic::Ordering::Relaxed));
     let orig_fn = get_orig_fn!(set_window_long_ptr_w_hook, SetWindowLongPtrFn);
     let target_hwnd = get_target_hwnd();
 
@@ -369,6 +372,7 @@ unsafe extern "system" fn set_window_long_ptr_a_hook(
     index: WINDOW_LONG_PTR_INDEX,
     new_long: isize
 ) -> isize {
+    std::hint::black_box(SET_WINDOW_LONG_PTR_A_HOOK_ID.load(atomic::Ordering::Relaxed));
     let orig_fn = get_orig_fn!(set_window_long_ptr_a_hook, SetWindowLongPtrFn);
     let target_hwnd = get_target_hwnd();
 
@@ -536,7 +540,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         WM_RBUTTONDOWN => {
             if !Gui::is_gui_input_active_atomic() {
                 free_camera::on_mouse_button(true);
-                if free_camera::is_enabled() {
+                if free_camera::is_game_input_capture_active() {
                     return LRESULT(0);
                 }
             }
@@ -544,7 +548,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         WM_RBUTTONUP => {
             if !Gui::is_gui_input_active_atomic() {
                 free_camera::on_mouse_button(false);
-                if free_camera::is_enabled() {
+                if free_camera::is_game_input_capture_active() {
                     return LRESULT(0);
                 }
             }
@@ -563,13 +567,13 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
             if !Gui::is_gui_input_active_atomic() {
                 let delta = (wparam.0 >> 16) as u16 as i16;
                 free_camera::on_mouse_wheel(delta);
-                if free_camera::is_enabled() {
+                if free_camera::is_game_input_capture_active() {
                     return LRESULT(0);
                 }
             }
         },
         WM_INPUT => {
-            if !Gui::is_gui_input_active_atomic() && free_camera::is_enabled() {
+            if !Gui::is_gui_input_active_atomic() && free_camera::is_game_input_capture_active() {
                 return LRESULT(0);
             }
         },
@@ -696,7 +700,6 @@ pub fn init() {
         }
 
         taskbar::init(hwnd);
-        free_camera::init_windows_gamepad_capture();
 
         if let Ok(umamusume) = get_assembly_image(c"umamusume.dll") {
             if let Ok(mono_behaviour_extension) =
@@ -795,7 +798,6 @@ pub fn init() {
 pub fn uninit() {
     unsafe {
         restore_original_wnd_proc(get_target_hwnd());
-        free_camera::uninit_windows_gamepad_capture();
         Hachimi::instance().interceptor.unhook(set_window_long_ptr_w_hook as *const () as _);
         Hachimi::instance().interceptor.unhook(set_window_long_ptr_a_hook as *const () as _);
 

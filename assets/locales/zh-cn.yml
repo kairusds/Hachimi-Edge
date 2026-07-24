@@ -65,6 +65,7 @@ menu:
   change_translation_repo: "\uf0c1 更换翻译仓库"
 
 notification:
+  free_camera_unavailable_live_1157: "自由视角在本 Live 中存在已知问题，在此 Live 中将不会启用自由视角。"
   freeform_window_disabled_landscape: "检测到横屏模式，自由窗口已自动关闭。"
   saved_localize_dump: "已保存到 localize_dump.json"
   config_reloaded: "配置已重新加载"
@@ -82,7 +83,6 @@ notification:
   atlas_workaround_reset: "检测到 Atlas 文件更新: 已重新应用 Atlas 翻译..."
   tl_repo_changed: "翻译仓库已更换，本地化数据已重新加载。"
   tl_repo_folder_missing: "翻译数据文件夹缺失。请检查更新以恢复翻译。"
-  free_camera_input_disabled: "已开启自由视角，游戏内键盘及手柄输入已被禁用。"
 
 first_time_setup:
   title: "初始化设置"
@@ -248,6 +248,7 @@ free_camera:
   section_race: "比赛"
   section_keybinds: "Windows 按键绑定"
   remove_camera_effects: "移除镜头效果"
+  live_remove_screen_effects: "去除屏幕光效"
   live_disable_character_teleport: "禁用角色瞬移"
   live_force_all_characters_visible: "使所有角色始终可见"
   show_overlay: "显示切换提示"
