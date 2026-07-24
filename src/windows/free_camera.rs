@@ -780,7 +780,7 @@ pub fn set_live_music_id(music_id: i32) {
 
     if !was_unsupported && config.windows.free_camera.enabled {
         gui::request_notification(gui::NotificationRequest::Custom(
-            t!("notification.free_camera_unavailable_live_1157").into_owned(),
+            t!("notification.free_camera_unavailable_live").into_owned(),
         ));
     }
 }

@@ -65,7 +65,7 @@ menu:
   change_translation_repo: "\uf0c1 更换翻译仓库"
 
 notification:
-  free_camera_unavailable_live_1157: "自由视角在本 Live 中存在已知问题，在此 Live 中将不会启用自由视角。"
+  free_camera_unavailable_live: "自由视角在本 Live 中存在已知问题，在此 Live 中将不会启用自由视角。"
   freeform_window_disabled_landscape: "检测到横屏模式，自由窗口已自动关闭。"
   saved_localize_dump: "已保存到 localize_dump.json"
   config_reloaded: "配置已重新加载"
