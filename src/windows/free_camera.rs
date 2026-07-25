@@ -1052,10 +1052,6 @@ pub fn live_position_flag() -> i32 {
         .unwrap_or(0x1)
 }
 
-pub fn live_position_index() -> i32 {
-    STATE.lock().unwrap().live_target_position_index
-}
-
 pub fn live_character_position_index() -> i32 {
     let state = STATE.lock().unwrap();
     let index = state.live_target_position_index;
@@ -1085,19 +1081,6 @@ pub fn live_part() -> i32 {
 pub fn race_model_index() -> i32 {
     let index = STATE.lock().unwrap().race_target_index;
     if index < 0 { 0 } else { index }
-}
-
-pub fn update_live_follow_target(target: Vector3_t) {
-    let config = Hachimi::instance().config.load();
-    if !config.windows.free_camera.enabled {
-        return;
-    }
-
-    let mut state = STATE.lock().unwrap();
-    let target = Vec3::from(target);
-    state.live_follow_precise_target = true;
-    state.live_follow_timeline_updated = true;
-    update_live_follow_camera_locked(&mut state, &config.windows.free_camera, target);
 }
 
 pub fn update_live_follow_position_target(target: Vector3_t) {
@@ -1702,49 +1685,12 @@ pub fn on_mouse_wheel(delta: i16) {
     change_fov_locked(&mut state, step);
 }
 
-pub fn on_gamepad_axes(axes: GamepadAxes) {
-    if !is_enabled() {
-        return;
-    }
-
-    STATE.lock().unwrap().gamepad.axes = axes;
-}
-
-pub fn on_gamepad_button(button: GamepadButton, pressed: bool) {
-    if !is_enabled() {
-        return;
-    }
-
-    let mut state = STATE.lock().unwrap();
-    match button {
-        GamepadButton::LeftBumper => state.gamepad.lb = pressed,
-        GamepadButton::RightBumper => state.gamepad.rb = pressed,
-        _ if pressed => match button {
-            GamepadButton::A => request_toggle_live_pause_locked(&state),
-            GamepadButton::B => reverse_locked(&mut state),
-            GamepadButton::X => cycle_mode_locked(&mut state),
-            GamepadButton::Y => {
-                let config = Hachimi::instance().config.load();
-                state.reset_current_mode_camera(&config.windows.free_camera);
-            },
-            GamepadButton::DpadLeft => previous_target_locked(&mut state),
-            GamepadButton::DpadRight => next_target_locked(&mut state),
-            GamepadButton::DpadUp => next_live_part_locked(&mut state),
-            GamepadButton::DpadDown => previous_live_part_locked(&mut state),
-            _ => (),
-        },
-        _ => (),
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
-pub enum GamepadButton {
+enum GamepadButton {
     A,
     B,
     X,
     Y,
-    LeftBumper,
-    RightBumper,
     DpadUp,
     DpadDown,
     DpadLeft,
@@ -2195,7 +2141,6 @@ fn poll_unity_gamepad_locked(state: &mut FreeCameraState, config: &FreeCameraCon
                 GamepadButton::DpadRight => next_target_locked(state),
                 GamepadButton::DpadUp => next_live_part_locked(state),
                 GamepadButton::DpadDown => previous_live_part_locked(state),
-                _ => (),
             }
         }
     }
