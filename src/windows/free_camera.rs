@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     collections::{HashMap, HashSet},
     ptr::null_mut,
     sync::{Mutex, atomic::{AtomicBool, Ordering}},
@@ -10,7 +11,7 @@ use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::Hachimi, il2cpp::{
+    core::{gui, Hachimi}, il2cpp::{
         ext::Il2CppStringExt,
         hook::{
             UnityEngine_CoreModule::{Component, GameObject, Object, Transform},
@@ -21,12 +22,11 @@ use crate::{
     }
 };
 
-use super::xinput;
-
 const LOOK_RADIUS: f32 = 5.0;
 const OVERLAY_FADE_IN: f32 = 0.18;
 const OVERLAY_HOLD: f32 = 1.6;
 const OVERLAY_FADE_OUT: f32 = 0.35;
+const UNSUPPORTED_LIVE_MUSIC_ID: i32 = 1157;
 
 pub const LIVE_POSITION_CHOICES: &[(&str, i32)] = &[
     ("Place01", 0x1),
@@ -179,6 +179,7 @@ impl Default for FreeCameraKeybinds {
 pub struct FreeCameraConfig {
     pub enabled: bool,
     pub remove_camera_effects: bool,
+    pub live_remove_screen_effects: bool,
     pub live_disable_character_teleport: bool,
     pub live_force_all_characters_visible: bool,
     pub show_overlay: bool,
@@ -215,6 +216,7 @@ impl Default for FreeCameraConfig {
         Self {
             enabled: false,
             remove_camera_effects: true,
+            live_remove_screen_effects: false,
             live_disable_character_teleport: false,
             live_force_all_characters_visible: false,
             show_overlay: true,
@@ -722,13 +724,73 @@ impl FreeCameraState {
 static STATE: Lazy<Mutex<FreeCameraState>> = Lazy::new(|| Mutex::new(FreeCameraState::new()));
 static OVERLAY_MESSAGE: Lazy<Mutex<Option<OverlayMessage>>> = Lazy::new(|| Mutex::new(None));
 static RELOAD_CONFIG_REQUESTED: AtomicBool = AtomicBool::new(false);
+static LIVE_UNSUPPORTED: AtomicBool = AtomicBool::new(false);
+static TOGGLE_LIVE_PAUSE_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+thread_local! {
+    static LIVE_SECONDARY_CAMERA_UPDATE_DEPTH: Cell<u32> = const { Cell::new(0) };
+}
+
+pub struct LiveSecondaryCameraUpdateGuard;
+
+impl Drop for LiveSecondaryCameraUpdateGuard {
+    fn drop(&mut self) {
+        LIVE_SECONDARY_CAMERA_UPDATE_DEPTH.with(|depth| {
+            depth.set(depth.get().saturating_sub(1));
+        });
+    }
+}
+
+pub fn begin_live_secondary_camera_update() -> LiveSecondaryCameraUpdateGuard {
+    LIVE_SECONDARY_CAMERA_UPDATE_DEPTH.with(|depth| {
+        depth.set(depth.get().saturating_add(1));
+    });
+    LiveSecondaryCameraUpdateGuard
+}
+
+pub fn is_live_secondary_camera_update() -> bool {
+    LIVE_SECONDARY_CAMERA_UPDATE_DEPTH.with(|depth| depth.get() != 0)
+}
 
 pub fn reload_runtime_config() {
     RELOAD_CONFIG_REQUESTED.store(true, Ordering::Release);
 }
 
 pub fn is_enabled() -> bool {
-    Hachimi::instance().config.load().windows.free_camera.enabled
+    Hachimi::instance().config.load().windows.free_camera.enabled &&
+        !LIVE_UNSUPPORTED.load(Ordering::Acquire)
+}
+
+pub fn set_live_music_id(music_id: i32) {
+    let unsupported = music_id == UNSUPPORTED_LIVE_MUSIC_ID;
+    let was_unsupported = LIVE_UNSUPPORTED.swap(unsupported, Ordering::AcqRel);
+
+    if !unsupported {
+        return;
+    }
+
+    let config = Hachimi::instance().config.load();
+    let mut state = STATE.lock().unwrap();
+    if state.scene == CameraScene::Live {
+        state.scene = CameraScene::None;
+        state.reset_with_config(&config.windows.free_camera);
+    }
+    drop(state);
+    *OVERLAY_MESSAGE.lock().unwrap() = None;
+
+    if !was_unsupported && config.windows.free_camera.enabled {
+        gui::request_notification(gui::NotificationRequest::Custom(
+            t!("notification.free_camera_unavailable_live").into_owned(),
+        ));
+    }
+}
+
+pub fn is_game_input_capture_active() -> bool {
+    if !is_enabled() {
+        return false;
+    }
+
+    matches!(STATE.lock().unwrap().scene, CameraScene::Live | CameraScene::Race)
 }
 
 pub fn overlay_message() -> Option<(String, f32)> {
@@ -821,7 +883,9 @@ pub fn scene() -> CameraScene {
 
 pub fn is_scene_enabled(scene: CameraScene) -> bool {
     let config = Hachimi::instance().config.load();
-    config.windows.free_camera.enabled && STATE.lock().unwrap().scene == scene
+    config.windows.free_camera.enabled &&
+        !LIVE_UNSUPPORTED.load(Ordering::Acquire) &&
+        STATE.lock().unwrap().scene == scene
 }
 
 pub fn mode() -> FreeCameraMode {
@@ -912,6 +976,14 @@ pub fn should_remove_camera_effects() -> bool {
         STATE.lock().unwrap().scene == CameraScene::Live
 }
 
+pub fn should_remove_live_screen_effects() -> bool {
+    let config = Hachimi::instance().config.load();
+    config.windows.free_camera.enabled &&
+        config.windows.free_camera.live_remove_screen_effects &&
+        !LIVE_UNSUPPORTED.load(Ordering::Acquire) &&
+        STATE.lock().unwrap().scene == CameraScene::Live
+}
+
 pub fn should_disable_live_character_teleport() -> bool {
     let config = Hachimi::instance().config.load();
     config.windows.free_camera.enabled &&
@@ -928,7 +1000,7 @@ pub fn should_force_live_characters_visible() -> bool {
 
 pub fn set_live_active() {
     let config = Hachimi::instance().config.load();
-    if !config.windows.free_camera.enabled {
+    if !config.windows.free_camera.enabled || LIVE_UNSUPPORTED.load(Ordering::Acquire) {
         return;
     }
 
@@ -949,11 +1021,26 @@ pub fn set_race_active() {
 }
 
 pub fn end_scene(scene: CameraScene) {
+    if scene == CameraScene::Live {
+        LIVE_UNSUPPORTED.store(false, Ordering::Release);
+        TOGGLE_LIVE_PAUSE_REQUESTED.store(false, Ordering::Release);
+    }
+
     let config = Hachimi::instance().config.load();
     let mut state = STATE.lock().unwrap();
     if state.scene == scene {
         state.scene = CameraScene::None;
         state.reset_with_config(&config.windows.free_camera);
+    }
+}
+
+pub fn take_toggle_live_pause_request() -> bool {
+    TOGGLE_LIVE_PAUSE_REQUESTED.swap(false, Ordering::AcqRel)
+}
+
+fn request_toggle_live_pause_locked(state: &FreeCameraState) {
+    if state.scene == CameraScene::Live {
+        TOGGLE_LIVE_PAUSE_REQUESTED.store(true, Ordering::Release);
     }
 }
 
@@ -963,10 +1050,6 @@ pub fn live_position_flag() -> i32 {
         .get(state.live_target_position_index as usize)
         .map(|(_, value)| *value)
         .unwrap_or(0x1)
-}
-
-pub fn live_position_index() -> i32 {
-    STATE.lock().unwrap().live_target_position_index
 }
 
 pub fn live_character_position_index() -> i32 {
@@ -998,19 +1081,6 @@ pub fn live_part() -> i32 {
 pub fn race_model_index() -> i32 {
     let index = STATE.lock().unwrap().race_target_index;
     if index < 0 { 0 } else { index }
-}
-
-pub fn update_live_follow_target(target: Vector3_t) {
-    let config = Hachimi::instance().config.load();
-    if !config.windows.free_camera.enabled {
-        return;
-    }
-
-    let mut state = STATE.lock().unwrap();
-    let target = Vec3::from(target);
-    state.live_follow_precise_target = true;
-    state.live_follow_timeline_updated = true;
-    update_live_follow_camera_locked(&mut state, &config.windows.free_camera, target);
 }
 
 pub fn update_live_follow_position_target(target: Vector3_t) {
@@ -1062,6 +1132,32 @@ fn update_live_follow_camera_locked(
     };
     state.camera_pos = camera_pos;
     state.camera_look_at = camera_look_at;
+    state.camera_rotation = None;
+}
+
+pub fn refresh_paused_live_camera() {
+    let config = Hachimi::instance().config.load();
+    if !config.windows.free_camera.enabled || config.windows.free_camera.selfie_use_head_transform {
+        return;
+    }
+
+    let mut state = STATE.lock().unwrap();
+    if state.scene != CameraScene::Live || state.mode != FreeCameraMode::SelfieStick {
+        return;
+    }
+
+    let Some(position_target) = state.live_follow_target else {
+        return;
+    };
+    let look_at = position_target + state.live_follow_lookat_offset;
+    let angle = state.live_follow_offset.x.to_radians();
+    let distance = state.live_follow_offset.z;
+    state.camera_pos = Vec3::new(
+        look_at.x - angle.sin() * distance,
+        look_at.y + state.live_follow_offset.y,
+        look_at.z - angle.cos() * distance,
+    );
+    state.camera_look_at = look_at;
     state.camera_rotation = None;
 }
 
@@ -1428,11 +1524,11 @@ pub fn slerp_quaternion(a: Quaternion_t, b: Quaternion_t, t: f32) -> Quaternion_
 }
 
 pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
-    let config = Hachimi::instance().config.load();
-    if !config.windows.free_camera.enabled {
+    if !is_game_input_capture_active() {
         return;
     }
 
+    let config = Hachimi::instance().config.load();
     let kb = &config.windows.free_camera.keybinds;
     let mut state = STATE.lock().unwrap();
     set_key_flag(&mut state.key_state, vk, pressed, kb);
@@ -1465,11 +1561,11 @@ pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
 }
 
 pub fn is_windows_key_bound(vk: u16) -> bool {
-    let config = Hachimi::instance().config.load();
-    if !config.windows.free_camera.enabled {
+    if !is_game_input_capture_active() {
         return false;
     }
 
+    let config = Hachimi::instance().config.load();
     let kb = &config.windows.free_camera.keybinds;
     vk == kb.move_forward ||
         vk == kb.move_back ||
@@ -1547,7 +1643,7 @@ pub fn wants_windows_input_capture() -> bool {
 }
 
 pub fn on_mouse_button(right_down: bool) {
-    if !is_enabled() {
+    if !is_game_input_capture_active() {
         return;
     }
 
@@ -1580,7 +1676,7 @@ pub fn on_mouse_move(x: i32, y: i32) {
 }
 
 pub fn on_mouse_wheel(delta: i16) {
-    if !is_enabled() {
+    if !is_game_input_capture_active() {
         return;
     }
 
@@ -1589,55 +1685,16 @@ pub fn on_mouse_wheel(delta: i16) {
     change_fov_locked(&mut state, step);
 }
 
-pub fn on_gamepad_axes(axes: GamepadAxes) {
-    if !is_enabled() {
-        return;
-    }
-
-    STATE.lock().unwrap().gamepad.axes = axes;
-}
-
-pub fn on_gamepad_button(button: GamepadButton, pressed: bool) {
-    if !is_enabled() {
-        return;
-    }
-
-    let mut state = STATE.lock().unwrap();
-    match button {
-        GamepadButton::LeftBumper => state.gamepad.lb = pressed,
-        GamepadButton::RightBumper => state.gamepad.rb = pressed,
-        _ if pressed => match button {
-            GamepadButton::A => next_target_locked(&mut state),
-            GamepadButton::B => previous_target_locked(&mut state),
-            GamepadButton::X => cycle_mode_locked(&mut state),
-            GamepadButton::Y => {
-                let config = Hachimi::instance().config.load();
-                state.reset_current_mode_camera(&config.windows.free_camera);
-            },
-            GamepadButton::DpadLeft => previous_target_locked(&mut state),
-            GamepadButton::DpadRight => next_target_locked(&mut state),
-            GamepadButton::DpadUp => next_live_part_locked(&mut state),
-            GamepadButton::DpadDown => previous_live_part_locked(&mut state),
-            GamepadButton::Start => reverse_locked(&mut state),
-            _ => (),
-        },
-        _ => (),
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
-pub enum GamepadButton {
+enum GamepadButton {
     A,
     B,
     X,
     Y,
-    LeftBumper,
-    RightBumper,
     DpadUp,
     DpadDown,
     DpadLeft,
     DpadRight,
-    Start,
 }
 
 pub fn tick() {
@@ -1655,6 +1712,10 @@ pub fn tick() {
     if !config.enabled {
         return;
     }
+    if !matches!(state.scene, CameraScene::Live | CameraScene::Race) {
+        state.last_tick = Instant::now();
+        return;
+    }
     if state.scene == CameraScene::Race && state.mode != state.last_overlay_mode {
         state.last_overlay_mode = state.mode;
         set_overlay_message(t!(
@@ -1663,7 +1724,7 @@ pub fn tick() {
         ).into_owned());
     }
 
-    poll_xinput_locked(&mut state, config);
+    poll_unity_gamepad_locked(&mut state, config);
 
     let now = Instant::now();
     let delta = now.duration_since(state.last_tick).as_secs_f32();
@@ -2035,16 +2096,10 @@ fn next_live_part_locked(state: &mut FreeCameraState) {
     }
 }
 
-pub fn init_windows_gamepad_capture() {
-    xinput::ensure_hook();
-}
+fn poll_unity_gamepad_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
+    use crate::il2cpp::hook::Unity_InputSystem as input;
 
-pub fn uninit_windows_gamepad_capture() {
-    xinput::unhook();
-}
-
-fn poll_xinput_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
-    let Some(xstate) = xinput::get_state(0) else {
+    let Some(gamepad) = input::current_gamepad_state() else {
         state.gamepad.axes = GamepadAxes::default();
         state.gamepad.lb = false;
         state.gamepad.rb = false;
@@ -2052,58 +2107,44 @@ fn poll_xinput_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
         return;
     };
 
-    let gp = xstate.gamepad;
     state.gamepad.axes = GamepadAxes {
-        left_x: normalize_thumb(gp.thumb_lx),
-        left_y: normalize_thumb(gp.thumb_ly),
-        right_x: normalize_thumb(gp.thumb_rx),
-        right_y: normalize_thumb(gp.thumb_ry),
-        left_trigger: gp.left_trigger as f32 / 255.0,
-        right_trigger: gp.right_trigger as f32 / 255.0,
+        left_x: gamepad.left_x,
+        left_y: gamepad.left_y,
+        right_x: gamepad.right_x,
+        right_y: gamepad.right_y,
+        left_trigger: gamepad.left_trigger,
+        right_trigger: gamepad.right_trigger,
     };
-    state.gamepad.lb = gp.buttons & xinput::LEFT_SHOULDER != 0;
-    state.gamepad.rb = gp.buttons & xinput::RIGHT_SHOULDER != 0;
+    state.gamepad.lb = gamepad.buttons & input::LEFT_SHOULDER != 0;
+    state.gamepad.rb = gamepad.buttons & input::RIGHT_SHOULDER != 0;
 
-    let pressed = gp.buttons & !state.gamepad.last_buttons;
-    state.gamepad.last_buttons = gp.buttons;
+    let pressed = gamepad.buttons & !state.gamepad.last_buttons;
+    state.gamepad.last_buttons = gamepad.buttons;
 
     for (mask, button) in [
-        (xinput::A, GamepadButton::A),
-        (xinput::B, GamepadButton::B),
-        (xinput::X, GamepadButton::X),
-        (xinput::Y, GamepadButton::Y),
-        (xinput::DPAD_UP, GamepadButton::DpadUp),
-        (xinput::DPAD_DOWN, GamepadButton::DpadDown),
-        (xinput::DPAD_LEFT, GamepadButton::DpadLeft),
-        (xinput::DPAD_RIGHT, GamepadButton::DpadRight),
-        (xinput::START, GamepadButton::Start),
+        (input::BUTTON_SOUTH, GamepadButton::A),
+        (input::BUTTON_EAST, GamepadButton::B),
+        (input::BUTTON_WEST, GamepadButton::X),
+        (input::BUTTON_NORTH, GamepadButton::Y),
+        (input::DPAD_UP, GamepadButton::DpadUp),
+        (input::DPAD_DOWN, GamepadButton::DpadDown),
+        (input::DPAD_LEFT, GamepadButton::DpadLeft),
+        (input::DPAD_RIGHT, GamepadButton::DpadRight),
     ] {
         if pressed & mask != 0 {
             match button {
-                GamepadButton::A => next_target_locked(state),
-                GamepadButton::B => previous_target_locked(state),
+                GamepadButton::A => request_toggle_live_pause_locked(state),
+                GamepadButton::B => reverse_locked(state),
                 GamepadButton::X => cycle_mode_locked(state),
                 GamepadButton::Y => state.reset_current_mode_camera(config),
                 GamepadButton::DpadLeft => previous_target_locked(state),
                 GamepadButton::DpadRight => next_target_locked(state),
                 GamepadButton::DpadUp => next_live_part_locked(state),
                 GamepadButton::DpadDown => previous_live_part_locked(state),
-                GamepadButton::Start => reverse_locked(state),
-                _ => (),
             }
         }
     }
 }
-
-fn normalize_thumb(value: i16) -> f32 {
-    if value >= 0 {
-        value as f32 / i16::MAX as f32
-    }
-    else {
-        value as f32 / -(i16::MIN as f32)
-    }
-}
-
 pub type DisabledHeadStore = Lazy<Mutex<HashMap<i32, HashSet<usize>>>>;
 
 pub fn new_disabled_head_store() -> Mutex<HashMap<i32, HashSet<usize>>> {

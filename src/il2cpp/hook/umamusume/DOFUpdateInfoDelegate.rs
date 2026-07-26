@@ -35,11 +35,6 @@ extern "C" fn MultiCameraDOFUpdateInfoDelegate_Invoke(
     update_info: *mut PostEffectUpdateInfo_DOF::PostEffectUpdateInfoDOF,
     multi_camera_no: i32,
 ) {
-    free_camera::set_live_active();
-    if free_camera::should_remove_camera_effects() {
-        PostEffectUpdateInfo_DOF::disable(update_info);
-    }
-
     get_orig_fn!(
         MultiCameraDOFUpdateInfoDelegate_Invoke,
         MultiCameraDofUpdateInfoDelegateInvokeFn

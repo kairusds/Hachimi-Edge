@@ -37,7 +37,9 @@ extern "C" fn GetCameraPos(
 ) -> *mut Vector3_t {
     free_camera::set_live_active();
 
-    if is_multi_camera_position_data(this) {
+    if free_camera::is_live_secondary_camera_update() ||
+        is_multi_camera_position_data(this)
+    {
         return get_orig_fn!(GetCameraPos, GetCameraPosFn)(ret, this, timeline_control);
     }
 
@@ -67,7 +69,9 @@ extern "C" fn GetCameraPos2(
 ) -> *mut Vector3_t {
     free_camera::set_live_active();
 
-    if is_multi_camera_position_data(this) {
+    if free_camera::is_live_secondary_camera_update() ||
+        is_multi_camera_position_data(this)
+    {
         return get_orig_fn!(GetCameraPos2, GetCameraPos2Fn)(
             ret,
             this,
