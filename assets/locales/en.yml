@@ -240,7 +240,7 @@ config_editor:
   ui_loading_show_orientation_guide: "Hide now loading orientation guide"
   replace_to_builtin_font: "Use default game font"
   custom_title_name: "Custom window title"
-  ingame_webview: "Use webview for external links"
+  ingame_webview: "Open Umamusume links (news, help, gacha, ...) in webview"
 
 theme_editor:
   title: "GUI Theme Editor"

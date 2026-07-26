@@ -13,7 +13,7 @@ use rust_i18n::t;
 use std::{
     collections::HashMap,
     ffi::c_uint,
-    sync::{mpsc, Mutex, RwLock},
+    sync::{atomic::{AtomicBool, Ordering}, mpsc, Mutex, RwLock},
 };
 use webview2_com::{
     Microsoft::Web::WebView2::Win32::{
@@ -23,10 +23,11 @@ use webview2_com::{
         COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC,
     },
     CoreWebView2EnvironmentOptions, CreateCoreWebView2ControllerCompletedHandler,
-    CreateCoreWebView2EnvironmentCompletedHandler, ExecuteScriptCompletedHandler, Result,
+    CreateCoreWebView2EnvironmentCompletedHandler, ExecuteScriptCompletedHandler,
+    HistoryChangedEventHandler, Result
 };
 use windows::{
-    core::{w, Interface, HSTRING, PCWSTR, PWSTR},
+    core::{w, BOOL, Interface, IUnknown, HSTRING, PCWSTR, PWSTR},
     Win32::{
         Foundation::{E_POINTER, E_UNEXPECTED, HWND, LPARAM, RECT, TRUE},
         Globalization::{
@@ -45,6 +46,8 @@ pub const WM_OPEN_WEBVIEW: u32 = WM_USER + 500;
 pub const WM_CLOSE_WEBVIEW: u32 = WM_USER + 501;
 pub const WM_SET_WEBVIEW_POSITION: u32 = WM_USER + 502;
 pub const WM_WEBVIEW_GOBACK: u32 = WM_USER + 503;
+
+static CAN_GO_BACK: AtomicBool = AtomicBool::new(false);
 
 static HAS_WEBVIEW: Lazy<bool> = Lazy::new(|| unsafe {
     let mut version_info = PWSTR::null();
@@ -101,6 +104,10 @@ impl DialogWebView {
         }
     }
 
+    fn can_go_back(&self) -> bool {
+        self.webview.as_ref().map_or(false, |w| w.can_go_back())
+    }
+
     fn back(&self) {
         if let Some(ref webview) = self.webview {
             let _ = webview.execute_script("window.history.back()");
@@ -111,6 +118,7 @@ impl DialogWebView {
 struct InnerWebView {
     controller: ICoreWebView2Controller,
     webview: ICoreWebView2,
+    history_changed_token: i64,
 }
 
 impl InnerWebView {
@@ -121,9 +129,9 @@ impl InnerWebView {
 
         let env = Self::create_environment()?;
         let controller = Self::create_controller(parent, &env)?;
-        let webview = Self::init_webview(&controller, url)?;
+        let (webview, history_changed_token) = Self::init_webview(&controller, url)?;
 
-        Ok(InnerWebView { controller, webview })
+        Ok(InnerWebView { controller, webview, history_changed_token })
     }
 
     fn set_bounds(&self, bounds: RECT) -> Result<()> {
@@ -191,7 +199,7 @@ impl InnerWebView {
         unsafe {
             if let Ok(env10) = env.cast::<ICoreWebView2Environment10>() {
                 let controller_opts = env10.CreateCoreWebView2ControllerOptions()?;
-                controller_opts.SetIsInPrivateModeEnabled(false)?;
+                controller_opts.SetIsInPrivateModeEnabled(true)?;
                 env10.CreateCoreWebView2ControllerWithOptions(hwnd, &controller_opts, &handler)?;
             } else {
                 env.CreateCoreWebView2Controller(hwnd, &handler)?;
@@ -201,8 +209,21 @@ impl InnerWebView {
         webview2_com::wait_with_pump(rx)?
     }
 
-    fn init_webview(controller: &ICoreWebView2Controller, url: &str) -> Result<ICoreWebView2> {
+    fn init_webview(controller: &ICoreWebView2Controller, url: &str) -> Result<(ICoreWebView2, i64)> {
         let webview = unsafe { controller.CoreWebView2()? };
+
+        let handler = HistoryChangedEventHandler::create(Box::new(
+            |sender: Option<ICoreWebView2>, _args: Option<IUnknown>| {
+                if let Some(wv) = sender {
+                    let mut result = BOOL::default();
+                    unsafe { wv.CanGoBack(&mut result) }.ok();
+                    CAN_GO_BACK.store(result.as_bool(), Ordering::Release);
+                }
+                Ok(())
+            },
+        ));
+        let mut history_changed_token: i64 = 0;
+        unsafe { webview.add_HistoryChanged(&handler, &mut history_changed_token)?; }
 
         let h_url = HSTRING::from(url);
         unsafe {
@@ -211,12 +232,20 @@ impl InnerWebView {
             controller.MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC)?;
         }
 
-        Ok(webview)
+        Ok((webview, history_changed_token))
+    }
+    
+    fn can_go_back(&self) -> bool {
+        let mut result = BOOL::default();
+        unsafe { self.webview.CanGoBack(&mut result) }.ok();
+        result.as_bool()
     }
 }
 
 impl Drop for InnerWebView {
     fn drop(&mut self) {
+        let _ = unsafe { self.webview.remove_HistoryChanged(self.history_changed_token) };
+        CAN_GO_BACK.store(false, Ordering::Release);
         let _ = unsafe { self.controller.Close() };
     }
 }
@@ -283,7 +312,10 @@ pub fn process_message(umsg: c_uint, lparam: LPARAM) {
                 }
             }
         }
-        WM_WEBVIEW_GOBACK => dialog.back(),
+        WM_WEBVIEW_GOBACK => {
+            dialog.back();
+            CAN_GO_BACK.store(dialog.can_go_back(), Ordering::Release);
+        }
         _ => {}
     }
 }
@@ -340,7 +372,7 @@ fn general_url(
         };
 
         (parsed_url, format!("ingame_webview_dialog.title.{url_type}"))
-    } else if url.starts_with("http://") || url.starts_with("https://") {
+    } else if url.starts_with("https://hachimi.leadrdrk.com/PakaNews") { // Lead's clone of PakaNews
         (url.to_string(), "ingame_webview_dialog.title.general".to_string())
     } else {
         return None;
@@ -446,7 +478,8 @@ impl Window for WebviewDialog {
                 ui.add_space(4.0);
                 unsafe {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                        if ui.button(t!("back")).clicked() {
+                        let can_back = CAN_GO_BACK.load(Ordering::Acquire);
+                        if ui.add_enabled(can_back, egui::Button::new(t!("back"))).clicked() {
                             let _ = PostMessageW(
                                 Some(get_target_hwnd()),
                                 WM_WEBVIEW_GOBACK,

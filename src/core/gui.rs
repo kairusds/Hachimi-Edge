@@ -18,7 +18,7 @@ use chrono::{Utc, Datelike};
 use crate::il2cpp::{
     ext::StringExt,
     hook::{
-        umamusume::{CameraData::ShadowResolution, CySpringController::SpringUpdateMode, Director, GameSystem, GraphicSettings::{GraphicsQuality, MsaaQuality}, Localize, TimeUtil::BgSeason, SceneManager as UmaSceneManager},
+        umamusume::{CameraData::ShadowResolution, CySpringController::SpringUpdateMode, Director, GameSystem, GraphicSettings::{GraphicsQuality, MsaaQuality}, Localize, GameDefine::BgSeason, SceneManager as UmaSceneManager},
         UnityEngine_CoreModule::{Application, Texture::AnisoLevel}
     },
     symbols::Thread
@@ -43,7 +43,7 @@ use super::{
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
-    utils::{self, get_localized_string, SendPtr},
+    utils::{self, get_localized_string, umamusume_enum_options, SendPtr},
     Hachimi
 };
 
@@ -2301,32 +2301,7 @@ struct ConfigEditor {
     font_color_options: Vec<String>,
     outline_size_options: Vec<String>,
     outline_color_options: Vec<String>,
-}
-
-fn get_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
-    use crate::il2cpp::{api::*, symbols::get_assembly_image, symbols::get_class};
-    let mut options = Vec::new();
-    let Ok(image) = get_assembly_image(c"umamusume.dll") else { return options };
-    let Ok(klass) = get_class(image, c"Gallop", class_name) else { return options };
-
-    if !il2cpp_class_is_enum(klass) { return options; }
-
-    let mut iter: *mut std::ffi::c_void = std::ptr::null_mut();
-    loop {
-        let field = il2cpp_class_get_fields(klass, &mut iter);
-        if field.is_null() { break; }
-        let attrs = il2cpp_field_get_flags(field);
-        if (attrs & 0x0040) != 0 {
-            let name_ptr = il2cpp_field_get_name(field);
-            if !name_ptr.is_null() {
-                let name = unsafe { std::ffi::CStr::from_ptr(name_ptr) };
-                if let Ok(s) = name.to_str() {
-                    options.push(s.to_string());
-                }
-            }
-        }
-    }
-    options
+    bgseason_options: Vec<(BgSeason, String)>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -2353,6 +2328,18 @@ fn should_show_option(search: &str, label: &str) -> bool {
 impl ConfigEditor {
     pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
+
+        let default_label = t!("default").to_string();
+        // Season text ids from TextId enum
+        let bgseason_options: Vec<(BgSeason, String)> = vec![
+            (BgSeason::None, default_label),
+            (BgSeason::Spring, get_localized_string("Common0108")),
+            (BgSeason::Summer, get_localized_string("Common0109")),
+            (BgSeason::Fall, get_localized_string("Common0110")),
+            (BgSeason::Winter, get_localized_string("Common0111")),
+            (BgSeason::CherryBlossom, get_localized_string("Common0112"))
+        ];
+
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
             config: (**Hachimi::instance().config.load()).clone(),
@@ -2361,9 +2348,10 @@ impl ConfigEditor {
             search_term: String::new(),
             champions_resources: crate::il2cpp::sql::get_champions_resources(),
             champions_live_max_year: crate::il2cpp::sql::get_champions_live_max_year(),
-            font_color_options: get_enum_options(c"FontColorType"),
-            outline_size_options: get_enum_options(c"OutlineSizeType"),
-            outline_color_options: get_enum_options(c"OutlineColorType"),
+            font_color_options: umamusume_enum_options(c"FontColorType"),
+            outline_size_options: umamusume_enum_options(c"OutlineSizeType"),
+            outline_color_options: umamusume_enum_options(c"OutlineColorType"),
+            bgseason_options
         }
     }
 
@@ -2963,25 +2951,9 @@ impl ConfigEditor {
 
             if should_show_option(search, &t!("config_editor.homescreen_bgseason")) {
                 ui.label(t!("config_editor.homescreen_bgseason"));
-                // Season text from TextId enum
-                let default_label = t!("default");
-                let spring = get_localized_string("Common0108");
-                let summer = get_localized_string("Common0109");
-                let fall = get_localized_string("Common0110");
-                let winter = get_localized_string("Common0111");
-                let cherry = get_localized_string("Common0112");
-
-                let mut seasons: Vec<(BgSeason, &str)> = vec![
-                    (BgSeason::None, &default_label),
-                    (BgSeason::Spring, spring.as_str())
-                ];
-                if Hachimi::instance().game.region == Region::Japan {
-                    seasons.push((BgSeason::Summer, summer.as_str()));
-                    seasons.push((BgSeason::Fall, fall.as_str()));
-                    seasons.push((BgSeason::Winter, winter.as_str()));
-                    seasons.push((BgSeason::CherryBlossom, cherry.as_str()));
-                }
-                Gui::run_combo(ui, "homescreen_bgseason", &mut config.homescreen_bgseason, &seasons);
+                let season_opts: Vec<(BgSeason, &str)> = self.bgseason_options.iter()
+                    .map(|(s, l)| (*s, l.as_str())).collect();
+                Gui::run_combo(ui, "homescreen_bgseason", &mut config.homescreen_bgseason, &season_opts);
                 ui.end_row();
             }
 

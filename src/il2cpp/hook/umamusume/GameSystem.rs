@@ -6,7 +6,7 @@ use crate::core::live_utils;
 #[cfg(target_os = "windows")]
 use super::Director;
 // use std::sync::atomic::{AtomicBool, Ordering};
-
+use super::TextId;
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 static mut CLASS: *mut Il2CppClass = 0 as _;
@@ -60,6 +60,12 @@ pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
     // GAME_INITIALIZED.store(true, Ordering::Relaxed);
     Hachimi::instance().init_skill_info();
+
+    // For homescreen_bgseason options
+    for id in 108..=112 {
+        TextId::cache_name_id(&format!("Common0{}", id));
+    }
+
     #[cfg(target_os = "android")]
     crate::android::utils::set_audio_capture_policy_all();
     #[cfg(target_os = "windows")]

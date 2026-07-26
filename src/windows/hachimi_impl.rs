@@ -97,7 +97,7 @@ pub struct Config {
     pub gui_landscape_ratio: f32,
     #[serde(default)]
     pub custom_title_name: Option<String>,
-    #[serde(default = "Config::default_true")]
+    #[serde(default)]
     pub ingame_webview: bool,
     #[serde(default)]
     pub free_camera: super::free_camera::FreeCameraConfig,

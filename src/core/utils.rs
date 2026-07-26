@@ -1,12 +1,19 @@
-use std::{borrow::Cow, fs::File, io::Write, sync::Mutex, path::Path, time::SystemTime};
+use std::{borrow::Cow, fs::File, io::Write, path::Path, time::SystemTime};
 
 use serde::Serialize;
 use textwrap::{core::Word, wrap_algorithms, WordSeparator::UnicodeBreakProperties};
 use unicode_width::UnicodeWidthChar;
-use fnv::FnvHashMap;
-use once_cell::sync::Lazy;
 
-use crate::{core::Gui, il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::umamusume::{Localize, TextId}, types::{Il2CppObject, Il2CppString}, symbols::Thread}};
+use crate::{
+    core::Gui,
+    il2cpp::{
+        api::*,
+        ext::{Il2CppStringExt, StringExt},
+        hook::umamusume::{Localize, TextId},
+        symbols::{get_assembly_image, get_class},
+        types::{Il2CppObject, Il2CppString}
+    }
+};
 
 use super::{Error, Hachimi};
 
@@ -17,38 +24,14 @@ pub struct SendPtr(pub *mut Il2CppObject);
 unsafe impl Send for SendPtr {}
 unsafe impl Sync for SendPtr {}
 
-static LOCALIZE_ID_CACHE: Lazy<Mutex<FnvHashMap<String, i32>>> =
-    Lazy::new(|| Mutex::new(FnvHashMap::default()));
-
 pub fn get_localized_string(id_name: &str) -> String {
-    let check_cache = |name: &str| -> Option<String> {
-        let cache = LOCALIZE_ID_CACHE.lock().unwrap();
-        if let Some(&id) = cache.get(name) {
-            let ptr = Localize::Get(id);
-            if !ptr.is_null() {
-                return Some(unsafe { (*ptr).as_utf16str() }.to_string());
-            }
-            return Some(name.to_owned());
+    if let Some(id) = TextId::get_from_name(id_name) {
+        let ptr = Localize::Get(id);
+        if !ptr.is_null() {
+            return unsafe { (*ptr).as_utf16str() }.to_string();
         }
-        None
-    };
-
-    if let Some(result) = check_cache(id_name) {
-        return result;
     }
-
-    let id_name_owned = id_name.to_owned();
-    static PENDING_NAME: Mutex<Option<String>> = Mutex::new(None);
-    *PENDING_NAME.lock().unwrap() = Some(id_name_owned.clone());
-
-    Thread::main_thread().schedule(|| {
-        if let Some(name) = PENDING_NAME.lock().unwrap().take() {
-            let val = TextId::from_name(&name);
-            LOCALIZE_ID_CACHE.lock().unwrap().insert(name, val);
-        }
-    });
-
-    check_cache(id_name).unwrap_or_else(|| id_name.to_owned())
+    id_name.to_owned()
 }
 
 pub fn char_to_utf16_index(text: &str, char_idx: usize) -> i32 {
@@ -700,4 +683,29 @@ pub fn get_proc_address(handle: usize, name: &std::ffi::CStr) -> usize {
     {
         unsafe { libc::dlsym(handle as *mut libc::c_void, name.as_ptr()) as usize }
     }
+}
+
+pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
+    let mut options = Vec::new();
+    let Ok(image) = get_assembly_image(c"umamusume.dll") else { return options };
+    let Ok(klass) = get_class(image, c"Gallop", class_name) else { return options };
+
+    if !il2cpp_class_is_enum(klass) { return options; }
+
+    let mut iter: *mut std::ffi::c_void = std::ptr::null_mut();
+    loop {
+        let field = il2cpp_class_get_fields(klass, &mut iter);
+        if field.is_null() { break; }
+        let attrs = il2cpp_field_get_flags(field);
+        if (attrs & 0x0040) != 0 {
+            let name_ptr = il2cpp_field_get_name(field);
+            if !name_ptr.is_null() {
+                let name = unsafe { std::ffi::CStr::from_ptr(name_ptr) };
+                if let Ok(s) = name.to_str() {
+                    options.push(s.to_string());
+                }
+            }
+        }
+    }
+    options
 }

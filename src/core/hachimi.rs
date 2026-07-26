@@ -735,7 +735,7 @@ pub struct Config {
     #[serde(default)]
     pub skill_info_dialog: bool,
     #[serde(default)]
-    pub homescreen_bgseason: crate::il2cpp::hook::umamusume::TimeUtil::BgSeason,
+    pub homescreen_bgseason: crate::il2cpp::hook::umamusume::GameDefine::BgSeason,
     pub sugoi_url: Option<String>,
     #[serde(default)]
     pub auto_translate_stories: bool,
