@@ -36,9 +36,10 @@ use crate::il2cpp::{
 use crate::il2cpp::hook::UnityEngine_CoreModule::QualitySettings;
 #[cfg(target_os = "windows")]
 use crate::windows::free_camera::{self, FreeCameraMode};
+#[cfg(target_os = "windows")]
+use super::game::Region;
 
 use super::{
-    game::Region,
     hachimi::{self, Language, REPO_PATH, WEBSITE_URL},
     http::{ureq_config, AsyncRequest},
     live_utils,
