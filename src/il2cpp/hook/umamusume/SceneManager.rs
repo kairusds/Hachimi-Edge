@@ -1,5 +1,4 @@
 use std::sync::atomic::{self, AtomicBool};
-
 use crate::{
     core::{Hachimi, game::Region},
     il2cpp::{
@@ -7,6 +6,7 @@ use crate::{
         types::*
     }
 };
+use super::SceneDefine::ViewId;
 
 static SPLASH_SHOWN: AtomicBool = AtomicBool::new(false);
 pub fn is_splash_shown() -> bool {
@@ -40,10 +40,11 @@ static mut GETCURRENTVIEWCONTROLLER_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetCurrentViewController, GETCURRENTVIEWCONTROLLER_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
 
 fn ChangeViewCommon(next_view_id: i32) {
-    if next_view_id == 1 { // ViewId.Splash
+    if next_view_id == ViewId::Splash {
         SPLASH_SHOWN.store(true, atomic::Ordering::Release);
+        debug!("SPLASH_SHOWN: {}", SPLASH_SHOWN.load(atomic::Ordering::Acquire));
     }
-    if next_view_id == 100 && !HOME_INIT.swap(true, atomic::Ordering::AcqRel) { // ViewId.Home
+    if next_view_id == ViewId::Home && !HOME_INIT.swap(true, atomic::Ordering::AcqRel) {
         #[cfg(target_os = "windows")]
         {
             use crate::windows::{smtc, wnd_hook::get_target_hwnd};
@@ -51,7 +52,7 @@ fn ChangeViewCommon(next_view_id: i32) {
                 smtc::init(get_target_hwnd());
             }
         }
-        info!("HOME_INIT: {}", is_home_init());
+        debug!("HOME_INIT: {}", is_home_init());
     }
 }
 
