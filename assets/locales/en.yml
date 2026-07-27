@@ -200,7 +200,6 @@ config_editor:
   story_text_speed_multiplier: "Story text speed multiplier"
   force_allow_dynamic_camera: "Force allow dynamic camera"
   free_camera: "Free Camera"
-  free_camera_settings: "Free Camera settings"
   live_theater_allow_same_chara: "Live theater allow same chara"
   physics_update_mode: "Physics update mode"
   cyspring_mono_uncap_frame_scale: "CySpring Mono Frame Scale Uncap"
@@ -257,7 +256,7 @@ set_keybind:
   bound_key: "Bound key: %{key}"
 
 free_camera:
-  title: "Free Camera"
+  settings_title: "Free Camera Settings"
   section_general: "General"
   section_live: "Live Theater"
   section_race: "Race"
@@ -269,8 +268,8 @@ free_camera:
   show_overlay: "Show switch overlay"
   selfie_use_head_transform: "Use selfie stick in Follow Character"
   mode: "Mode"
-  mode_free: "Free move"
-  mode_first_person: "First person"
+  mode_free: "Free Move"
+  mode_first_person: "First Person"
   mode_selfie_stick: "Follow Character"
   live_move_step: "Live move step"
   race_move_step: "Race move step"
@@ -318,11 +317,51 @@ free_camera:
   key_follow_offset_right: "Follow offset right"
   key_target_previous: "Previous target"
   key_target_next: "Next target"
-  key_part_previous: "Previous live part"
-  key_part_next: "Next live part"
-  key_reset: "Reset"
+  key_part_previous: "Previous body part"
+  key_part_next: "Next body part"
+  key_reset: "Reset camera position"
   key_cycle_mode: "Cycle mode"
-  key_reverse: "Reverse"
+  key_reverse: "Flip follow camera perspective (front <-> back)"
+  cheatsheet_title: "Free Camera Cheatsheet"
+  cheatsheet_contents: |
+    # Free Camera Cheatsheet
+    This feature only works in **Races** or **Live Concerts**.
+
+    The default body part is **Face**.
+
+    The default target is **Place01**.
+
+    ## Mouse Controls
+    * **Hold Right Click + Drag:** Look around
+    * **Scroll Wheel Up / Down:** Increase FOV / Decrease FOV
+
+    ---
+
+    ## Gamepad Controls (Xbox / PlayStation)
+
+    ### **Movement & Camera Angle**
+    * **Left Joystick:** Move left / right / forward / backward
+    * **Right Joystick:** Look left / right / up / down
+    * **Right Trigger (RT / R2):** Move up
+    * **Left Trigger (LT / L2):** Move down
+    * **Right Shoulder / Bumper (RB / R1):** Decrease FOV
+    * **Left Shoulder / Bumper (LB / L1):** Increase FOV
+
+    ---
+
+    ### Action Buttons
+    * **Y** (Triangle): Reset camera position
+    * **X** (Square): Cycle camera mode
+    * **B** (Circle): Flip follow camera perspective *(front <-> back, Follow Camera only)*
+    * **A** (Cross): Pause / resume live
+
+    ---
+
+    ### D-Pad Controls (Not available in Free Move)
+    * **D-Pad Right:** Next target *(Follow Camera & First Person)*
+    * **D-Pad Left:** Previous target *(Follow Camera & First Person)*
+    * **D-Pad Up:** Next body part *(Follow Camera only)*
+    * **D-Pad Down:** Previous body Part *(Follow Camera only)*
 
 excludes_editor:
   title: "Excludes Editor"

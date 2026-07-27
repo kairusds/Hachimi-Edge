@@ -4,7 +4,7 @@ use crate::{
         ext::StringExt,
         sql,
         symbols::{
-            get_assembly_image, get_class, get_field_from_name, get_field_object_value,
+            get_assembly_image, get_class, get_field_from_name,
             get_method_addr, Array, IList, SingletonLike,
         },
         types::*,
@@ -26,7 +26,10 @@ use super::{
 #[cfg(target_os = "windows")]
 use crate::{
     windows::free_camera::{self, CameraScene},
-    il2cpp::hook::UnityEngine_CoreModule::{Camera, GameObject, Transform},
+    il2cpp::{
+        hook::UnityEngine_CoreModule::{Camera, GameObject, Transform},
+        symbols::get_field_object_value,
+    }
 };
 
 #[cfg(target_os = "windows")]
