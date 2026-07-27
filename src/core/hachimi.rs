@@ -264,13 +264,20 @@ impl Hachimi {
             config.localized_data_dir.as_ref().map(|p| self.game.data_dir.join(p))
         });
 
-        let new_data = match LocalizedData::new(&self.config.load(), ld_path) {
+        let mut new_data = match LocalizedData::new(&self.config.load(), ld_path) {
             Ok(v) => v,
             Err(e) => {
                 error!("Failed to load localized data: {}", e);
                 return;
             }
         };
+
+        if self.game.region == Region::Global {
+            for id in 55..=66 {
+                new_data.localize_dict.remove(&format!("Common{id:04}"));
+            }
+        }
+        
         self.localized_data.store(Arc::new(new_data));
     }
 
