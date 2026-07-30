@@ -29,16 +29,17 @@ use crate::il2cpp::{
     ext::Il2CppStringExt,
     hook::{umamusume::WebViewManager, UnityEngine_CoreModule::{TouchScreenKeyboard, TouchScreenKeyboardType}},
     symbols::GCHandle,
-    types::{Il2CppObject, Il2CppString, RangeInt}
+    types::*
 };
 
 #[cfg(target_os = "windows")]
 use crate::il2cpp::hook::UnityEngine_CoreModule::QualitySettings;
 #[cfg(target_os = "windows")]
 use crate::windows::free_camera::{self, FreeCameraMode};
+#[cfg(target_os = "windows")]
+use super::game::Region;
 
 use super::{
-    game::Region,
     hachimi::{self, Language, REPO_PATH, WEBSITE_URL},
     http::{ureq_config, AsyncRequest},
     live_utils,
@@ -780,10 +781,6 @@ impl Gui {
     }
 
     fn run_live_slider(&mut self, ctx: &egui::Context) {
-        if Hachimi::instance().game.region == Region::Global {
-            return;
-        }
-
         if !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) {
             return;
         }
@@ -2728,6 +2725,29 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
+            #[cfg(target_os = "android")]
+            {
+                if should_show_option(search, &t!("config_editor.recommended_ui_scale"))
+                    && config.android.force_orientation_mode == ScreenOrientation_LandscapeLeft {
+                    ui.label("");
+                    if ui.button(t!("config_editor.recommended_ui_scale")).clicked() {
+                        config.ui_scale = 0.6;
+                        request_notification(NotificationRequest::Custom(t!("notification.recommended_ui_scale_applied").to_string()));
+                    }
+                    ui.end_row();
+                }
+
+                if should_show_option(search, &t!("config_editor.force_orientation_mode")) {
+                    ui.label(t!("config_editor.force_orientation_mode"));
+                    Gui::run_combo(ui, "force_orientation_mode", &mut config.android.force_orientation_mode, &[
+                        (ScreenOrientation_Unknown, &t!("disabled")),
+                        (ScreenOrientation_LandscapeLeft, &t!("landscape")),
+                        (ScreenOrientation_Portrait, &t!("portrait")),
+                    ]);
+                    ui.end_row();
+                }
+            }
+
             if should_show_option(search, &t!("config_editor.ui_animation_scale")) {
                 ui.label(t!("config_editor.ui_animation_scale"));
                 ui.add(egui::Slider::new(&mut config.ui_animation_scale, 0.1..=10.0).step_by(0.1));
@@ -2743,7 +2763,7 @@ impl ConfigEditor {
             if should_show_option(search, &t!("config_editor.msaa")) {
                 ui.label(t!("config_editor.msaa"));
                 Gui::run_combo(ui, "msaa", &mut config.msaa, &[
-                    (MsaaQuality:: Disabled, &t!("default")),
+                    (MsaaQuality::Disabled, &t!("default")),
                     (MsaaQuality::_2x, "2x"),
                     (MsaaQuality::_4x, "4x"),
                     (MsaaQuality::_8x, "8x")
@@ -2946,6 +2966,12 @@ impl ConfigEditor {
             if should_show_option(search, &t!("config_editor.live_theater_allow_same_chara")) {
                 ui.label(t!("config_editor.live_theater_allow_same_chara"));
                 ui.checkbox(&mut config.live_theater_allow_same_chara, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.trainer_live_landscape")) {
+                ui.label(t!("config_editor.trainer_live_landscape"));
+                ui.checkbox(&mut config.trainer_live_landscape, "");
                 ui.end_row();
             }
 

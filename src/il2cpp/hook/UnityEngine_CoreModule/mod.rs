@@ -19,12 +19,9 @@ pub mod TouchScreenKeyboardType;
 pub mod RectTransform;
 pub mod Transform;
 pub mod RectOffset;
-
-#[cfg(target_os = "windows")]
 pub mod Camera;
 #[cfg(target_os = "windows")]
 pub mod QualitySettings;
-#[cfg(target_os = "windows")]
 pub mod Screen;
 pub mod SceneManager;
 pub mod Scene;
@@ -59,6 +56,9 @@ pub fn init() {
     RectOffset::init(image);
     SceneManager::init(image);
     Scene::init(image);
+    Camera::init(image);
+    Screen::init(image);
+
     #[cfg(target_os = "android")]
     {
         TouchScreenKeyboard::init(image);
@@ -67,8 +67,6 @@ pub fn init() {
 
     #[cfg(target_os = "windows")]
     {
-        Camera::init(image);
         QualitySettings::init(image);
-        Screen::init(image);
     }
 }

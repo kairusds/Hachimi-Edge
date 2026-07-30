@@ -66,6 +66,28 @@ macro_rules! impl_addr_wrapper_fn {
     };
 }
 
+macro_rules! impl_enum_eq {
+    // impl_enum_eq!(Enum, T)
+    ($enum_ty:ty, $target_ty:ty) => {
+        impl PartialEq<$enum_ty> for $target_ty {
+            fn eq(&self, other: &$enum_ty) -> bool {
+                *self == *other as $target_ty
+            }
+        }
+
+        impl PartialEq<$target_ty> for $enum_ty {
+            fn eq(&self, other: &$target_ty) -> bool {
+                *self as $target_ty == *other
+            }
+        }
+    };
+
+    // Defaults T to i32 if no second arg
+    ($enum_ty:ty) => {
+        impl_enum_eq!($enum_ty, i32);
+    };
+}
+
 macro_rules! def_field_value_accessors {
     ($get_name:ident, $set_name:ident, $field:ident, $t:ty) => {
         static mut $field: *mut FieldInfo = 0 as _;

@@ -74,12 +74,11 @@ mod TimeUtil;
 pub mod CameraData;
 pub mod DialogManager;
 pub mod PartsCharaMessageBase;
-
 pub mod SceneManager;
+mod LowResolutionCamera;
 
 #[cfg(target_os = "windows")]
 mod PaymentUtility;
-mod LowResolutionCamera;
 #[cfg(target_os = "windows")]
 mod LiveTimelineControl;
 #[cfg(target_os = "windows")]
@@ -230,8 +229,8 @@ pub fn init() {
     TimeUtil::init(image);
     DialogManager::init(image);
     PartsCharaMessageBase::init(image);
-
     SceneManager::init(image);
+    LowResolutionCamera::init(image);
 
     #[cfg(target_os = "windows")]
     {
@@ -240,10 +239,6 @@ pub fn init() {
         DownloadManager::init(image);
         DownloadView::init(image);
         DownloadErrorProcessor::init(image);
-    }
-    LowResolutionCamera::init(image);
-    #[cfg(target_os = "windows")]
-    {
         LiveTimelineControl::init(image);
         PostEffectUpdateInfo_DOF::init(image);
         DOFUpdateInfoDelegate::init(image);

@@ -16,8 +16,8 @@ pub fn read_unprocessed_value(control: *mut Il2CppObject) -> f32 {
     ReadUnprocessedValueFromState(control, state)
 }
 
-pub fn init(image: *const Il2CppImage) {
-    get_class_or_return!(image, "UnityEngine.InputSystem.Controls", AxisControl);
+pub fn init(Unity_InputSystem: *const Il2CppImage) {
+    get_class_or_return!(Unity_InputSystem, "UnityEngine.InputSystem.Controls", AxisControl);
 
     unsafe {
         READ_AXIS_UNPROCESSED_ADDR = get_method_addr(AxisControl, c"ReadUnprocessedValueFromState", 1);

@@ -19,7 +19,6 @@ pub fn type_object() -> *mut Il2CppObject {
 
 #[cfg(target_os = "windows")]
 static UPDATE_RACE_CAMERA: AtomicBool = AtomicBool::new(false);
-
 #[cfg(target_os = "windows")]
 pub fn set_update_race_camera(value: bool) {
     UPDATE_RACE_CAMERA.store(value, Ordering::Relaxed);
@@ -45,6 +44,15 @@ impl_addr_wrapper_fn!(get_position, GET_POSITION_ADDR, Vector3_t, this: *mut Il2
 static mut SET_POSITION_ADDR: usize = 0;
 impl_addr_wrapper_fn!(set_position, SET_POSITION_ADDR, (), this: *mut Il2CppObject, value: Vector3_t);
 
+static mut GET_FORWARD_ADDR: usize = 0;
+impl_addr_wrapper_fn!(get_forward, GET_FORWARD_ADDR, Vector3_t, this: *mut Il2CppObject);
+
+static mut GET_LOCALSCALE_ADDR: usize = 0;
+impl_addr_wrapper_fn!(get_localScale, GET_LOCALSCALE_ADDR, Vector3_t, this: *mut Il2CppObject);
+
+static mut SET_LOCALSCALE_ADDR: usize = 0;
+impl_addr_wrapper_fn!(set_localScale, SET_LOCALSCALE_ADDR, (), this: *mut Il2CppObject, value: Vector3_t);
+
 static mut GET_POSITION_INJECTED_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_position_Injected, GET_POSITION_INJECTED_ADDR, (), this: *mut Il2CppObject, value: *mut Vector3_t);
 
@@ -59,16 +67,6 @@ impl_addr_wrapper_fn!(set_localPosition_Injected, SET_LOCALPOSITION_INJECTED_ADD
 
 static mut GET_ROTATION_INJECTED_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_rotation_Injected, GET_ROTATION_INJECTED_ADDR, (), this: *mut Il2CppObject, value: *mut Quaternion_t);
-
-static mut GET_FORWARD_ADDR: usize = 0;
-pub fn get_forward(ret: *mut Vector3_t, this: *mut Il2CppObject) -> *mut Vector3_t {
-    if unsafe { GET_FORWARD_ADDR } == 0 {
-        return ret;
-    }
-    let orig_fn: extern "C" fn(*mut Vector3_t, *mut Il2CppObject) -> *mut Vector3_t =
-        unsafe { std::mem::transmute(GET_FORWARD_ADDR) };
-    orig_fn(ret, this)
-}
 
 static mut SET_ROTATION_INJECTED_ADDR: usize = 0;
 impl_addr_wrapper_fn!(set_rotation_Injected, SET_ROTATION_INJECTED_ADDR, (), this: *mut Il2CppObject, value: *mut Quaternion_t);
@@ -159,17 +157,21 @@ pub fn init(UnityEngine_CoreModule: *const Il2CppImage) {
 
     unsafe {
         TYPE_OBJECT = il2cpp_type_get_object(il2cpp_class_get_type(Transform));
+
         GET_PARENT_ADDR = get_method_addr(Transform, c"get_parent", 0);
         GET_CHILDCOUNT_ADDR = get_method_addr(Transform, c"get_childCount", 0);
         GETCHILD_ADDR = get_method_addr(Transform, c"GetChild", 1);
         GET_POSITION_ADDR = get_method_addr(Transform, c"get_position", 0);
         SET_POSITION_ADDR = get_method_addr(Transform, c"set_position", 1);
+        GET_FORWARD_ADDR = get_method_addr(Transform, c"get_forward", 0);
+        GET_LOCALSCALE_ADDR = get_method_addr(Transform, c"get_localScale", 0);
+        SET_LOCALSCALE_ADDR = get_method_addr(Transform, c"set_localScale", 1);
+
         GET_POSITION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::get_position_Injected(UnityEngine.Vector3&)".as_ptr());
         SET_POSITION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::set_position_Injected(UnityEngine.Vector3&)".as_ptr());
         GET_LOCALPOSITION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::get_localPosition_Injected(UnityEngine.Vector3&)".as_ptr());
         SET_LOCALPOSITION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::set_localPosition_Injected(UnityEngine.Vector3&)".as_ptr());
         GET_ROTATION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::get_rotation_Injected(UnityEngine.Quaternion&)".as_ptr());
-        GET_FORWARD_ADDR = get_method_addr(Transform, c"get_forward", 0);
         SET_ROTATION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::set_rotation_Injected(UnityEngine.Quaternion&)".as_ptr());
         GET_LOCALROTATION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::get_localRotation_Injected(UnityEngine.Quaternion&)".as_ptr());
         SET_LOCALROTATION_INJECTED_ADDR = il2cpp_resolve_icall(c"UnityEngine.Transform::set_localRotation_Injected(UnityEngine.Quaternion&)".as_ptr());

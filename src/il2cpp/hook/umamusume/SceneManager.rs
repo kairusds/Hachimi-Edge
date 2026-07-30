@@ -52,8 +52,8 @@ fn ChangeViewCommon(next_view_id: i32) {
                 smtc::init(get_target_hwnd());
             }
         }
-        debug!("HOME_INIT: {}", is_home_init());
     }
+    debug!("next_view_id = {}", next_view_id);
 }
 
 type ChangeViewJpfn = extern "C" fn(
