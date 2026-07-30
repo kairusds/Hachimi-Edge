@@ -151,8 +151,8 @@ pub fn current_gamepad_state() -> Option<GamepadSnapshot> {
     })
 }
 
-pub fn init(image: *const Il2CppImage) {
-    get_class_or_return!(image, "UnityEngine.InputSystem", Gamepad);
+pub fn init(Unity_InputSystem: *const Il2CppImage) {
+    get_class_or_return!(Unity_InputSystem, "UnityEngine.InputSystem", Gamepad);
 
     unsafe {
         GET_CURRENT_ADDR = get_method_addr(Gamepad, c"get_current", 0);

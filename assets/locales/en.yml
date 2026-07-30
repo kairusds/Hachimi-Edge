@@ -37,6 +37,8 @@ remove: "Remove"
 add: "Add"
 save_changes: "Save changes?"
 back: "Back"
+portrait: "Portrait"
+landscape: "Landscape"
 
 menu:
   check_for_updates: "\uf0aa Check for updates"
@@ -86,6 +88,7 @@ notification:
   tl_repo_folder_missing: "Translation data folder is missing. Please check for updates to restore translations."
   freeform_window_disabled_landscape: "Freeform window has been disabled because landscape mode is active."
   free_camera_unavailable_live: "Free Camera is unavailable in this Live because of a known issue. It has been disabled for this Live."
+  recommended_ui_scale_applied: "Applied recommended UI scale"
 
 first_time_setup:
   title: "First Time Setup"
@@ -178,6 +181,7 @@ config_editor:
   target_fps: "Target FPS"
   virtual_resolution_multiplier: "Virtual resolution multiplier"
   ui_scale: "UI scale"
+  recommended_ui_scale: "Apply recommended UI scale"
   gui_scale: "Overlay scale"
   gui_landscape_ratio: "Landscape overlay scale ratio"
   ui_animation_scale: "UI animation scale"
@@ -240,6 +244,8 @@ config_editor:
   replace_to_builtin_font: "Use default game font"
   custom_title_name: "Custom window title"
   ingame_webview: "Open Umamusume links (news, help, gacha, ...) in webview"
+  trainer_live_landscape: "Landscape mode on Meni Shuki live"
+  force_orientation_mode: "Force orientation mode"
 
 theme_editor:
   title: "GUI Theme Editor"

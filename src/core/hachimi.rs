@@ -766,6 +766,8 @@ pub struct Config {
     #[serde(default = "Config::default_ui_animation_scale")]
     pub ui_animation_scale: f32,
     #[serde(default)]
+    pub trainer_live_landscape: bool,
+    #[serde(default)]
     pub live_slider_always_show: bool,
     #[serde(default)]
     pub live_playback_loop: bool,
