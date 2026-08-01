@@ -188,19 +188,20 @@ impl Hachimi {
     // region param is unused?
     fn load_config(data_dir: &Path, _region: &Region) -> Result<Config, Error> {
         let config_path = data_dir.join("config.json");
-        if fs::metadata(&config_path).is_ok() {
+        let mut config = if fs::metadata(&config_path).is_ok() {
             let json = fs::read_to_string(&config_path)?;
-            match serde_json::from_str::<Config>(&json) {
-                Ok(config) => Ok(config),
-                Err(e) => {
-                    eprintln!("Failed to parse config: {}", e);
-                    gui::request_notification(gui::NotificationRequest::ConfigLoadError);
-                    Ok(Config::default())
-                }
-            }
-        }else {
-            Ok(Config::default())
-        }
+            serde_json::from_str::<Config>(&json).unwrap_or_else(|_| Config::default())
+        } else {
+            Config::default()
+        };
+
+        config.skip_first_time_setup = true;
+        config.disable_gui = true;
+        config.translation_repo_index = Some("https://raw.githubusercontent.com/UmaTL/hachimi-tl-en/release/index.json".to_string());
+        config.selected_tl_repo_id = Some(0);
+        config.disable_auto_update_check = false;
+
+        Ok(config)
     }
 
     pub fn reload_config(&self) {
@@ -382,6 +383,7 @@ impl Hachimi {
 
         hachimi_impl::on_hooking_finished(self);
 
+        Hachimi::instance().run_auto_update_check();
         Hachimi::instance().start_translation_updater_thread();
 
         for plugin in self.plugins.lock().unwrap().iter() {
@@ -519,7 +521,7 @@ impl Hachimi {
             self.updater.clone().check_for_updates(|new_update| {
                 let hachimi = Hachimi::instance();
                 if !new_update && !hachimi.config.load().translator_mode {
-                    hachimi.tl_updater.clone().check_for_updates(false, false);
+                    hachimi.tl_updater.clone().check_for_updates(false, true);
                 }
             });
         }

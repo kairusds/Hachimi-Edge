@@ -664,11 +664,12 @@ impl Updater {
                 index_etag: new_etag.clone(),
             })));
 
-            if silent {
+            if silent || config.disable_gui {
                 // don't auto-apply while another update is already in progress
                 if self.progress.load().is_some() {
                     info!("Silent update skipped, another update is already in progress.");
                 } else {
+                    info!("Auto-applying translation update in headless mode...");
                     Hachimi::instance().tl_updater.clone().run();
                 }
             } else if let Some(mutex) = Gui::instance() {
