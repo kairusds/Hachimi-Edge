@@ -151,16 +151,7 @@ pub fn update_original_screen_size(width: i32, height: i32) {
 }
 
 #[cfg(target_os = "windows")]
-type SetResolutionFn = extern "C" fn(width: i32, height: i32, fullscreen: bool, force_update: bool);
-#[cfg(target_os = "windows")]
-extern "C" fn SetResolution(width: i32, height: i32, fullscreen: bool, force_update: bool) {
-    if !Hachimi::instance().config.load().windows.freeform_window {
-        get_orig_fn!(SetResolution, SetResolutionFn)(width, height, fullscreen, force_update);
-    }
-}
-
-#[cfg(target_os = "windows")]
-type SetResolution2Fn = extern "C" fn(
+type SetResolutionFn = extern "C" fn(
     width: i32,
     height: i32,
     fullscreen: bool,
@@ -168,7 +159,7 @@ type SetResolution2Fn = extern "C" fn(
     skip_keep_aspect: bool,
 );
 #[cfg(target_os = "windows")]
-extern "C" fn SetResolution2(
+extern "C" fn SetResolution(
     width: i32,
     height: i32,
     fullscreen: bool,
@@ -176,7 +167,7 @@ extern "C" fn SetResolution2(
     skip_keep_aspect: bool,
 ) {
     if !Hachimi::instance().config.load().windows.freeform_window {
-        get_orig_fn!(SetResolution2, SetResolution2Fn)(
+        get_orig_fn!(SetResolution, SetResolutionFn)(
             width,
             height,
             fullscreen,
@@ -345,14 +336,7 @@ impl_addr_wrapper_fn!(get_IsSplitWindow, GET_ISSPLITWINDOW_ADDR, bool,);
 #[cfg(target_os = "windows")]
 static mut GET_ISLANDSCAPE_MODE_ADDR: usize = 0;
 #[cfg(target_os = "windows")]
-pub fn is_landscape_mode() -> bool {
-    if unsafe { GET_ISLANDSCAPE_MODE_ADDR } == 0 {
-        return false;
-    }
-
-    let func: extern "C" fn() -> bool = unsafe { std::mem::transmute(GET_ISLANDSCAPE_MODE_ADDR) };
-    func()
-}
+impl_addr_wrapper_fn!(get_IsLandscapeMode, GET_ISLANDSCAPE_MODE_ADDR, bool,);
 
 static mut GET_ISVERTICAL_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_IsVertical, GET_ISVERTICAL_ADDR, bool,);
@@ -388,11 +372,8 @@ pub fn init(umamusume: *const Il2CppImage) {
         let get_Height_addr = get_method_addr(Screen, c"get_Height", 0);
         new_hook!(get_Height_addr, get_Height);
 
-        let SetResolution_addr = get_method_addr(Screen, c"SetResolution", 4);
+        let SetResolution_addr = get_method_addr(Screen, c"SetResolution", 5);
         new_hook!(SetResolution_addr, SetResolution);
-
-        let SetResolution2_addr = get_method_addr(Screen, c"SetResolution", 5);
-        new_hook!(SetResolution2_addr, SetResolution2);
 
         let IsCurrentOrientation_addr = get_method_addr(Screen, c"IsCurrentOrientation", 1);
         new_hook!(IsCurrentOrientation_addr, IsCurrentOrientation);

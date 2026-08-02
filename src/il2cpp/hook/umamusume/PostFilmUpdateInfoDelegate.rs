@@ -1,7 +1,7 @@
 use crate::{
     windows::free_camera,
     il2cpp::{
-        symbols::{get_class, get_method_addr},
+        symbols::get_method_addr,
         types::*,
     },
 };
@@ -88,75 +88,26 @@ impl Default for PostFilmUpdateInfo {
     }
 }
 
-type PostFilmUpdateInfoDelegateInvokeFn =
-    extern "C" fn(this: *mut Il2CppObject, update_info: *mut PostFilmUpdateInfo);
-type MultiCameraPostFilmUpdateInfoDelegateInvokeFn = extern "C" fn(
-    this: *mut Il2CppObject,
-    update_info: *mut PostFilmUpdateInfo,
-    multi_camera_no: i32,
-);
-
 fn disable(update_info: *mut PostFilmUpdateInfo) {
     if let Some(update_info) = unsafe { update_info.as_mut() } {
         *update_info = PostFilmUpdateInfo::default();
     }
 }
 
-extern "C" fn PostFilmUpdateInfoDelegate_Invoke(
-    this: *mut Il2CppObject,
-    update_info: *mut PostFilmUpdateInfo,
-) {
+type PostFilmUpdateInfoDelegate_InvokeFn = extern "C" fn(this: *mut Il2CppObject, update_info: *mut PostFilmUpdateInfo);
+extern "C" fn PostFilmUpdateInfoDelegate_Invoke(this: *mut Il2CppObject, update_info: *mut PostFilmUpdateInfo) {
     free_camera::set_live_active();
     let remove_camera_effects = free_camera::should_remove_camera_effects();
     if remove_camera_effects {
         disable(update_info);
     }
 
-    get_orig_fn!(
-        PostFilmUpdateInfoDelegate_Invoke,
-        PostFilmUpdateInfoDelegateInvokeFn
-    )(this, update_info);
-
-    if remove_camera_effects {
-        disable(update_info);
-    }
-}
-
-extern "C" fn MultiCameraPostFilmUpdateInfoDelegate_Invoke(
-    this: *mut Il2CppObject,
-    update_info: *mut PostFilmUpdateInfo,
-    multi_camera_no: i32,
-) {
-    get_orig_fn!(
-        MultiCameraPostFilmUpdateInfoDelegate_Invoke,
-        MultiCameraPostFilmUpdateInfoDelegateInvokeFn
-    )(this, update_info, multi_camera_no);
+    get_orig_fn!(PostFilmUpdateInfoDelegate_Invoke, PostFilmUpdateInfoDelegate_InvokeFn)(this, update_info);
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if let Ok(post_film_update_info_delegate) = get_class(
-        umamusume,
-        c"Gallop.Live.Cutt",
-        c"PostFilmUpdateInfoDelegate",
-    ) {
-        let PostFilmUpdateInfoDelegate_Invoke_addr =
-            get_method_addr(post_film_update_info_delegate, c"Invoke", 1);
-        new_hook!(
-            PostFilmUpdateInfoDelegate_Invoke_addr,
-            PostFilmUpdateInfoDelegate_Invoke
-        );
-    }
+    get_class_or_return!(umamusume, "Gallop.Live.Cutt", PostFilmUpdateInfoDelegate);
 
-    if let Ok(multi_camera_post_film_update_info_delegate) = get_class(
-        umamusume,
-        c"Gallop.Live.Cutt",
-        c"MultiCameraPostFilmUpdateInfoDelegate",
-    ) {
-        let MultiCameraPostFilmUpdateInfoDelegate_Invoke_addr =
-            get_method_addr(multi_camera_post_film_update_info_delegate, c"Invoke", 2);
-        new_hook!(
-            MultiCameraPostFilmUpdateInfoDelegate_Invoke_addr,
-            MultiCameraPostFilmUpdateInfoDelegate_Invoke
-        );
-    }
+    let PostFilmUpdateInfoDelegate_Invoke_addr = get_method_addr(PostFilmUpdateInfoDelegate, c"Invoke", 1);
+    new_hook!(PostFilmUpdateInfoDelegate_Invoke_addr, PostFilmUpdateInfoDelegate_Invoke);
 }

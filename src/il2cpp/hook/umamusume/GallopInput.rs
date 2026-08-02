@@ -15,8 +15,8 @@ extern "C" fn mousePosition() -> Vector3_t {
         return get_orig_fn!(mousePosition, MousePositionFn)();
     }
 
-    WindowsGamepadControl::update_input_controls();
-    Input::mouse_position()
+    WindowsGamepadControl::UpdateInputControls(WindowsGamepadControl::instance());
+    Input::get_mousePosition()
 }
 
 pub fn init(umamusume: *const Il2CppImage) {

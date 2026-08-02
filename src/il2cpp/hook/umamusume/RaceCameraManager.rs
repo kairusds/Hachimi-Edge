@@ -2,7 +2,7 @@ use crate::{
     windows::free_camera::{self, CameraScene},
     il2cpp::{
         hook::UnityEngine_CoreModule::Transform,
-        symbols::{get_class, get_method_addr},
+        symbols::get_method_addr,
         types::*,
     },
 };
@@ -50,12 +50,14 @@ extern "C" fn RaceCameraManager_PlayEventCamera(
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if let Ok(race_camera_manager) = get_class(umamusume, c"Gallop", c"RaceCameraManager") {
-        let RaceCameraManager_AlterLateUpdate_addr = get_method_addr(race_camera_manager, c"AlterLateUpdate", 0);
-        let RaceCameraManager_ChangeCameraMode_addr = get_method_addr(race_camera_manager, c"ChangeCameraMode", 2);
-        let RaceCameraManager_PlayEventCamera_addr = get_method_addr(race_camera_manager, c"PlayEventCamera", 5);
-        new_hook!(RaceCameraManager_AlterLateUpdate_addr, RaceCameraManager_AlterLateUpdate);
-        new_hook!(RaceCameraManager_ChangeCameraMode_addr, RaceCameraManager_ChangeCameraMode);
-        new_hook!(RaceCameraManager_PlayEventCamera_addr, RaceCameraManager_PlayEventCamera);
-    }
+    get_class_or_return!(umamusume, "Gallop", RaceCameraManager);
+
+    let RaceCameraManager_AlterLateUpdate_addr = get_method_addr(RaceCameraManager, c"AlterLateUpdate", 0);
+    new_hook!(RaceCameraManager_AlterLateUpdate_addr, RaceCameraManager_AlterLateUpdate);
+
+    let RaceCameraManager_ChangeCameraMode_addr = get_method_addr(RaceCameraManager, c"ChangeCameraMode", 2);
+    new_hook!(RaceCameraManager_ChangeCameraMode_addr, RaceCameraManager_ChangeCameraMode);
+
+    let RaceCameraManager_PlayEventCamera_addr = get_method_addr(RaceCameraManager, c"PlayEventCamera", 5);
+    new_hook!(RaceCameraManager_PlayEventCamera_addr, RaceCameraManager_PlayEventCamera);
 }

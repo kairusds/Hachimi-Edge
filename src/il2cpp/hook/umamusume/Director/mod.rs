@@ -460,14 +460,13 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
     }
 }
 
+#[cfg(target_os = "android")]
 type ApplyTrainerCameraFovFn = extern "C" fn(this: *mut Il2CppObject);
+#[cfg(target_os = "android")]
 extern "C" fn ApplyTrainerCameraFov(this: *mut Il2CppObject) {
     get_orig_fn!(ApplyTrainerCameraFov, ApplyTrainerCameraFovFn)(this);
 
     let config = Hachimi::instance().config.load();
-    #[cfg(target_os = "windows")]
-    let force_landscape = config.trainer_live_landscape;
-    #[cfg(target_os = "android")]
     let force_landscape = (!Screen::get_IsVertical() && config.trainer_live_landscape)
         || config.android.force_orientation_mode == ScreenOrientation_LandscapeLeft;
 
@@ -476,7 +475,7 @@ extern "C" fn ApplyTrainerCameraFov(this: *mut Il2CppObject) {
         if trainer_camera.is_null() {
             return;
         }
-    
+
         let base_fov = 150.0;
         let fov_rate = get__trainerCameraFovRate(this);
         let fov_rate: f32 = if fov_rate == 0.0 { 1.0 } else { fov_rate.clamp(0.1, 1.0) };
@@ -496,6 +495,7 @@ extern "C" fn AlterUpdate(this: *mut Il2CppObject, delta_time: f32, is_update_de
     update_live_free_camera_target(this);
     enforce_live_free_camera_output(this);
 }
+
 
 #[cfg(target_os = "windows")]
 type SetupOrientationFn = extern "C" fn(this: *mut Il2CppObject, display_mode: DisplayMode);
@@ -557,8 +557,11 @@ pub fn init(umamusume: *const Il2CppImage) {
     let pause_live_addr = get_method_addr(Director, c"PauseLive", 1);
     new_hook!(pause_live_addr, PauseLive);
 
-    let ApplyTrainerCameraFov_addr = get_method_addr(Director, c"ApplyTrainerCameraFov", 0);
-    new_hook!(ApplyTrainerCameraFov_addr, ApplyTrainerCameraFov);
+    #[cfg(target_os = "android")]
+    {
+        let ApplyTrainerCameraFov_addr = get_method_addr(Director, c"ApplyTrainerCameraFov", 0);
+        new_hook!(ApplyTrainerCameraFov_addr, ApplyTrainerCameraFov);
+    }
 
     #[cfg(target_os = "windows")]
     {

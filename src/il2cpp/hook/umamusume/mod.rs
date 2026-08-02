@@ -34,6 +34,8 @@ mod GallopInput;
 #[cfg(target_os = "windows")]
 mod InputSystemManager;
 #[cfg(target_os = "windows")]
+mod BackKeyInputManager;
+#[cfg(target_os = "windows")]
 pub mod WindowsGamepadControl;
 #[cfg(target_os = "windows")]
 pub mod TapEffectController;
@@ -82,15 +84,21 @@ mod PaymentUtility;
 #[cfg(target_os = "windows")]
 mod LiveTimelineControl;
 #[cfg(target_os = "windows")]
+pub mod LiveTimelineWorkSheet;
+#[cfg(target_os = "windows")]
+pub mod LiveTimelineKeyPostFilmDataList;
+#[cfg(target_os = "windows")]
 mod PostEffectUpdateInfo_DOF;
 #[cfg(target_os = "windows")]
 mod DOFUpdateInfoDelegate;
 #[cfg(target_os = "windows")]
 mod PostFilmUpdateInfoDelegate;
 #[cfg(target_os = "windows")]
-mod LiveTimelineKeyCameraPositionData;
+pub mod LiveTimelineKeyCameraPositionData;
 #[cfg(target_os = "windows")]
 mod LiveTimelineKeyCameraLookAtData;
+#[cfg(target_os = "windows")]
+mod LiveTimelineKeyMultiCameraPositionData;
 #[cfg(target_os = "windows")]
 mod CharacterObject;
 #[cfg(target_os = "windows")]
@@ -110,7 +118,7 @@ mod RaceEffectManager;
 #[cfg(target_os = "windows")]
 mod HorseData;
 #[cfg(target_os = "windows")]
-mod HorseRaceInfo;
+pub mod HorseRaceInfo;
 #[cfg(target_os = "windows")]
 mod HorseRaceInfoReplay;
 pub mod TweenAnimationTimelineComponent;
@@ -135,7 +143,10 @@ mod DownloadManager;
 mod DownloadView;
 #[cfg(target_os = "windows")]
 mod DownloadErrorProcessor;
+#[cfg(target_os = "windows")]
 mod TitleViewController;
+#[cfg(target_os = "windows")]
+pub mod MainGameInitializer;
 pub mod Director;
 mod CySpringNative;
 pub mod LiveViewController;
@@ -185,14 +196,6 @@ pub fn init() {
     StoryViewTextControllerSingleMode::init(image);
     JikkyoDisplay::init(image);
     Screen::init(image);
-    #[cfg(target_os = "windows")]
-    {
-        StandaloneWindowResize::init(image);
-        GallopInput::init(image);
-        InputSystemManager::init(image);
-        WindowsGamepadControl::init(image);
-        TapEffectController::init(image);
-    }
     TrainingParamChangePlate::init(image);
     SingleModeUtils::init(image);
     MasterSingleModeTurn::init(image);
@@ -234,17 +237,27 @@ pub fn init() {
 
     #[cfg(target_os = "windows")]
     {
+        StandaloneWindowResize::init(image);
+        GallopInput::init(image);
+        InputSystemManager::init(image);
+        BackKeyInputManager::init(image);
+        WindowsGamepadControl::init(image);
+        TapEffectController::init(image);
         PaymentUtility::init(image);
         Connecting::init(image);
         DownloadManager::init(image);
         DownloadView::init(image);
         DownloadErrorProcessor::init(image);
+        MainGameInitializer::init(image);
         LiveTimelineControl::init(image);
+        LiveTimelineWorkSheet::init(image);
+        LiveTimelineKeyPostFilmDataList::init(image);
         PostEffectUpdateInfo_DOF::init(image);
         DOFUpdateInfoDelegate::init(image);
         PostFilmUpdateInfoDelegate::init(image);
         LiveTimelineKeyCameraPositionData::init(image);
         LiveTimelineKeyCameraLookAtData::init(image);
+        LiveTimelineKeyMultiCameraPositionData::init(image);
         CharacterObject::init(image);
         LiveModelController::init(image);
         ModelController::init(image);
@@ -256,6 +269,7 @@ pub fn init() {
         HorseData::init(image);
         HorseRaceInfo::init(image);
         HorseRaceInfoReplay::init(image);
+        TitleViewController::init(image);
     }
     CameraData::init(image);
     TweenAnimationTimelineComponent::init(image);
@@ -272,7 +286,6 @@ pub fn init() {
     DialogMissionListItem::init(image);
     PartsNamePlateBase::init(image);
     PartsSupportCardImproveDetail::init(image);
-    TitleViewController::init(image);
     Director::init(image);
     CySpringNative::init(image);
     LiveViewController::init(image);

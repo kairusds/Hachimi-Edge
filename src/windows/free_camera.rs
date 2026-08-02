@@ -1004,6 +1004,11 @@ pub fn set_live_active() {
 }
 
 pub fn begin_live_director_update() {
+    let config = Hachimi::instance().config.load();
+    if !config.windows.free_camera.enabled || LIVE_UNSUPPORTED.load(Ordering::Acquire) {
+        return;
+    }
+
     STATE.lock().unwrap().live_follow_timeline_updated = false;
 }
 
