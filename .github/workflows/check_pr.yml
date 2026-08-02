@@ -32,6 +32,7 @@ jobs:
               - 'src/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'build.rs'
 
       - name: Setup Android NDK Environment
         if: steps.filter.outputs.code_changed == 'true' && matrix.target == 'aarch64-linux-android'
