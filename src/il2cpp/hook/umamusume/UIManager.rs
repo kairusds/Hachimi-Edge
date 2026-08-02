@@ -1,7 +1,10 @@
 use crate::{
     core::Hachimi,
     il2cpp::{
-        ext::{Il2CppStringExt, StringExt}, hook::UnityEngine_UI::CanvasScaler, symbols::{get_method_addr, get_method_overload_addr, get_field_from_name, Array, SingletonLike}, types::*
+        ext::{Il2CppStringExt, StringExt},
+        hook::UnityEngine_UI::CanvasScaler,
+        symbols::{get_method_addr, get_method_overload_addr, get_field_from_name, Array, SingletonLike},
+        types::*
     }
 };
 
@@ -111,9 +114,6 @@ extern "C" fn ChangeResizeUIForPC(this: *mut Il2CppObject, width: i32, height: i
 }
 
 #[cfg(target_os = "windows")]
-static mut CHANGERESOLUTION_ADDR: usize = 0;
-
-#[cfg(target_os = "windows")]
 pub fn refresh_after_window_resize(width: i32, height: i32) {
     use super::{GraphicSettings, Screen, TapEffectController, WindowsGamepadControl};
 
@@ -126,12 +126,6 @@ pub fn refresh_after_window_resize(width: i32, height: i32) {
 
     let this = instance();
     if !this.is_null() {
-        if unsafe { CHANGERESOLUTION_ADDR } != 0 {
-            let change_resolution: extern "C" fn(*mut Il2CppObject) = unsafe {
-                std::mem::transmute(CHANGERESOLUTION_ADDR)
-            };
-            change_resolution(this);
-        }
         CreateRenderTextureFromScreen(this);
         let graphic_settings = GraphicSettings::instance();
         if !graphic_settings.is_null() {
@@ -140,7 +134,8 @@ pub fn refresh_after_window_resize(width: i32, height: i32) {
         apply_ui_scale();
     }
 
-    TapEffectController::refresh_all();
+    let tap_effect_controller = TapEffectController::instance();
+    TapEffectController::RefreshAll(tap_effect_controller);
 }
 
 #[cfg(target_os = "android")]
@@ -204,7 +199,6 @@ pub fn init(umamusume: *const Il2CppImage) {
 
         #[cfg(target_os = "windows")]
         {
-            CHANGERESOLUTION_ADDR = get_method_addr(UIManager, c"ChangeResolution", 0);
             CREATERENDERTEXTUREFROMSCREEN_ADDR = get_method_addr(UIManager, c"CreateRenderTextureFromScreen", 0);
         }
     }

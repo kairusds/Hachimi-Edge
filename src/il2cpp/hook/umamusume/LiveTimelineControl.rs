@@ -1,50 +1,41 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
+    core::Hachimi,
     windows::free_camera::{self, CameraScene},
     il2cpp::{
-        symbols::{get_class, get_field_from_name, get_field_object_value, get_method_addr},
+        hook::UnityEngine_CoreModule::Camera,
+        symbols::get_method_addr,
         types::*,
     },
 };
 
-use super::{Director, PostEffectUpdateInfo_DOF};
+use super::{Director, LiveTimelineWorkSheet, LiveTimelineKeyPostFilmDataList, PostEffectUpdateInfo_DOF};
 
 static LIVE_TIMELINE_CONTROL: AtomicUsize = AtomicUsize::new(0);
-static mut POST_FILM_KEYS_FIELD: *mut FieldInfo = std::ptr::null_mut();
-static mut POST_FILM_2_KEYS_FIELD: *mut FieldInfo = std::ptr::null_mut();
-static mut POST_FILM_3_KEYS_FIELD: *mut FieldInfo = std::ptr::null_mut();
-static mut CLEAR_POST_FILM_KEYS_ADDR: usize = 0;
 
 fn clear_live_screen_effects(sheet: *mut Il2CppObject) {
     if sheet.is_null() || !free_camera::should_remove_live_screen_effects() {
         return;
+    }    
+
+    let post_film_keys = LiveTimelineWorkSheet::get_postFilmKeys(sheet);
+    if !post_film_keys.is_null() {
+        LiveTimelineKeyPostFilmDataList::Clear(post_film_keys);
     }
 
-    let clear_addr = unsafe { CLEAR_POST_FILM_KEYS_ADDR };
-    if clear_addr == 0 {
-        return;
+    let post_film2_keys = LiveTimelineWorkSheet::get_postFilm2Keys(sheet);
+    if !post_film2_keys.is_null() {
+        LiveTimelineKeyPostFilmDataList::Clear(post_film2_keys);
     }
-    let clear: extern "C" fn(this: *mut Il2CppObject) =
-        unsafe { std::mem::transmute(clear_addr) };
 
-    for field in unsafe {
-        [
-            POST_FILM_KEYS_FIELD,
-            POST_FILM_2_KEYS_FIELD,
-            POST_FILM_3_KEYS_FIELD,
-        ]
-    } {
-        if !field.is_null() {
-            let keys = get_field_object_value::<Il2CppObject>(sheet, field);
-            if !keys.is_null() {
-                clear(keys);
-            }
-        }
+    let post_film3_keys = LiveTimelineWorkSheet::get_postFilm3Keys(sheet);
+    if !post_film3_keys.is_null() {
+        LiveTimelineKeyPostFilmDataList::Clear(post_film3_keys);
     }
 }
 
-pub(crate) fn set_current(this: *mut Il2CppObject) {
+pub fn set_current(this: *mut Il2CppObject) {
     if !this.is_null() {
         LIVE_TIMELINE_CONTROL.store(this as usize, Ordering::Relaxed);
     }
@@ -72,7 +63,17 @@ fn apply_current_live_character_options() {
 }
 
 type NoArgsFn = extern "C" fn(this: *mut Il2CppObject);
-type LiveCameraPosFn = extern "C" fn(
+
+type LiveVoidFrameFn = extern "C" fn(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32);
+type LiveBoolFrameFn = extern "C" fn(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32) -> bool;
+type LiveVoidFrameTimeFn = extern "C" fn(
+    this: *mut Il2CppObject,
+    sheet: *mut Il2CppObject,
+    current_frame: i32,
+    current_time: f32,
+);
+
+type AlterUpdate_CameraPosFn = extern "C" fn(
     this: *mut Il2CppObject,
     sheet: *mut Il2CppObject,
     current_frame: i32,
@@ -80,46 +81,6 @@ type LiveCameraPosFn = extern "C" fn(
     sheet_index: i32,
     is_use_camera_motion: bool,
 );
-type LiveCameraLookAtFn = extern "C" fn(
-    this: *mut Il2CppObject,
-    sheet: *mut Il2CppObject,
-    current_frame: i32,
-    current_time: f32,
-    out_look_at: *mut Vector3_t,
-);
-type LiveVoidFrameFn =
-    extern "C" fn(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32);
-type LiveBoolFrameFn =
-    extern "C" fn(this: *mut Il2CppObject, sheet: *mut Il2CppObject, current_frame: i32) -> bool;
-type LiveVoidFrameTimeFn = extern "C" fn(
-    this: *mut Il2CppObject,
-    sheet: *mut Il2CppObject,
-    current_frame: i32,
-    current_time: f32,
-);
-type LiveFormationOffsetFn = extern "C" fn(
-    this: *mut Il2CppObject,
-    sheet: *mut Il2CppObject,
-    current_frame: i32,
-    character_object_list: *mut Il2CppObject,
-    change_visibility: bool,
-);
-type SetupDOFUpdateInfoFn = extern "C" fn(
-    this: *mut Il2CppObject,
-    update_info: *mut PostEffectUpdateInfo_DOF::PostEffectUpdateInfoDOF,
-    cur_data: *mut Il2CppObject,
-    next_data: *mut Il2CppObject,
-    current_frame: i32,
-    camera_look_at: Vector3_t,
-);
-type SetupRadialBlurInfoFn = extern "C" fn(
-    this: *mut Il2CppObject,
-    update_info: *mut Il2CppObject,
-    cur_data: *mut Il2CppObject,
-    next_data: *mut Il2CppObject,
-    current_frame: i32,
-);
-
 extern "C" fn AlterUpdate_CameraPos(
     this: *mut Il2CppObject,
     sheet: *mut Il2CppObject,
@@ -137,7 +98,7 @@ extern "C" fn AlterUpdate_CameraPos(
     } else {
         current_frame
     };
-    get_orig_fn!(AlterUpdate_CameraPos, LiveCameraPosFn)(
+    get_orig_fn!(AlterUpdate_CameraPos, AlterUpdate_CameraPosFn)(
         this,
         sheet,
         frame,
@@ -147,6 +108,13 @@ extern "C" fn AlterUpdate_CameraPos(
     );
 }
 
+type AlterUpdate_CameraLookAtFn = extern "C" fn(
+    this: *mut Il2CppObject,
+    sheet: *mut Il2CppObject,
+    current_frame: i32,
+    current_time: f32,
+    out_look_at: *mut Vector3_t,
+);
 extern "C" fn AlterUpdate_CameraLookAt(
     this: *mut Il2CppObject,
     sheet: *mut Il2CppObject,
@@ -156,7 +124,7 @@ extern "C" fn AlterUpdate_CameraLookAt(
 ) {
     free_camera::set_live_active();
     clear_live_screen_effects(sheet);
-    get_orig_fn!(AlterUpdate_CameraLookAt, LiveCameraLookAtFn)(
+    get_orig_fn!(AlterUpdate_CameraLookAt, AlterUpdate_CameraLookAtFn)(
         this,
         sheet,
         current_frame,
@@ -201,6 +169,14 @@ extern "C" fn AlterUpdate_RadialBlur(
     get_orig_fn!(AlterUpdate_RadialBlur, LiveVoidFrameFn)(this, sheet, current_frame);
 }
 
+type SetupDOFUpdateInfoFn = extern "C" fn(
+    this: *mut Il2CppObject,
+    update_info: *mut PostEffectUpdateInfo_DOF::PostEffectUpdateInfoDOF,
+    cur_data: *mut Il2CppObject,
+    next_data: *mut Il2CppObject,
+    current_frame: i32,
+    camera_look_at: Vector3_t,
+);
 extern "C" fn SetupDOFUpdateInfo(
     this: *mut Il2CppObject,
     update_info: *mut PostEffectUpdateInfo_DOF::PostEffectUpdateInfoDOF,
@@ -223,6 +199,13 @@ extern "C" fn SetupDOFUpdateInfo(
     }
 }
 
+type SetupRadialBlurInfoFn = extern "C" fn(
+    this: *mut Il2CppObject,
+    update_info: *mut Il2CppObject,
+    cur_data: *mut Il2CppObject,
+    next_data: *mut Il2CppObject,
+    current_frame: i32,
+);
 extern "C" fn SetupRadialBlurInfo(
     this: *mut Il2CppObject,
     update_info: *mut Il2CppObject,
@@ -320,6 +303,17 @@ extern "C" fn AlterUpdate_CameraFov(
     if should_override_live_camera() {
         return;
     }
+
+    if Director::is_trainer_live() {
+        let config = Hachimi::instance().config.load();
+        let director = Director::instance();
+        let camera = Director::get_MainCameraObject(director);
+
+        if !camera.is_null() && config.trainer_live_landscape {
+            Camera::set_fieldOfView(camera, 150.0);
+            return;
+        }
+    }
     get_orig_fn!(AlterUpdate_CameraFov, LiveVoidFrameFn)(this, sheet, current_frame);
 }
 
@@ -334,6 +328,13 @@ extern "C" fn AlterUpdate_CameraRoll(
     get_orig_fn!(AlterUpdate_CameraRoll, LiveVoidFrameFn)(this, sheet, current_frame);
 }
 
+type LiveFormationOffsetFn = extern "C" fn(
+    this: *mut Il2CppObject,
+    sheet: *mut Il2CppObject,
+    current_frame: i32,
+    character_object_list: *mut Il2CppObject,
+    change_visibility: bool,
+);
 extern "C" fn AlterUpdate_FormationOffset(
     this: *mut Il2CppObject,
     sheet: *mut Il2CppObject,
@@ -364,147 +365,85 @@ extern "C" fn AlterUpdate_FormationOffset(
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if let Ok(live_timeline_control) =
-        get_class(umamusume, c"Gallop.Live.Cutt", c"LiveTimelineControl")
-    {
-        if let Ok(live_timeline_work_sheet) =
-            get_class(umamusume, c"Gallop.Live.Cutt", c"LiveTimelineWorkSheet")
-        {
-            unsafe {
-                POST_FILM_KEYS_FIELD =
-                    get_field_from_name(live_timeline_work_sheet, c"postFilmKeys");
-                POST_FILM_2_KEYS_FIELD =
-                    get_field_from_name(live_timeline_work_sheet, c"postFilm2Keys");
-                POST_FILM_3_KEYS_FIELD =
-                    get_field_from_name(live_timeline_work_sheet, c"postFilm3Keys");
-            }
-        }
+    get_class_or_return!(umamusume, "Gallop.Live.Cutt", LiveTimelineControl);
 
-        if let Ok(post_film_keys) =
-            get_class(umamusume, c"Gallop.Live.Cutt", c"LiveTimelineKeyPostFilmDataList")
-        {
-            unsafe {
-                CLEAR_POST_FILM_KEYS_ADDR = get_method_addr(post_film_keys, c"Clear", 0);
-            }
-        }
+    let AlterUpdate_CameraPos_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_CameraPos", 5);
+    new_hook!(AlterUpdate_CameraPos_addr, AlterUpdate_CameraPos);
 
-        let AlterUpdate_CameraPos_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_CameraPos", 5);
-        let AlterUpdate_CameraLookAt_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_CameraLookAt", 4);
-        let LiveTimelineControl_AlterLateUpdate_addr =
-            get_method_addr(live_timeline_control, c"AlterLateUpdate", 0);
-        let LiveTimelineControl_OnDestroy_addr =
-            get_method_addr(live_timeline_control, c"OnDestroy", 0);
-        let AlterUpdate_RadialBlur_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_RadialBlur", 2);
-        let SetupDOFUpdateInfo_addr =
-            get_method_addr(live_timeline_control, c"SetupDOFUpdateInfo", 5);
-        let SetupRadialBlurInfo_addr =
-            get_method_addr(live_timeline_control, c"SetupRadialBlurInfo", 4);
-        let AlterUpdate_MultiCameraRadialBlur_addr = get_method_addr(
-            live_timeline_control,
-            c"AlterUpdate_MultiCameraRadialBlur",
-            2,
-        );
-        let AlterUpdate_EyeCameraPosition_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_EyeCameraPosition", 3);
-        let AlterUpdate_MonitorCameraPosition_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_MonitorCameraPosition", 3);
-        let AlterUpdate_PostEffect_BloomDiffusion_addr = get_method_addr(
-            live_timeline_control,
-            c"AlterUpdate_PostEffect_BloomDiffusion",
-            2,
-        );
-        let AlterUpdate_TiltShift_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_TiltShift", 2);
-        let AlterUpdate_CameraLayer_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_CameraLayer", 2);
-        let AlterUpdate_CameraFov_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_CameraFov", 2);
-        let AlterUpdate_CameraRoll_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_CameraRoll", 2);
-        let AlterUpdate_CameraMotion_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_CameraMotion", 2);
-        let AlterLateUpdate_CameraMotion_addr =
-            get_method_addr(live_timeline_control, c"AlterLateUpdate_CameraMotion", 2);
-        let AlterUpdate_HandShakeCamera_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_HandShakeCamera", 2);
-        let AlterUpdate_CameraSwitcher_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_CameraSwitcher", 2);
-        let AlterUpdate_MonitorCameraLookAt_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_MonitorCameraLookAt", 3);
-        let AlterUpdate_EyeCameraLookAt_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_EyeCameraLookAt", 3);
-        let AlterUpdate_MultiCameraPosition_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_MultiCameraPosition", 3);
-        let AlterUpdate_MultiCameraLookAt_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_MultiCameraLookAt", 3);
-        let AlterUpdate_FormationOffset_addr =
-            get_method_addr(live_timeline_control, c"AlterUpdate_FormationOffset", 4);
+    let AlterUpdate_CameraLookAt_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_CameraLookAt", 4);
+    new_hook!(AlterUpdate_CameraLookAt_addr, AlterUpdate_CameraLookAt);
 
-        new_hook!(AlterUpdate_CameraPos_addr, AlterUpdate_CameraPos);
-        new_hook!(AlterUpdate_CameraLookAt_addr, AlterUpdate_CameraLookAt);
-        new_hook!(
-            LiveTimelineControl_AlterLateUpdate_addr,
-            LiveTimelineControl_AlterLateUpdate
-        );
-        new_hook!(
-            LiveTimelineControl_OnDestroy_addr,
-            LiveTimelineControl_OnDestroy
-        );
-        new_hook!(AlterUpdate_RadialBlur_addr, AlterUpdate_RadialBlur);
-        new_hook!(SetupDOFUpdateInfo_addr, SetupDOFUpdateInfo);
-        new_hook!(SetupRadialBlurInfo_addr, SetupRadialBlurInfo);
-        new_hook!(
-            AlterUpdate_MultiCameraRadialBlur_addr,
-            AlterUpdate_MultiCameraRadialBlur
-        );
-        new_hook!(
-            AlterUpdate_EyeCameraPosition_addr,
-            AlterUpdate_EyeCameraPosition
-        );
-        new_hook!(
-            AlterUpdate_MonitorCameraPosition_addr,
-            AlterUpdate_MonitorCameraPosition
-        );
-        new_hook!(
-            AlterUpdate_PostEffect_BloomDiffusion_addr,
-            AlterUpdate_PostEffect_BloomDiffusion
-        );
-        new_hook!(AlterUpdate_TiltShift_addr, AlterUpdate_TiltShift);
-        new_hook!(AlterUpdate_CameraLayer_addr, AlterUpdate_CameraLayer);
-        new_hook!(AlterUpdate_CameraFov_addr, AlterUpdate_CameraFov);
-        new_hook!(AlterUpdate_CameraRoll_addr, AlterUpdate_CameraRoll);
-        new_hook!(AlterUpdate_CameraMotion_addr, AlterUpdate_CameraMotion);
-        new_hook!(
-            AlterLateUpdate_CameraMotion_addr,
-            AlterLateUpdate_CameraMotion
-        );
-        new_hook!(
-            AlterUpdate_HandShakeCamera_addr,
-            AlterUpdate_HandShakeCamera
-        );
-        new_hook!(AlterUpdate_CameraSwitcher_addr, AlterUpdate_CameraSwitcher);
-        new_hook!(
-            AlterUpdate_MonitorCameraLookAt_addr,
-            AlterUpdate_MonitorCameraLookAt
-        );
-        new_hook!(
-            AlterUpdate_EyeCameraLookAt_addr,
-            AlterUpdate_EyeCameraLookAt
-        );
-        new_hook!(
-            AlterUpdate_MultiCameraPosition_addr,
-            AlterUpdate_MultiCameraPosition
-        );
-        new_hook!(
-            AlterUpdate_MultiCameraLookAt_addr,
-            AlterUpdate_MultiCameraLookAt
-        );
-        new_hook!(
-            AlterUpdate_FormationOffset_addr,
-            AlterUpdate_FormationOffset
-        );
-    }
+    let LiveTimelineControl_AlterLateUpdate_addr = get_method_addr(LiveTimelineControl, c"AlterLateUpdate", 0);
+    new_hook!(LiveTimelineControl_AlterLateUpdate_addr, LiveTimelineControl_AlterLateUpdate);
+
+    let LiveTimelineControl_OnDestroy_addr = get_method_addr(LiveTimelineControl, c"OnDestroy", 0);
+    new_hook!(LiveTimelineControl_OnDestroy_addr, LiveTimelineControl_OnDestroy);
+
+    let AlterUpdate_RadialBlur_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_RadialBlur", 2);
+    new_hook!(AlterUpdate_RadialBlur_addr, AlterUpdate_RadialBlur);
+
+    let SetupDOFUpdateInfo_addr = get_method_addr(LiveTimelineControl, c"SetupDOFUpdateInfo", 5);
+    new_hook!(SetupDOFUpdateInfo_addr, SetupDOFUpdateInfo);
+
+    let SetupRadialBlurInfo_addr = get_method_addr(LiveTimelineControl, c"SetupRadialBlurInfo", 4);
+    new_hook!(SetupRadialBlurInfo_addr, SetupRadialBlurInfo);
+
+    let AlterUpdate_MultiCameraRadialBlur_addr = get_method_addr(
+        LiveTimelineControl,
+        c"AlterUpdate_MultiCameraRadialBlur",
+        2,
+    );
+    new_hook!(AlterUpdate_MultiCameraRadialBlur_addr, AlterUpdate_MultiCameraRadialBlur);
+
+    let AlterUpdate_EyeCameraPosition_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_EyeCameraPosition", 3);
+    new_hook!(AlterUpdate_EyeCameraPosition_addr, AlterUpdate_EyeCameraPosition);
+
+    let AlterUpdate_MonitorCameraPosition_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_MonitorCameraPosition", 3);
+    new_hook!(AlterUpdate_MonitorCameraPosition_addr, AlterUpdate_MonitorCameraPosition);
+
+    let AlterUpdate_PostEffect_BloomDiffusion_addr = get_method_addr(
+        LiveTimelineControl,
+        c"AlterUpdate_PostEffect_BloomDiffusion",
+        2,
+    );
+    new_hook!(AlterUpdate_PostEffect_BloomDiffusion_addr, AlterUpdate_PostEffect_BloomDiffusion);
+
+    let AlterUpdate_TiltShift_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_TiltShift", 2);
+    new_hook!(AlterUpdate_TiltShift_addr, AlterUpdate_TiltShift);
+
+    let AlterUpdate_CameraLayer_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_CameraLayer", 2);
+    new_hook!(AlterUpdate_CameraLayer_addr, AlterUpdate_CameraLayer);
+
+    let AlterUpdate_CameraFov_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_CameraFov", 2);
+    new_hook!(AlterUpdate_CameraFov_addr, AlterUpdate_CameraFov);
+
+    let AlterUpdate_CameraRoll_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_CameraRoll", 2);
+    new_hook!(AlterUpdate_CameraRoll_addr, AlterUpdate_CameraRoll);
+
+    let AlterUpdate_CameraMotion_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_CameraMotion", 2);
+    new_hook!(AlterUpdate_CameraMotion_addr, AlterUpdate_CameraMotion);
+
+    let AlterLateUpdate_CameraMotion_addr = get_method_addr(LiveTimelineControl, c"AlterLateUpdate_CameraMotion", 2);
+    new_hook!(AlterLateUpdate_CameraMotion_addr, AlterLateUpdate_CameraMotion);
+
+    let AlterUpdate_HandShakeCamera_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_HandShakeCamera", 2);
+    new_hook!(AlterUpdate_HandShakeCamera_addr, AlterUpdate_HandShakeCamera);
+
+    let AlterUpdate_CameraSwitcher_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_CameraSwitcher", 2);
+    new_hook!(AlterUpdate_CameraSwitcher_addr, AlterUpdate_CameraSwitcher);
+
+    let AlterUpdate_MonitorCameraLookAt_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_MonitorCameraLookAt", 3);
+    new_hook!(AlterUpdate_MonitorCameraLookAt_addr, AlterUpdate_MonitorCameraLookAt);
+
+    let AlterUpdate_EyeCameraLookAt_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_EyeCameraLookAt", 3);
+    new_hook!(AlterUpdate_EyeCameraLookAt_addr, AlterUpdate_EyeCameraLookAt);
+
+    let AlterUpdate_MultiCameraPosition_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_MultiCameraPosition", 3);
+    new_hook!(AlterUpdate_MultiCameraPosition_addr, AlterUpdate_MultiCameraPosition);
+
+    let AlterUpdate_MultiCameraLookAt_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_MultiCameraLookAt", 3);
+    new_hook!(AlterUpdate_MultiCameraLookAt_addr, AlterUpdate_MultiCameraLookAt);
+
+    let AlterUpdate_FormationOffset_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_FormationOffset", 4);
+    new_hook!(AlterUpdate_FormationOffset_addr, AlterUpdate_FormationOffset);
 }

@@ -2936,30 +2936,32 @@ impl ConfigEditor {
                     ui.checkbox(&mut config.windows.free_camera.enabled, "");
                     ui.end_row();
 
-                    ui.label("");
-                    if ui.button(t!("free_camera.settings_title")).clicked() {
-                        thread::spawn(|| {
-                            Gui::instance().unwrap()
-                            .lock().unwrap()
-                            .show_window(Box::new(FreeCameraSettingsWindow::new()));
-                        });
-                    }
-                    ui.end_row();
+                    if config.windows.free_camera.enabled {
+                        ui.label("");
+                        if ui.button(t!("free_camera.settings_title")).clicked() {
+                            thread::spawn(|| {
+                                Gui::instance().unwrap()
+                                .lock().unwrap()
+                                .show_window(Box::new(FreeCameraSettingsWindow::new()));
+                            });
+                        }
+                        ui.end_row();
 
-                    ui.label("");
-                    if ui.button(t!("free_camera.cheatsheet_title")).clicked() {
-                        thread::spawn(move || {
-                            Gui::instance().unwrap()
-                            .lock().unwrap()
-                            .show_window(Box::new(SimpleMarkdownDialog::new_with_height(
-                                &t!("free_camera.cheatsheet_title"),
-                                &t!("free_camera.cheatsheet_contents"),
-                                400.0,
-                                500.0
-                            )));
-                        });
+                        ui.label("");
+                        if ui.button(t!("free_camera.cheatsheet_title")).clicked() {
+                            thread::spawn(move || {
+                                Gui::instance().unwrap()
+                                .lock().unwrap()
+                                .show_window(Box::new(SimpleMarkdownDialog::new_with_height(
+                                    &t!("free_camera.cheatsheet_title"),
+                                    &t!("free_camera.cheatsheet_contents"),
+                                    400.0,
+                                    500.0
+                                )));
+                            });
+                        }
+                        ui.end_row();
                     }
-                    ui.end_row();
                 }
             }
 
