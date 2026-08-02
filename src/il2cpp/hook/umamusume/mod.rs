@@ -88,12 +88,6 @@ pub mod LiveTimelineWorkSheet;
 #[cfg(target_os = "windows")]
 pub mod LiveTimelineKeyPostFilmDataList;
 #[cfg(target_os = "windows")]
-mod PostEffectUpdateInfo_DOF;
-#[cfg(target_os = "windows")]
-mod DOFUpdateInfoDelegate;
-#[cfg(target_os = "windows")]
-mod PostFilmUpdateInfoDelegate;
-#[cfg(target_os = "windows")]
 pub mod LiveTimelineKeyCameraPositionData;
 #[cfg(target_os = "windows")]
 mod LiveTimelineKeyCameraLookAtData;
@@ -252,9 +246,6 @@ pub fn init() {
         LiveTimelineControl::init(image);
         LiveTimelineWorkSheet::init(image);
         LiveTimelineKeyPostFilmDataList::init(image);
-        PostEffectUpdateInfo_DOF::init(image);
-        DOFUpdateInfoDelegate::init(image);
-        PostFilmUpdateInfoDelegate::init(image);
         LiveTimelineKeyCameraPositionData::init(image);
         LiveTimelineKeyCameraLookAtData::init(image);
         LiveTimelineKeyMultiCameraPositionData::init(image);
