@@ -10,9 +10,114 @@ use crate::{
     },
 };
 
-use super::{Director, LiveTimelineWorkSheet, LiveTimelineKeyPostFilmDataList, PostEffectUpdateInfo_DOF};
+use super::{Director, LiveTimelineWorkSheet, LiveTimelineKeyPostFilmDataList};
 
 static LIVE_TIMELINE_CONTROL: AtomicUsize = AtomicUsize::new(0);
+
+
+#[repr(C)]
+#[derive(Default)]
+#[allow(dead_code)]
+pub struct Vector4_t {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+#[repr(C)]
+#[allow(dead_code)]
+pub struct PostFilmUpdateInfo {
+    pub filmMode: i32,
+    pub colorType: i32,
+    pub filmPower: f32,
+    pub filmOffsetParam: Vector2_t,
+    pub filmOptionParam: Vector4_t,
+    pub color0: Color_t,
+    pub color1: Color_t,
+    pub color2: Color_t,
+    pub color3: Color_t,
+    pub depthPower: f32,
+    pub DepthClip: f32,
+    pub layerMode: i32,
+    pub colorBlend: i32,
+    pub inverseVignette: bool,
+    pub colorBlendFactor: f32,
+    pub movieResId: i32,
+    pub movieFrameOffset: i32,
+    pub movieTime: f32,
+    pub movieReverse: bool,
+    pub RollAngle: f32,
+    pub FilmScale: Vector2_t,
+}
+
+impl Default for PostFilmUpdateInfo {
+    fn default() -> Self {
+        Self {
+            filmMode: 0,
+            colorType: 0,
+            filmPower: 0.0,
+            filmOffsetParam: Default::default(),
+            filmOptionParam: Default::default(),
+            color0: Color_t {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            },
+            color1: Color_t {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            },
+            color2: Color_t {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            },
+            color3: Color_t {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            },
+            depthPower: 0.0,
+            DepthClip: 0.0,
+            layerMode: 0,
+            colorBlend: 0,
+            inverseVignette: false,
+            colorBlendFactor: 0.0,
+            movieResId: 0,
+            movieFrameOffset: 0,
+            movieTime: 0.0,
+            movieReverse: false,
+            RollAngle: 0.0,
+            FilmScale: Default::default(),
+        }
+    }
+}
+
+#[repr(C)]
+#[allow(dead_code)]
+struct PostEffectUpdateInfo_DOF {
+    pub IsEnableDOF: bool,
+    pub forcalSize: f32,
+    pub blurSpread: f32,
+    pub forcalPosition: Vector3_t,
+    pub dofQuality: i32,
+    pub dofBlurType: i32,
+    pub dofForegroundSize: f32,
+    pub dofFocalPoint: f32,
+    pub dofSoomthness: f32,
+    pub isUseFocalPoint: bool,
+    pub BallBlurCurveFactor: f32,
+    pub BallBlurBrightnessThreshhold: f32,
+    pub BallBlurBrightnessIntensity: f32,
+    pub BallBlurSpread: f32,
+    pub IsPointBallBlur: bool,
+}
 
 fn clear_live_screen_effects(sheet: *mut Il2CppObject) {
     if sheet.is_null() || !free_camera::should_remove_live_screen_effects() {
@@ -163,15 +268,37 @@ extern "C" fn AlterUpdate_RadialBlur(
     sheet: *mut Il2CppObject,
     current_frame: i32,
 ) {
-    if should_remove_live_camera_effects() {
-        return;
+    if !should_remove_live_camera_effects() {
+        get_orig_fn!(AlterUpdate_RadialBlur, LiveVoidFrameFn)(this, sheet, current_frame);
     }
-    get_orig_fn!(AlterUpdate_RadialBlur, LiveVoidFrameFn)(this, sheet, current_frame);
+}
+
+type SetupPostFilmUpdateDataInfoFn = extern "C" fn(
+    this: *mut Il2CppObject,
+    updateInfo: *mut PostFilmUpdateInfo,
+    curData: *mut Il2CppObject,
+    nextData: *mut Il2CppObject,
+    currentFrame: i32,
+);
+extern "C" fn SetupPostFilmUpdateDataInfo(
+    this: *mut Il2CppObject,
+    updateInfo: *mut PostFilmUpdateInfo,
+    curData: *mut Il2CppObject,
+    nextData: *mut Il2CppObject,
+    currentFrame: i32,
+) {
+    get_orig_fn!(SetupPostFilmUpdateDataInfo, SetupPostFilmUpdateDataInfoFn)(
+        this, updateInfo, curData, nextData, currentFrame,
+    );
+
+    if should_remove_live_camera_effects() {
+        unsafe { *updateInfo = PostFilmUpdateInfo::default(); }
+    }
 }
 
 type SetupDOFUpdateInfoFn = extern "C" fn(
     this: *mut Il2CppObject,
-    update_info: *mut PostEffectUpdateInfo_DOF::PostEffectUpdateInfoDOF,
+    update_info: *mut PostEffectUpdateInfo_DOF,
     cur_data: *mut Il2CppObject,
     next_data: *mut Il2CppObject,
     current_frame: i32,
@@ -179,7 +306,7 @@ type SetupDOFUpdateInfoFn = extern "C" fn(
 );
 extern "C" fn SetupDOFUpdateInfo(
     this: *mut Il2CppObject,
-    update_info: *mut PostEffectUpdateInfo_DOF::PostEffectUpdateInfoDOF,
+    update_info: *mut PostEffectUpdateInfo_DOF,
     cur_data: *mut Il2CppObject,
     next_data: *mut Il2CppObject,
     current_frame: i32,
@@ -195,7 +322,11 @@ extern "C" fn SetupDOFUpdateInfo(
     );
 
     if should_remove_live_camera_effects() {
-        PostEffectUpdateInfo_DOF::disable(update_info);
+        unsafe {
+            (*update_info).IsEnableDOF = false;
+            (*update_info).isUseFocalPoint = false;
+            (*update_info).IsPointBallBlur = false;
+        }
     }
 }
 
@@ -381,6 +512,9 @@ pub fn init(umamusume: *const Il2CppImage) {
 
     let AlterUpdate_RadialBlur_addr = get_method_addr(LiveTimelineControl, c"AlterUpdate_RadialBlur", 2);
     new_hook!(AlterUpdate_RadialBlur_addr, AlterUpdate_RadialBlur);
+
+    let SetupPostFilmUpdateDataInfo_addr = get_method_addr(LiveTimelineControl, c"SetupPostFilmUpdateDataInfo", 4);
+    new_hook!(SetupPostFilmUpdateDataInfo_addr, SetupPostFilmUpdateDataInfo);
 
     let SetupDOFUpdateInfo_addr = get_method_addr(LiveTimelineControl, c"SetupDOFUpdateInfo", 5);
     new_hook!(SetupDOFUpdateInfo_addr, SetupDOFUpdateInfo);
