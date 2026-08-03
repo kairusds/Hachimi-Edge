@@ -1,11 +1,7 @@
 EXPORTS
     ; UnityPlayer.dll
     UnityMain
-
-    ; cri_mana_vpx.dll
-    criVvp9_GetAlphaInterface
-    criVvp9_GetInterface
-    criVvp9_SetUserAllocator
+    UnityMain2
 
     ; winhttp.dll
     WinHttpAddRequestHeaders

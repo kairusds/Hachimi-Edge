@@ -1,6 +1,6 @@
 [package]
 name = "hachimi"
-version = "0.26.4"
+version = "0.27.0"
 edition = "2021"
 
 [lib]
@@ -65,6 +65,7 @@ egui-directx11 = "0.12.1"
 discord-rich-presence = "1.0.0"
 pelite = "0.10"
 microseh = "1.1"
+webview2-com = "0.39.1"
 
 [target.'cfg(target_os = "windows")'.dependencies.windows]
 version = "0.62.2"
@@ -108,3 +109,7 @@ FileDescription = "Game enhancement and translation mod"
 [patch.crates-io]
 dobby-sys = { git = "https://github.com/LeadRDRK/dobby-sys.git", rev = "e005f6abb0db1353b92ff58d50f59112f04dcad4" }
 embed-resource = { git = "https://github.com/nabijaczleweli/rust-embed-resource.git", rev = "e98e9aa28d66b0c2ff43516b41847cac372310dd" }
+
+[lints.clippy]
+all = "allow"
+perf = { level = "deny", priority = 1 }

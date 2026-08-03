@@ -1,20 +1,7 @@
-// public static BgSeason GetSeasonForHome(DateTime dateTime) { }
-
-// TimeUtil
-use serde::{Deserialize, Serialize};
 use crate::{core::Hachimi, il2cpp::{symbols::get_method_addr, types::*}};
+use super::GameDefine::BgSeason;
 
-#[derive(Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
-#[repr(i32)]
-pub enum BgSeason {
-    #[default] None = 0,
-    Spring = 1,
-    Summer = 2,
-    Fall = 3,
-    Winter = 4,
-    CherryBlossom = 5
-}
-
+// public static BgSeason GetSeasonForHome(DateTime dateTime) { }
 type GetSeasonForHomeFn = extern "C" fn(this: *mut Il2CppObject, dateTime: *mut Il2CppObject) -> BgSeason;
 extern "C" fn GetSeasonForHome(this: *mut Il2CppObject, dateTime: *mut Il2CppObject) -> BgSeason {
     let bg_season = Hachimi::instance().config.load().homescreen_bgseason;

@@ -1,0 +1,56 @@
+name: Check Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  clippy:
+    name: Clippy (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Android
+            os: ubuntu-latest
+            target: aarch64-linux-android
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check path changes
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            code_changed:
+              - 'src/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'build.rs'
+
+      - name: Setup Android NDK Environment
+        if: steps.filter.outputs.code_changed == 'true' && matrix.target == 'aarch64-linux-android'
+        run: |
+          echo "RUSTFLAGS=-C link-args=-static-libstdc++ -C link-args=-lc++abi" >> $GITHUB_ENV
+          TOOLCHAIN="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "CC_aarch64_linux_android=$TOOLCHAIN/aarch64-linux-android24-clang" >> $GITHUB_ENV
+          echo "CXX_aarch64_linux_android=$TOOLCHAIN/aarch64-linux-android24-clang++" >> $GITHUB_ENV
+          echo "AR_aarch64_linux_android=$TOOLCHAIN/llvm-ar" >> $GITHUB_ENV
+          echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$TOOLCHAIN/aarch64-linux-android24-clang" >> $GITHUB_ENV
+
+      - name: Install Rust
+        if: steps.filter.outputs.code_changed == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: ${{ matrix.target }}
+
+      - name: Run Clippy
+        if: steps.filter.outputs.code_changed == 'true'
+        run: cargo clippy --target ${{ matrix.target }} -- -D warnings

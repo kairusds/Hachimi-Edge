@@ -19,10 +19,9 @@ pub mod TouchScreenKeyboardType;
 pub mod RectTransform;
 pub mod Transform;
 pub mod RectOffset;
-
+pub mod Camera;
 #[cfg(target_os = "windows")]
 pub mod QualitySettings;
-#[cfg(target_os = "windows")]
 pub mod Screen;
 pub mod SceneManager;
 pub mod Scene;
@@ -33,6 +32,7 @@ pub const TextureFormat_RGBA32: i32 = 4;
 
 pub const FullScreenMode_ExclusiveFullScreen: i32 = 0;
 pub const FullScreenMode_FullScreenWindow: i32 = 1;
+pub const FullScreenMode_Windowed: i32 = 3;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "UnityEngine.CoreModule.dll");
@@ -56,6 +56,9 @@ pub fn init() {
     RectOffset::init(image);
     SceneManager::init(image);
     Scene::init(image);
+    Camera::init(image);
+    Screen::init(image);
+
     #[cfg(target_os = "android")]
     {
         TouchScreenKeyboard::init(image);
@@ -65,6 +68,5 @@ pub fn init() {
     #[cfg(target_os = "windows")]
     {
         QualitySettings::init(image);
-        Screen::init(image);
     }
 }

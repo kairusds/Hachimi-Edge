@@ -1,4 +1,4 @@
-use crate::{core::{Hachimi, utils::wrap_fit_text_il2cpp}, il2cpp::{ext::{Il2CppObjectExt, Il2CppStringExt, LocalizedDataExt}, hook::UnityEngine_UI::Text, symbols::{get_method_addr, get_method_addr_cached, get_type_object_for_class}, types::*}};
+use crate::{core::{Hachimi, utils::wrap_fit_text_il2cpp}, il2cpp::{ext::{Il2CppStringExt, LocalizedDataExt}, hook::UnityEngine_UI::Text, symbols::{get_method_addr, get_type_object_for_class}, types::*}};
 
 static mut TYPE_OBJECT: *mut Il2CppObject = 0 as _;
 pub fn type_object() -> *mut Il2CppObject {
@@ -31,13 +31,7 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
     let config = Hachimi::instance().config.load();
 
     if config.replace_to_builtin_font {
-        unsafe {
-            let assign_default_font = get_method_addr_cached((*this).klass(), c"AssignDefaultFont", 0);
-            if assign_default_font != 0 {
-                let func: extern "C" fn(*mut Il2CppObject) = std::mem::transmute(assign_default_font);
-                func(this);
-            }
-        }
+        Text::AssignDefaultFont(this);
     }
 
     let font = localized_data.load_replacement_font();

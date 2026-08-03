@@ -37,7 +37,7 @@ extern "C" fn Show(this: *mut Il2CppObject, #[allow(unused_mut)] mut type_: i32,
     }
     if config.hide_now_loading && !onComplete.is_null() {
         unsafe {
-            let invoke: extern "C" fn(*mut Il2CppObject, *const crate::il2cpp::types::MethodInfo) = std::mem::transmute((*onComplete).method_ptr);
+            let invoke: extern "C" fn(*mut Il2CppObject, *const MethodInfo) = std::mem::transmute((*onComplete).method_ptr);
             invoke((*onComplete).target, (*onComplete).method);
         }
     }
@@ -51,7 +51,7 @@ extern "C" fn Hide(this: *mut Il2CppObject, onComplete: *mut Il2CppDelegate, ove
     }
     if config.hide_now_loading && !onComplete.is_null() {
         unsafe {
-            let invoke: extern "C" fn(*mut Il2CppObject, *const crate::il2cpp::types::MethodInfo) = std::mem::transmute((*onComplete).method_ptr);
+            let invoke: extern "C" fn(*mut Il2CppObject, *const MethodInfo) = std::mem::transmute((*onComplete).method_ptr);
             invoke((*onComplete).target, (*onComplete).method);
         }
     }

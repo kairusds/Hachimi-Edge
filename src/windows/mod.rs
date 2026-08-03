@@ -14,3 +14,5 @@ pub mod steamworks;
 pub mod discord;
 pub mod smtc;
 pub mod taskbar;
+pub mod webview;
+pub mod free_camera;
