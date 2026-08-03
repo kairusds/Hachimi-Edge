@@ -261,7 +261,7 @@ free_camera:
     * **Y** (Triangle): I-reset ang camera position
     * **X** (Square): Cycle camera mode
     * **B** (Circle): Baliktaran ang follow camera perspective *(front <-> back, Follow Camera lang)*
-    * **A** (Cross): I-pause / i-rresume ang concert
+    * **A** (Cross): I-pause / i-resume ang concert
 
     ---
 
