@@ -1,5 +1,3 @@
-use std::ptr::null_mut;
-
 use crate::{
     windows::free_camera,
     il2cpp::{
@@ -8,60 +6,40 @@ use crate::{
     },
 };
 
-static mut CLASS: *mut Il2CppClass = null_mut();
+static mut CLASS: *mut Il2CppClass = 0 as _;
+pub fn class() -> *mut Il2CppClass {
+    unsafe { CLASS }
+}
+
+pub fn instance() -> *mut Il2CppObject {
+    let Some(singleton) = SingletonLike::new(class()) else {
+        return 0 as _;
+    };
+    singleton.instance()
+}
+
 static mut UPDATE_INPUT_CONTROLS_ADDR: usize = 0;
+impl_addr_wrapper_fn!(UpdateInputControls, UPDATE_INPUT_CONTROLS_ADDR, (), this: *mut Il2CppObject);
+
 static mut CREATE_RENDER_TEXTURE_FROM_SCREEN_ADDR: usize = 0;
+impl_addr_wrapper_fn!(CreateRenderTextureFromScreen, CREATE_RENDER_TEXTURE_FROM_SCREEN_ADDR, (), this: *mut Il2CppObject);
 
 type CheckGamepadInputFn = extern "C" fn(this: *mut Il2CppObject) -> bool;
 extern "C" fn CheckGamepadInput(this: *mut Il2CppObject) -> bool {
     if free_camera::is_game_input_capture_active() {
         false
-    }
-    else {
+    } else {
         get_orig_fn!(CheckGamepadInput, CheckGamepadInputFn)(this)
     }
 }
 
-pub fn update_input_controls() {
-    let class = unsafe { CLASS };
-    if class.is_null() || unsafe { UPDATE_INPUT_CONTROLS_ADDR } == 0 {
-        return;
-    }
-
-    let Some(singleton) = SingletonLike::new(class) else {
-        return;
-    };
-    let instance = singleton.instance();
-    if instance.is_null() {
-        return;
-    }
-
-    let update: extern "C" fn(*mut Il2CppObject) = unsafe { std::mem::transmute(UPDATE_INPUT_CONTROLS_ADDR) };
-    update(instance);
-}
-
 pub fn refresh_after_window_resize() {
-    let class = unsafe { CLASS };
-    if class.is_null() {
+    let this = instance();
+    if this.is_null() {
         return;
     }
-
-    let Some(singleton) = SingletonLike::new(class) else {
-        return;
-    };
-    let instance = singleton.instance();
-    if instance.is_null() {
-        return;
-    }
-
-    if unsafe { CREATE_RENDER_TEXTURE_FROM_SCREEN_ADDR } != 0 {
-        let create_render_texture: extern "C" fn(*mut Il2CppObject) = unsafe {
-            std::mem::transmute(CREATE_RENDER_TEXTURE_FROM_SCREEN_ADDR)
-        };
-        create_render_texture(instance);
-    }
-
-    update_input_controls();
+    CreateRenderTextureFromScreen(this);
+    UpdateInputControls(this);
 }
 
 pub fn init(umamusume: *const Il2CppImage) {

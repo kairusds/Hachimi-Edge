@@ -186,7 +186,6 @@ config_editor:
   story_text_speed_multiplier: "剧情文本速度倍率"
   force_allow_dynamic_camera: "强制启用动态镜头"
   free_camera: "自由视角"
-  free_camera_settings: "自由视角设置"
   live_theater_allow_same_chara: "在 LIVE 剧场中 允许设置多个相同角色"
   physics_update_mode: "物理引擎更新模式"
   disable_skill_name_translation: "禁用技能名称翻译"
@@ -242,7 +241,7 @@ set_keybind:
   bound_key: "已绑定按键：%{key}"
 
 free_camera:
-  title: "自由视角"
+  settings_title: "自由视角设置"
   section_general: "通用"
   section_live: "Live 剧场"
   section_race: "比赛"
@@ -308,6 +307,46 @@ free_camera:
   key_reset: "重置"
   key_cycle_mode: "切换模式"
   key_reverse: "反向"
+  cheatsheet_title: "自由视角快捷指南"
+  cheatsheet_contents: |
+    # 自由视角快捷指南
+    本功能仅在 **比赛** 或 **Live 舞台** 中生效。
+
+    默认跟随部位为 **头部/面部**。
+
+    在比赛中默认跟随 **1号闸位**。
+
+    ## 鼠标操作
+    * **按住右键并拖动：** 旋转视角
+    * **滚轮向上 / 向下：** 调整FOV
+
+    ---
+
+    ## 手柄操作 (Xbox / PlayStation)
+
+    ### **移动与视角**
+    * **左摇杆：** 移动
+    * **右摇杆：** 旋转视角
+    * **右扳机键 (RT / R2)：** 上升
+    * **左扳机键 (LT / L2)：** 下降
+    * **右侧肩键 (RB / R1)：** 减小FOV
+    * **左侧肩键 (LB / L1)：** 增大FOV
+
+    ---
+
+    ### 功能按键
+    * **Y键** (三角)：重置相机位置
+    * **X键** (方块)：切换相机模式
+    * **B键** (圆圈)：翻转跟随视角方向 *(前 <-> 后，仅跟随相机模式)*
+    * **A键** (叉号)：暂停 Live
+
+    ---
+
+    ### 方向键控制 (自由移动模式下不可用)
+    * **方向键-右：** 下一个目标 *(仅跟随相机与第一人称)*
+    * **方向键-左：** 上一个目标 *(仅跟随相机与第一人称)*
+    * **方向键-上：** 下一个部位 *(仅跟随相机)*
+    * **方向键-下：** 上一个部位 *(仅跟随相机)*
 
 excludes_editor:
   title: "排除项编辑器"

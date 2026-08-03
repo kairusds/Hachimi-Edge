@@ -1,17 +1,5 @@
 use crate::il2cpp::types::*;
 
-impl PartialEq<ViewId> for i32 {
-    fn eq(&self, other: &ViewId) -> bool {
-        *self == *other as i32
-    }
-}
-
-impl PartialEq<i32> for ViewId {
-    fn eq(&self, other: &i32) -> bool {
-        *self as i32 == *other
-    }
-}
-
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[allow(dead_code)]
@@ -240,6 +228,8 @@ pub enum ViewId {
     MapEvent = 8500,
     Max = 9999
 }
+
+impl_enum_eq!(ViewId);
 
 pub fn init(_umamusume: *const Il2CppImage) {
 }
