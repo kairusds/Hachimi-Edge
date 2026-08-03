@@ -35,6 +35,7 @@ edit: "编辑"
 remove: "移除"
 add: "添加"
 save_changes: "保存更改？"
+back: "返回"
 menu:
   check_for_updates: "\uf0aa 检查更新"
   fps_text: "帧率: %{fps}"
@@ -83,6 +84,7 @@ notification:
   atlas_workaround_reset: "检测到 Atlas 文件更新: 已重新应用 Atlas 翻译..."
   tl_repo_changed: "翻译仓库已更换，本地化数据已重新加载。"
   tl_repo_folder_missing: "翻译数据文件夹缺失。请检查更新以恢复翻译。"
+  recommended_ui_scale_applied: "已应用推荐的界面缩放比例"
 
 first_time_setup:
   title: "初始化设置"
@@ -99,6 +101,10 @@ first_time_setup:
   select_translation_repo: "选择翻译仓库："
   no_compatible_repo: "没有与此游戏版本兼容的翻译仓库。"
   skip_translation: "跳过翻译设置。"
+  common_settings_heading: "常用设置"
+  common_settings_content: >-
+    以下是一些您可能需要配置的常用设置。
+    您之后可以随时在配置编辑器中更改这些设置。
   complete_heading: "全部完成！"
   complete_content: >-
     点击「完成」以保存配置。
@@ -133,7 +139,6 @@ config_editor:
     此选项将在游戏重启后禁用Hachimi的GUI，
     您将无法再访问配置编辑器。
     如非本意，请关闭此窗口并禁用此选项。
-  ipv4_only: "仅使用 IPv4 ureq"
   meta_index_url: "翻译 Meta URL"
   debug_mode: "调试模式"
   enable_file_logging: "记录日志"
@@ -225,6 +230,10 @@ config_editor:
   ui_loading_show_orientation_guide: "隐藏加载画面方向提示"
   replace_to_builtin_font: "使用游戏默认字体"
   custom_title_name: "自定义窗口标题"
+  ingame_webview: "在游戏内浏览器中打开公告等内置网页"
+  recommended_ui_scale: "应用推荐的界面缩放比例"
+  trainer_live_landscape: "在竖屏 Live 中强制使用横屏模式"
+  force_orientation_mode: "屏幕方向锁定模式"
 
 theme_editor:
   title: "覆盖层主题编辑器"
@@ -307,12 +316,13 @@ free_camera:
   key_reset: "重置"
   key_cycle_mode: "切换模式"
   key_reverse: "反向"
+  settings_title: "自由视角设置"
   cheatsheet_title: "自由视角快捷指南"
   cheatsheet_contents: |
     # 自由视角快捷指南
     本功能仅在 **比赛** 或 **Live 舞台** 中生效。
 
-    默认跟随部位为 **头部/面部**。
+    默认跟随部位为 **头部**。
 
     在比赛中默认跟随 **1号闸位**。
 
@@ -337,16 +347,16 @@ free_camera:
     ### 功能按键
     * **Y键** (三角)：重置相机位置
     * **X键** (方块)：切换相机模式
-    * **B键** (圆圈)：翻转跟随视角方向 *(前 <-> 后，仅跟随相机模式)*
+    * **B键** (圆圈)：翻转跟随视角方向 *(前 <-> 后，仅跟随角色模式)*
     * **A键** (叉号)：暂停 Live
 
     ---
 
-    ### 方向键控制 (自由移动模式下不可用)
-    * **方向键-右：** 下一个目标 *(仅跟随相机与第一人称)*
-    * **方向键-左：** 上一个目标 *(仅跟随相机与第一人称)*
-    * **方向键-上：** 下一个部位 *(仅跟随相机)*
-    * **方向键-下：** 上一个部位 *(仅跟随相机)*
+    ### 十字键控制 (自由移动模式下不可用)
+    * **十字键-左：** 上一个目标 *(仅跟随角色与第一人称)*
+    * **十字键-右：** 下一个目标 *(仅跟随角色与第一人称)*
+    * **十字键-上：** 下一个部位 *(仅跟随角色)*
+    * **十字键-下：** 上一个部位 *(仅跟随角色)*
 
 excludes_editor:
   title: "排除项编辑器"
@@ -410,6 +420,14 @@ steam_overlay_conflict_dialog:
     如果您无法进行内购，请按「是」以临时禁用 Hachimi GUI 并关闭游戏。
     在下次启动游戏时，Hachimi GUI 将被禁用，此时您可以正常进行内购操作。
     购买完成后，请重启游戏以重新启用 Hachimi GUI。
+
+ingame_webview_dialog:
+  open_browser: "在浏览器中打开"
+  title:
+    notice: "通知"
+    general: "游戏内浏览器"
+    gacha: "卡池"
+    help: "帮助"
 
 key_names:
   left: "左方向键"
