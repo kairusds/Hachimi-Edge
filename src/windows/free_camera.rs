@@ -15,6 +15,12 @@ use crate::{
         ext::Il2CppStringExt,
         hook::{
             UnityEngine_CoreModule::{Component, GameObject, Object, Transform},
+            Unity_InputSystem::Gamepad::{
+                GamepadAxes, GamepadButton, current_gamepad_state,
+                DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT,
+                LEFT_SHOULDER, RIGHT_SHOULDER,
+                BUTTON_SOUTH, BUTTON_EAST, BUTTON_WEST, BUTTON_NORTH,
+            },
             umamusume::ModelController,
         },
         symbols::IEnumerable,
@@ -256,16 +262,6 @@ pub enum CameraScene {
     None,
     Live,
     Race,
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct GamepadAxes {
-    pub left_x: f32,
-    pub left_y: f32,
-    pub right_x: f32,
-    pub right_y: f32,
-    pub left_trigger: f32,
-    pub right_trigger: f32,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -1008,6 +1004,11 @@ pub fn set_live_active() {
 }
 
 pub fn begin_live_director_update() {
+    let config = Hachimi::instance().config.load();
+    if !config.windows.free_camera.enabled || LIVE_UNSUPPORTED.load(Ordering::Acquire) {
+        return;
+    }
+
     STATE.lock().unwrap().live_follow_timeline_updated = false;
 }
 
@@ -1637,11 +1638,6 @@ pub fn wants_windows_input_capture() -> bool {
         state.key_state.follow_offset_right
 }
 
-#[cfg(not(target_os = "windows"))]
-pub fn wants_windows_input_capture() -> bool {
-    false
-}
-
 pub fn on_mouse_button(right_down: bool) {
     if !is_game_input_capture_active() {
         return;
@@ -1683,18 +1679,6 @@ pub fn on_mouse_wheel(delta: i16) {
     let mut state = STATE.lock().unwrap();
     let step = if delta > 0 { 0.5 } else { -0.5 };
     change_fov_locked(&mut state, step);
-}
-
-#[derive(Clone, Copy, Debug)]
-enum GamepadButton {
-    A,
-    B,
-    X,
-    Y,
-    DpadUp,
-    DpadDown,
-    DpadLeft,
-    DpadRight,
 }
 
 pub fn tick() {
@@ -2097,9 +2081,7 @@ fn next_live_part_locked(state: &mut FreeCameraState) {
 }
 
 fn poll_unity_gamepad_locked(state: &mut FreeCameraState, config: &FreeCameraConfig) {
-    use crate::il2cpp::hook::Unity_InputSystem as input;
-
-    let Some(gamepad) = input::current_gamepad_state() else {
+    let Some(gamepad) = current_gamepad_state() else {
         state.gamepad.axes = GamepadAxes::default();
         state.gamepad.lb = false;
         state.gamepad.rb = false;
@@ -2115,21 +2097,21 @@ fn poll_unity_gamepad_locked(state: &mut FreeCameraState, config: &FreeCameraCon
         left_trigger: gamepad.left_trigger,
         right_trigger: gamepad.right_trigger,
     };
-    state.gamepad.lb = gamepad.buttons & input::LEFT_SHOULDER != 0;
-    state.gamepad.rb = gamepad.buttons & input::RIGHT_SHOULDER != 0;
+    state.gamepad.lb = gamepad.buttons & LEFT_SHOULDER != 0;
+    state.gamepad.rb = gamepad.buttons & RIGHT_SHOULDER != 0;
 
     let pressed = gamepad.buttons & !state.gamepad.last_buttons;
     state.gamepad.last_buttons = gamepad.buttons;
 
     for (mask, button) in [
-        (input::BUTTON_SOUTH, GamepadButton::A),
-        (input::BUTTON_EAST, GamepadButton::B),
-        (input::BUTTON_WEST, GamepadButton::X),
-        (input::BUTTON_NORTH, GamepadButton::Y),
-        (input::DPAD_UP, GamepadButton::DpadUp),
-        (input::DPAD_DOWN, GamepadButton::DpadDown),
-        (input::DPAD_LEFT, GamepadButton::DpadLeft),
-        (input::DPAD_RIGHT, GamepadButton::DpadRight),
+        (BUTTON_SOUTH, GamepadButton::A),
+        (BUTTON_EAST, GamepadButton::B),
+        (BUTTON_WEST, GamepadButton::X),
+        (BUTTON_NORTH, GamepadButton::Y),
+        (DPAD_UP, GamepadButton::DpadUp),
+        (DPAD_DOWN, GamepadButton::DpadDown),
+        (DPAD_LEFT, GamepadButton::DpadLeft),
+        (DPAD_RIGHT, GamepadButton::DpadRight),
     ] {
         if pressed & mask != 0 {
             match button {

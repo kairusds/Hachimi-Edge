@@ -30,7 +30,7 @@ fn setup_version_env() {
 
     if execute_command(Command::new("git").args(["--version"])).is_some() {
         if let Some(output) = execute_command(Command::new("git").args(["rev-parse", "--short", "HEAD"])) {
-            version_str.push_str("-");
+            version_str.push('-');
             let output_str = command_output_to_string(output);
             version_str.push_str(&output_str[..output_str.len()-1]); // remove \n
         }

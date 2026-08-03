@@ -264,13 +264,20 @@ impl Hachimi {
             config.localized_data_dir.as_ref().map(|p| self.game.data_dir.join(p))
         });
 
-        let new_data = match LocalizedData::new(&self.config.load(), ld_path) {
+        let mut new_data = match LocalizedData::new(&self.config.load(), ld_path) {
             Ok(v) => v,
             Err(e) => {
                 error!("Failed to load localized data: {}", e);
                 return;
             }
         };
+
+        if self.game.region == Region::Global {
+            for id in 55..=66 {
+                new_data.localize_dict.remove(&format!("Common{id:04}"));
+            }
+        }
+        
         self.localized_data.store(Arc::new(new_data));
     }
 
@@ -759,6 +766,8 @@ pub struct Config {
     #[serde(default = "Config::default_ui_animation_scale")]
     pub ui_animation_scale: f32,
     #[serde(default)]
+    pub trainer_live_landscape: bool,
+    #[serde(default)]
     pub live_slider_always_show: bool,
     #[serde(default)]
     pub live_playback_loop: bool,
@@ -1122,7 +1131,8 @@ impl LocalizedData {
     }
 
     pub fn load_custom_story_ruby(&self, ast_ruby_name: &str) -> Option<Vec<CustomRubyBlock>> {
-        let filename = ast_ruby_name.split('/').last().unwrap_or(ast_ruby_name);
+        // let filename = ast_ruby_name.split('/').last().unwrap_or(ast_ruby_name);
+        let filename = ast_ruby_name.split('/').next_back().unwrap_or(ast_ruby_name);
 
         let filename_no_ext = filename.strip_suffix(".asset").unwrap_or(filename);
 

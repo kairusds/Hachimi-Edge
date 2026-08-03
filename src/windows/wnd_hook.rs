@@ -275,7 +275,7 @@ pub fn close_freeform_window_for_landscape() -> bool {
         return true;
     }
 
-    if !umamusume::Screen::is_landscape_mode() {
+    if !umamusume::Screen::get_IsLandscapeMode() {
         return false;
     }
 
@@ -681,6 +681,9 @@ pub fn init() {
         let window_name = if game.region == Region::Japan && game.is_steam_release {
             // lmao
             w!("UmamusumePrettyDerby_Jpn")
+        }
+        else if game.region == Region::Taiwan {
+            w!("賽馬娘Pretty Derby")
         }
         else {
             // global technically has "Umamusume" as its title but this api
