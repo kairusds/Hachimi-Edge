@@ -36,6 +36,9 @@ edit: "Изменить"
 remove: "Удалить"
 add: "Добавить"
 save_changes: "Сохранить изменения?"
+back: "Назад"
+portrait: "Портретный"
+landscape: "Альбомный"
 
 menu:
   check_for_updates: "\uf0aa Проверить обновления"
@@ -83,6 +86,9 @@ notification:
   atlas_workaround_reset: "Файлы атласов изменены. Обход для перевода отключен."
   tl_repo_changed: "Репозиторий переводов изменился. Данные локализации перезагружены."
   tl_repo_folder_missing: "Папка данных переводов отсутствует. Для восстановления переводов, пожалуйста, проверьте наличие обновлений."
+  freeform_window_disabled_landscape: "Свободная форма окна отключена, поскольку выбран альбомный режим."
+  free_camera_unavailable_live: "Свободная камера недоступна на этом концерте из-за известной проблемы. Для этого концерта она будет отключена."
+  recommended_ui_scale_applied: "Применён рекомендуемый масштаб интерфейса"
 
 first_time_setup:
   title: "Первоначальная настройка"
@@ -119,13 +125,6 @@ about:
 
 license:
   title: "Лицензии"
-  gpl_v3_only_notice: "GPL-3.0-only License Text"
-  ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
-  font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
-  font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
-  ofl_notice: "SIL OFL 1.1 License Text"
-  font_alibaba_header: "Alibaba PuHuiTi 3.0"
-  font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
   title: "Обновление..."
@@ -173,12 +172,16 @@ config_editor:
   target_fps: "Целевой FPS"
   virtual_resolution_multiplier: "Множитель виртуального разрешения"
   ui_scale: "Масштаб интерфейса"
+  recommended_ui_scale: "Применить рекомендуемый масштаб интерфейса"
   gui_scale: "Масштаб оверлея"
   gui_landscape_ratio: "Масштаб оверлея в альбомном режиме"
   ui_animation_scale: "Масштаб анимаций интерфейса"
   graphics_quality: "Качество графики"
   vsync: "VSync"
   auto_full_screen: "Автоматический полный экран"
+  freeform_window: "Свободная форма окна"
+  freeform_ui_scale_auto: "Авто-масштабирование интерфейса в свободной форме"
+  freeform_ui_scale_auto_ratio: "Коэффициент авто-масштабирования интерфейса"
   full_screen_mode: "Полноэкранный режим"
   full_screen_mode_exclusive: "Эксклюзивный"
   full_screen_mode_borderless: "Безрамочный"
@@ -191,7 +194,8 @@ config_editor:
   story_choice_auto_select_delay: "Задержка авто-выбора в сюжетах"
   story_text_speed_multiplier: "Множитель скорости текста в сюжетах"
   force_allow_dynamic_camera: "Принудительно разрешить динамическую камеру"
-  live_theater_allow_same_chara: "Разрешить одинаковых персонажей в концертах"
+  free_camera: "Свободная камера"
+  live_theater_allow_same_chara: "Разрешить одинаковых персонажей на концертах"
   physics_update_mode: "Режим обновления физики"
   cyspring_mono_uncap_frame_scale: "Неограниченный масштаб кадров CySpring Mono"
   disable_skill_name_translation: "Отключить перевод названий навыков"
@@ -230,6 +234,9 @@ config_editor:
   ui_loading_show_orientation_guide: "Скрыть подсказку ориентации на экране загрузки"
   replace_to_builtin_font: "Использовать шрифт игры по умолчанию"
   custom_title_name: "Пользовательский заголовок окна"
+  ingame_webview: "Открывать ссылки Umamusume (новости, помощь, гача, ...) во внутриигровом браузере"
+  trainer_live_landscape: "Альбомный режим на концерте Meni Shuki"
+  force_orientation_mode: "Принудительный режим ориентации"
 
 theme_editor:
   title: "Редактор темы"
@@ -244,6 +251,114 @@ set_keybind:
   title: "Назначить кнопку"
   press_any_key: "Нажмите любую кнопку…"
   bound_key: "Назначена кнопка: %{key}"
+
+free_camera:
+  settings_title: "Настройки свободной камеры"
+  section_general: "Основные"
+  section_live: "Концерты"
+  section_race: "Забеги"
+  section_keybinds: "Клавиши Windows"
+  remove_camera_effects: "Убрать эффекты камеры"
+  live_remove_screen_effects: "Убрать эффекты экрана"
+  live_disable_character_teleport: "Отключить телепортацию персонажей"
+  live_force_all_characters_visible: "Всегда показывать всех персонажей"
+  show_overlay: "Показывать оверлей при переключении"
+  selfie_use_head_transform: "Использовать селфи-палку при следовании"
+  mode: "Режим"
+  mode_free: "Свободное перемещение"
+  mode_first_person: "От первого лица"
+  mode_selfie_stick: "Следовать за персонажем"
+  live_move_step: "Шаг движения на концертах"
+  race_move_step: "Шаг движения в забегах"
+  look_step: "Шаг обзора"
+  mouse_speed: "Скорость мыши"
+  live_fov: "FOV на концертах"
+  race_fov: "FOV в забегах"
+  gamepad_deadzone: "Мёртвая зона геймпада"
+  gamepad_move_speed: "Скорость движения на геймпаде"
+  gamepad_look_speed: "Скорость обзора на геймпаде"
+  live_target_position: "Следуемая позиция"
+  live_target_part: "Следуемая часть тела"
+  live_selfie_horizontal_stabilization: "Горизонтальная мёртвая зона следования"
+  live_selfie_vertical_stabilization: "Вертикальная мёртвая зона следования"
+  live_follow_offset: "Смещение камеры следования"
+  live_follow_lookat_offset: "Смещение осмотра"
+  live_follow_smooth: "Плавное следование"
+  live_follow_smooth_lookat_step: "Сглаживание осмотра"
+  live_follow_smooth_pos_step: "Сглаживание позиции"
+  live_first_person_offset: "Смещение камеры от первого лица"
+  race_target_index: "Индекс цели в забегах (-1 = авто)"
+  race_follow_offset: "Смещение камеры следования"
+  race_follow_distance: "Дистанция следования"
+  race_first_person_lookat_offset: "Смещение осмотра"
+  overlay_mode: "Режим: %{mode}"
+  overlay_target: "Цель: %{target}"
+  overlay_part: "Часть тела: %{part}"
+  target_auto: "Авто"
+  target_gate: "Ворота %{index}"
+  key_move_forward: "Двигаться вперёд"
+  key_move_back: "Двигаться назад"
+  key_move_left: "Двигаться влево"
+  key_move_right: "Двигаться вправо"
+  key_move_down: "Двигаться вниз"
+  key_move_up: "Двигаться вверх"
+  key_look_up: "Повернуть вверх"
+  key_look_down: "Повернуть вниз"
+  key_look_left: "Повернуть влево"
+  key_look_right: "Повернуть вправо"
+  key_fov_increase: "Увеличить FOV"
+  key_fov_decrease: "Уменьшить FOV"
+  key_follow_offset_up: "Сместить камеру следования вверх"
+  key_follow_offset_down: "Сместить камеру следования вниз"
+  key_follow_offset_left: "Сместить камеру следования влево"
+  key_follow_offset_right: "Сместить камеру следования вправо"
+  key_target_previous: "Предыдущая цель"
+  key_target_next: "Следующая цель"
+  key_part_previous: "Предыдущая часть тела"
+  key_part_next: "Следующая часть тела"
+  key_reset: "Сбросить положение камеры"
+  key_cycle_mode: "Переключить режим"
+  key_reverse: "Перевернуть ракурс камеры следования (вперёд <-> назад)"
+  cheatsheet_title: "Памятка по свободной камере"
+  cheatsheet_contents: |
+    # Памятка по свободной камере
+    Эта функция работает только в **забегах** или **концертах**.
+
+    Следуемая часть тела по умолчанию - **Face** (лицо).
+
+    Следуемая позиция по умолчанию - **Place01** (1-е место).
+
+    ## Управление мышью
+    * **Зажать ПКМ и передвигать:** Осмотреться
+    * **Колёсико вверх/вниз:** Увеличить/уменьшить FOV
+
+    ---
+
+    ## Управление геймпадом (Xbox / PlayStation)
+
+    ### **Движение и ракурс камеры**
+    * **Левый стик:** Двигаться влево / вправо / вперёд / назад
+    * **Правый стик:** Повернуть влево / вправо / вверх / вниз
+    * **Правый триггер (RT / R2):** Двигаться вверх
+    * **Левый триггер (LT / L2):** Двигаться вниз
+    * **Правый бампер (RB / R1):** Уменьшить FOV
+    * **Левый бампер (LB / L1):** Увеличить FOV
+
+    ---
+
+    ### Кнопки действий
+    * **Y** (Треугольник): Сбросить положение камеры
+    * **X** (Квадрат): Переключить режим камеры
+    * **B** (Круг): Перевернуть ракурс камеры *(спереди <-> сзади, только при следовании)*
+    * **A** (Крест): Пауза / продолжение концерта
+
+    ---
+
+    ### Управление крестовиной (недоступно при свободном перемещении)
+    * **Вправо:** Следующая цель *(при следовании и от первого лица)*
+    * **Влево:** Предыдущая цель *(при следовании и от первого лица)*
+    * **Вверх:** Следующая часть тела *(только при следовании)*
+    * **Вниз:** Предыдущая часть тела *(только при следовании)*
 
 excludes_editor:
   title: "Редактор исключений"
@@ -288,7 +403,7 @@ update_prompt_dialog:
   title: "Доступно обновление"
   content: |
     Доступна новая версия Hachimi (%{version}). Хотите её установить?
-    Игра перезапустится, чтобы примененить изменения.
+    Игра перезапустится, чтобы применить изменения.
   android_content: |
     Доступна новая версия Hachimi Edge (%{version}). Хотите её установить?
 
@@ -307,6 +422,14 @@ steam_overlay_conflict_dialog:
     Если же он не появился, нажмите Да, чтобы временно отключить оверлей Hachimi. Игра закроется,
     а при следующем запуске оверлей Hachimi будет отключен, и вы сможете совершить покупку.
     После этого вы можете снова перезапустить игру, чтобы вернуть обратно оверлей Hachimi.
+
+ingame_webview_dialog:
+  open_browser: "Открыть в браузере"
+  title:
+    notice: "Уведомление"
+    general: "Игровой браузер"
+    gacha: "Гача"
+    help: "Помощь"
 
 key_names:
   left: "Стрелка влево"
