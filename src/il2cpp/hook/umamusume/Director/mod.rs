@@ -1,5 +1,5 @@
 use crate::{
-    core::{gui::IS_LIVE_SCENE, Hachimi},
+    core::{game::Region, gui::IS_LIVE_SCENE, Hachimi},
     il2cpp::{
         ext::StringExt,
         hook::UnityEngine_CoreModule::Camera,
@@ -554,7 +554,12 @@ pub fn init(umamusume: *const Il2CppImage) {
     let awake_addr = get_method_addr(Director, c"Awake", 0);
     new_hook!(awake_addr, Awake);
 
-    let pause_live_addr = get_method_addr(Director, c"PauseLive", 1);
+    let pause_live_addr = if Hachimi::instance().game.region == Region::Global {
+        get_method_addr(Director, c"PauseModel", 1)
+    } else {
+        get_method_addr(Director, c"PauseLive", 1)
+    };
+    
     new_hook!(pause_live_addr, PauseLive);
 
     #[cfg(target_os = "android")]
