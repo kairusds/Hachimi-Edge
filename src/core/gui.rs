@@ -3344,8 +3344,10 @@ fn save_and_reload_config(config: hachimi::Config) {
         Ok(_) => {
             #[cfg(target_os = "windows")]
             {
-                crate::windows::wnd_hook::apply_freeform_window_config();
-                free_camera::reload_runtime_config();
+                if Hachimi::instance().game.region != Region::Global {
+                    crate::windows::wnd_hook::apply_freeform_window_config();
+                    free_camera::reload_runtime_config();
+                }
             }
             t!("notification.config_saved").into_owned()
         },

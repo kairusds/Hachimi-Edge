@@ -10,11 +10,11 @@ use std::ptr::null_mut;
 
 #[cfg(target_os = "windows")]
 use crate::{
-    core::Hachimi,
+    core::{Hachimi, game::Region},
     il2cpp::{
         api::il2cpp_field_static_set_value,
         hook::UnityEngine_CoreModule::Screen as UnityScreen,
-        symbols::{get_field_from_name, MoveNextFn},
+        symbols::{MoveNextFn, get_field_from_name},
     },
 };
 
@@ -105,7 +105,7 @@ pub fn get_Width_orig() -> i32 {
 type GetHeightFn = extern "C" fn() -> i32;
 #[cfg(target_os = "windows")]
 extern "C" fn get_Height() -> i32 {
-    if Hachimi::instance().config.load().windows.freeform_window {
+    if Hachimi::instance().config.load().windows.freeform_window && Hachimi::instance().game.region != Region::Global {
         return UnityScreen::get_height();
     }
 
@@ -166,7 +166,7 @@ extern "C" fn SetResolution(
     force_update: bool,
     skip_keep_aspect: bool,
 ) {
-    if !Hachimi::instance().config.load().windows.freeform_window {
+    if !Hachimi::instance().config.load().windows.freeform_window || Hachimi::instance().game.region == Region::Global {
         get_orig_fn!(SetResolution, SetResolutionFn)(
             width,
             height,
@@ -181,7 +181,7 @@ extern "C" fn SetResolution(
 type IsCurrentOrientationFn = extern "C" fn(target: ScreenOrientation) -> bool;
 #[cfg(target_os = "windows")]
 extern "C" fn IsCurrentOrientation(target: ScreenOrientation) -> bool {
-    if Hachimi::instance().config.load().windows.freeform_window {
+    if Hachimi::instance().config.load().windows.freeform_window && Hachimi::instance().game.region != Region::Global {
         return true;
     }
 
@@ -193,7 +193,7 @@ type WaitDeviceOrientationFn = extern "C" fn(target: ScreenOrientation) -> IEnum
 #[cfg(target_os = "windows")]
 extern "C" fn WaitDeviceOrientation(target: ScreenOrientation) -> IEnumerator {
     let enumerator = get_orig_fn!(WaitDeviceOrientation, WaitDeviceOrientationFn)(target);
-    if Hachimi::instance().config.load().windows.freeform_window {
+    if Hachimi::instance().config.load().windows.freeform_window && Hachimi::instance().game.region != Region::Global {
         if let Err(e) = enumerator.hook_move_next(WaitDeviceOrientation_MoveNext) {
             error!("Failed to stop WaitDeviceOrientation: {}", e);
         }
@@ -219,7 +219,7 @@ extern "C" fn ChangeScreenOrientation(target: ScreenOrientation, force: bool) ->
     #[cfg(target_os = "windows")]
     {
         let enumerator = get_orig_fn!(ChangeScreenOrientation, ChangeScreenOrientationFn)(target, force);
-        if Hachimi::instance().config.load().windows.freeform_window {
+        if Hachimi::instance().config.load().windows.freeform_window && Hachimi::instance().game.region != Region::Global {
             if let Err(e) = enumerator.hook_move_next(ChangeScreenOrientation_MoveNext) {
                 error!("Failed to stop ChangeScreenOrientation: {}", e);
             }
@@ -267,7 +267,7 @@ extern "C" fn ChangeScreenOrientationLandscapeAsyncWindows() -> IEnumerator {
         ChangeScreenOrientationLandscapeAsyncWindows,
         ChangeScreenOrientationAsyncFn
     )();
-    if Hachimi::instance().config.load().windows.freeform_window {
+    if Hachimi::instance().config.load().windows.freeform_window && Hachimi::instance().game.region != Region::Global {
         if let Err(e) =
             enumerator.hook_move_next(ChangeScreenOrientationLandscapeAsyncWindows_MoveNext)
         {
@@ -304,7 +304,7 @@ extern "C" fn ChangeScreenOrientationPortraitAsyncWindows() -> IEnumerator {
         ChangeScreenOrientationPortraitAsyncWindows,
         ChangeScreenOrientationAsyncFn
     )();
-    if Hachimi::instance().config.load().windows.freeform_window {
+    if Hachimi::instance().config.load().windows.freeform_window && Hachimi::instance().game.region != Region::Global {
         if let Err(e) =
             enumerator.hook_move_next(ChangeScreenOrientationPortraitAsyncWindows_MoveNext)
         {
