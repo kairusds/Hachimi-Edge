@@ -3,7 +3,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use sqlparser::ast;
 use once_cell::sync::Lazy;
 use crate::{
-    core::{utils::{get_data_path, get_masterdb_path}, Hachimi},
+    core::{utils::{get_masterdb_path, get_meta_path}, Hachimi, game::Region},
     il2cpp::{ext::{StringExt, Il2CppStringExt}, hook::{LibNative_Runtime::Sqlite3::{Connection, Query}, umamusume::SceneManager}, types::{Il2CppObject, Il2CppString}}
 };
 use chrono::{Utc, Datelike};
@@ -549,12 +549,13 @@ impl MetaData {
     fn load_from_db() -> Self {
         let mut logical_name_to_hash = FnvHashMap::default();
 
-        let meta_path = std::path::PathBuf::from(get_data_path()).join("meta");
-        let db_path_str = meta_path.to_string_lossy().to_string();
+        let db_path_str = get_meta_path();
 
         let conn = Connection::new();
 
-        AUTO_UNLOCK_NEXT_DB.store(true, Ordering::Relaxed);
+        if Hachimi::instance().game.region == Region::Japan {
+            AUTO_UNLOCK_NEXT_DB.store(true, Ordering::Relaxed);
+        }
 
         if Connection::Open(conn, db_path_str.to_il2cpp_string(), std::ptr::null_mut(), std::ptr::null_mut(), 0) {
             let sql = "SELECT n, h FROM a";
@@ -732,11 +733,12 @@ pub fn get_champions_resources() -> Vec<String> {
 pub fn get_champions_live_max_year() -> i32 {
     let mut max_year = Utc::now().year(); // fallback to the current year since it's guaranteed to have textures
     if !SceneManager::is_home_init() { return max_year; }
-    let meta_path = std::path::PathBuf::from(get_data_path()).join("meta");
-    let db_path_str = meta_path.to_string_lossy().to_string();
+    let db_path_str = get_meta_path();
 
     let conn = Connection::new();
-    AUTO_UNLOCK_NEXT_DB.store(true, Ordering::Relaxed);
+    if Hachimi::instance().game.region == Region::Japan {
+        AUTO_UNLOCK_NEXT_DB.store(true, Ordering::Relaxed);
+    }
     if Connection::Open(conn, db_path_str.to_il2cpp_string(), ptr::null_mut(), ptr::null_mut(), 0) {
         let sql = "SELECT n FROM a WHERE n LIKE 'live/image/champions/tex_championslive_year_%'";
         let query = Connection::Query(conn, sql.to_il2cpp_string());
