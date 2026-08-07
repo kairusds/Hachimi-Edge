@@ -125,9 +125,9 @@ jobs:
       - name: Get checksums for Windows binaries
         shell: bash
         run: |
-          curl -L "https://github.com/BLAKE3-team/BLAKE3/releases/latest/download/b3sum_windows_x64_bin.exe" -o b3sum.exe
-          DLL_HASH=($(./b3sum.exe build/hachimi.dll | tr -d '\r'))
-          EXE_HASH=($(./b3sum.exe build/hachimi_installer.exe | tr -d '\r'))
+          cargo install b3sum --locked --version 1.8.6
+          DLL_HASH=($(b3sum build/hachimi.dll | tr -d '\r'))
+          EXE_HASH=($(b3sum build/hachimi_installer.exe | tr -d '\r'))
           cat <<EOF > build/blake3.json
           {
             "hachimi.dll": "$DLL_HASH",
