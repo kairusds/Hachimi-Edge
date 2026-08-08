@@ -169,6 +169,7 @@ config_editor:
   auto_translate_ui: "Авто-перевод интерфейса (МОЖЕТ ЕГО СЛОМАТЬ)"
   taskbar_show_progress_on_download: "Прогресс загрузки на панели задач"
   taskbar_show_progress_on_connecting: "Прогресс подключения на панели задач"
+  taskbar_show_progress_on_schedule_book: "Прогресс Журнала тренера на панели задач"
   target_fps: "Целевой FPS"
   virtual_resolution_multiplier: "Множитель виртуального разрешения"
   ui_scale: "Масштаб интерфейса"

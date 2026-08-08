@@ -2692,6 +2692,12 @@ impl ConfigEditor {
                     ui.checkbox(&mut config.windows.taskbar_show_progress_on_connecting, "");
                     ui.end_row();
                 }
+
+                if should_show_option(search, &t!("config_editor.taskbar_show_progress_on_schedule_book")) {
+                    ui.label(t!("config_editor.taskbar_show_progress_on_schedule_book"));
+                    ui.checkbox(&mut config.windows.taskbar_show_progress_on_schedule_book, "");
+                    ui.end_row();
+                }
             }
 
             #[cfg(target_os = "windows")]
