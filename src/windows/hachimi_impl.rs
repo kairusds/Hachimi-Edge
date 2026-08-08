@@ -87,6 +87,8 @@ pub struct Config {
     pub taskbar_show_progress_on_download: bool,
     #[serde(default)]
     pub taskbar_show_progress_on_connecting: bool,
+    #[serde(default)]
+    pub taskbar_show_progress_on_schedule_book: bool,
     #[serde(default = "Config::default_true")]
     pub enable_smtc: bool,
     #[serde(default = "Config::default_true")]
