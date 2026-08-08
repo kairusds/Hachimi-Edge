@@ -115,6 +115,8 @@ mod HorseData;
 pub mod HorseRaceInfo;
 #[cfg(target_os = "windows")]
 mod HorseRaceInfoReplay;
+#[cfg(target_os = "windows")]
+mod PartsScheduleBookAutoPlayScreen;
 pub mod TweenAnimationTimelineComponent;
 pub mod TweenAnimationTimelineData;
 pub mod TweenAnimationTimelineSheetData;
@@ -261,6 +263,7 @@ pub fn init() {
         HorseRaceInfo::init(image);
         HorseRaceInfoReplay::init(image);
         TitleViewController::init(image);
+        PartsScheduleBookAutoPlayScreen::init(image);
     }
     CameraData::init(image);
     TweenAnimationTimelineComponent::init(image);
