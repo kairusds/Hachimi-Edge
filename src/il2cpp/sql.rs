@@ -353,8 +353,10 @@ impl SelectQueryState for CharacterSystemTextQuery {
 // race_jikkyo_comment
 #[derive(Default)]
 pub struct RaceJikkyoCommentQuery {
-    // SELECT
+    // may appear in both
     id: Column,
+
+    // SELECT
     message: Column
 }
 
@@ -367,16 +369,22 @@ impl SelectQueryState for RaceJikkyoCommentQuery {
         }
     }
 
-    fn add_param(&mut self, _idx: i32, _name: &str) {}
+    fn add_param(&mut self, idx: i32, name: &str) {
+        if name == "id" {
+            self.id.param_idx = Some(idx);
+        }
+    }
 
-    fn bind_int(&mut self, _idx: i32, _value: i32) {}
+    fn bind_int(&mut self, idx: i32, value: i32) {
+        self.id.try_bind_int(idx, value);
+    }
 
     fn get_text(&self, query: *mut Il2CppObject, idx: i32) -> Option<*mut Il2CppString> {
         if !self.message.is_select_idx(idx) {
             return None;
         }
 
-        if let Some(id) = self.id.try_get_int(query) {
+        if let Some(id) = self.id.value_or_try_get_int(query) {
             return Hachimi::instance().localized_data.load()
                 .race_jikkyo_comment_dict
                 .get(&id)
@@ -390,8 +398,10 @@ impl SelectQueryState for RaceJikkyoCommentQuery {
 // race_jikkyo_message
 #[derive(Default)]
 pub struct RaceJikkyoMessageQuery {
-    // SELECT
+    // may appear in both
     id: Column,
+
+    // SELECT
     message: Column
 }
 
@@ -404,16 +414,22 @@ impl SelectQueryState for RaceJikkyoMessageQuery {
         }
     }
 
-    fn add_param(&mut self, _idx: i32, _name: &str) {}
+    fn add_param(&mut self, idx: i32, name: &str) {
+        if name == "id" {
+            self.id.param_idx = Some(idx);
+        }
+    }
 
-    fn bind_int(&mut self, _idx: i32, _value: i32) {}
+    fn bind_int(&mut self, idx: i32, value: i32) {
+        self.id.try_bind_int(idx, value);
+    }
 
     fn get_text(&self, query: *mut Il2CppObject, idx: i32) -> Option<*mut Il2CppString> {
         if !self.message.is_select_idx(idx) {
             return None;
         }
 
-        if let Some(id) = self.id.try_get_int(query) {
+        if let Some(id) = self.id.value_or_try_get_int(query) {
             return Hachimi::instance().localized_data.load()
                 .race_jikkyo_message_dict
                 .get(&id)
