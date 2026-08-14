@@ -46,9 +46,15 @@ fn init_message(umamusume: *const Il2CppImage) {
         return;
     };
 
+    let id_field = get_field_from_name(class, c"Id");
+    let text_field = get_field_from_name(class, c"Message");
+    if id_field.is_null() || text_field.is_null() {
+        return;
+    }
+
     unsafe {
-        MESSAGE_ID_FIELD = get_field_from_name(class, c"Id");
-        MESSAGE_TEXT_FIELD = get_field_from_name(class, c"Message");
+        MESSAGE_ID_FIELD = id_field;
+        MESSAGE_TEXT_FIELD = text_field;
     }
 
     let cache_addr = get_method_addr(class, c"Cache", 1);
@@ -63,9 +69,15 @@ fn init_comment(umamusume: *const Il2CppImage) {
         return;
     };
 
+    let id_field = get_field_from_name(class, c"Id");
+    let text_field = get_field_from_name(class, c"Message");
+    if id_field.is_null() || text_field.is_null() {
+        return;
+    }
+
     unsafe {
-        COMMENT_ID_FIELD = get_field_from_name(class, c"Id");
-        COMMENT_TEXT_FIELD = get_field_from_name(class, c"Message");
+        COMMENT_ID_FIELD = id_field;
+        COMMENT_TEXT_FIELD = text_field;
     }
 
     let cache_addr = get_method_addr(class, c"Cache", 1);
