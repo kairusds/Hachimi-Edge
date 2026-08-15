@@ -91,10 +91,10 @@ fn UpdateItemCommon(this: *mut Il2CppObject, _skill_info: *mut Il2CppObject, ori
     }
 }
 
-type UpdateItemJpFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32);
-extern "C" fn UpdateItemJp(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32) {
+type UpdateItemJpFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32, on_click_button: *mut Il2CppObject);
+extern "C" fn UpdateItemJp(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32, on_click_button: *mut Il2CppObject) {
     UpdateItemCommon(this, skill_info, || {
-        get_orig_fn!(UpdateItemJp, UpdateItemJpFn)(this, skill_info, is_plate_effect_enable, adjuster_data, resource_hash);
+        get_orig_fn!(UpdateItemJp, UpdateItemJpFn)(this, skill_info, is_plate_effect_enable, adjuster_data, resource_hash, on_click_button);
     });
 }
 
@@ -170,7 +170,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     find_nested_class_or_return!(PartsSingleModeSkillListItem, Info);
 
     if Hachimi::instance().game.region == Region::Japan {
-        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 4);
+        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 5);
         new_hook!(UpdateItem_addr, UpdateItemJp);
     }
     else {
