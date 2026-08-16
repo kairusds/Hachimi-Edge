@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::il2cpp::{symbols::get_method_addr, types::*};
 
 static mut GET_TARGETTEXT_ADDR: usize = 0;
