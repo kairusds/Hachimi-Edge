@@ -178,6 +178,7 @@ config_editor:
   auto_translate_ui: "Tradução automática da UI (PODE QUEBRAR AS UIs)"
   taskbar_show_progress_on_download: "Mostrar progresso do download na barra de tarefas"
   taskbar_show_progress_on_connecting: "Mostrar progresso da conexão na barra de tarefas"
+  taskbar_show_progress_on_schedule_book: "Mostrar progresso do calendário na barra de tarefas"
   target_fps: "FPS Alvo"
   virtual_resolution_multiplier: "Multiplicador virtual de resolução"
   ui_scale: "Escala da UI"
@@ -414,10 +415,11 @@ update_prompt_dialog:
     Uma nova atualização do Hachimi está disponível (%{version}). Deseja instalá-la?
     O jogo será reiniciado para aplicar a atualização.
   android_content: |
-    Uma nova atualização do Hachimi Edge está disponível (%{version}). Deseja instalá-la?
+    Uma nova atualização do Hachimi Edge está disponível (%{version}).
 
-    Toque em "Sim" para abrir o UmaPatcher Edge e reaplicar o patch no jogo.
-    (Não será necessário baixar os APKs do jogo novamente. Basta apenas aplicar o patch mais uma vez para que o UmaPatcher Edge instale a última versão do Hachimi Edge.)
+    Toque em "Sim" para abrir o UmaPatcher Edge e aplicar o patch no jogo.
+
+    *Não será necessário baixar os APKs novamente.
 
 updating_dialog:
   title: "Atualizando"
