@@ -164,7 +164,7 @@ config_editor:
   discord_rpc: "Discord RPC"
   menu_open_key: "Hotkey ng pagbukas ng menu"
   menu_open_key_set: "Itakda"
-  live_vocals_swap: "Pagpalit ng Vocals sa Live"
+  live_vocals_swap: "Pagpalit ng Vocals sa Live Theater"
   skill_info_dialog: "Custom na dialog ng skill info"
   homescreen_bgseason: "Panahon ng Homescreen Background"
   shadow_resolution: "Resolution ng Shadows"
@@ -173,6 +173,7 @@ config_editor:
   tl_auto_updater_interval: "Pagitan ng auto updater"
   taskbar_show_progress_on_download: "Progress sa taskbar kapag nagda-download"
   taskbar_show_progress_on_connecting: "Progress sa taskbar kapag kumokonekta"
+  taskbar_show_progress_on_schedule_book: "Progress sa taskbar kapag ginagamit ang Trainer's Agenda"
   hide_ingame_ui_hotkey_bind: "Keybind sa pagtago ng game UI"
   live_playback_loop: "I-loop ang mga Live Performance"
   champions_live_show_text: "I-override ang Champions Meeting Live Text"
@@ -240,7 +241,7 @@ free_camera:
     Ang default na target ay **Place01**.
 
     ## Mouse Controls
-    * Hold Right Click + Drag:** Tumingin
+    * **Hold Right Click + Drag:** Tumingin
     * **Scroll Wheel Up / Down:** Itaas o ibaba ang FOV
 
     ---
