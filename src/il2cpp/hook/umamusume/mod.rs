@@ -26,6 +26,7 @@ pub mod StoryViewTextControllerBase;
 mod StoryViewTextControllerLandscape;
 mod StoryViewTextControllerSingleMode;
 mod JikkyoDisplay;
+mod RaceJikkyo;
 pub mod Screen;
 #[cfg(target_os = "windows")]
 pub mod StandaloneWindowResize;
@@ -193,6 +194,7 @@ pub fn init() {
     StoryViewTextControllerLandscape::init(image);
     StoryViewTextControllerSingleMode::init(image);
     JikkyoDisplay::init(image);
+    RaceJikkyo::init(image);
     Screen::init(image);
     TrainingParamChangePlate::init(image);
     SingleModeUtils::init(image);
