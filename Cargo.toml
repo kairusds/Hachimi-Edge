@@ -39,7 +39,7 @@ sqlparser = "0.43"
 textwrap = "0.16"
 atomic_float = "0.1"
 blake3 = "1.5"
-ureq = { version = "3.2.0", features = ["json"] }
+ureq = { version = "3.2.0", features = ["json", "brotli"] }
 http = "1.4.0"
 size = "0.4"
 memmap2 = "0.9.9"

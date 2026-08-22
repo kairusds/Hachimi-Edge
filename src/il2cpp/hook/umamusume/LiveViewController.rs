@@ -46,11 +46,11 @@ extern "C" fn GetChangeViewOrientation_MoveNext(enumerator: *mut Il2CppObject) -
         unsafe {
             let wrapper = SOCW_RET_ORIENTATION;
             if !wrapper.is_null() && Hachimi::instance().config.load().trainer_live_landscape {
-                let orientation = ScreenOrientationClassWrapper::get_Orientation(wrapper);
-                if orientation == ScreenOrientation_Portrait {
-                    ScreenOrientationClassWrapper::set_Orientation(wrapper, ScreenOrientation_LandscapeLeft);
-                    SOCW_RET_ORIENTATION = std::ptr::null_mut();
-                }
+                // let orientation = ScreenOrientationClassWrapper::get_Orientation(wrapper);
+                // if orientation == ScreenOrientation_Portrait {
+                ScreenOrientationClassWrapper::set_Orientation(wrapper, ScreenOrientation_LandscapeLeft);
+                SOCW_RET_ORIENTATION = std::ptr::null_mut();
+                // }
             }
         }
     }
