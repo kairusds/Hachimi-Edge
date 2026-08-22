@@ -442,6 +442,12 @@ pub fn is_trainer_live() -> bool {
     music_id == 1156
 }
 
+fn is_trainer_live_director(director: *mut Il2CppObject) -> bool {
+    if director.is_null() { return false; }
+    let music_id = GetPlaySongId(director);
+    music_id == 1156
+}
+
 type AwakeFn = extern "C" fn(this: *mut Il2CppObject);
 extern "C" fn Awake(this: *mut Il2CppObject) {
     get_orig_fn!(Awake, AwakeFn)(this);
@@ -451,7 +457,7 @@ extern "C" fn Awake(this: *mut Il2CppObject) {
     #[cfg(target_os = "windows")]
     update_free_camera_live_availability(this);
 
-    if is_trainer_live() && Hachimi::instance().config.load().trainer_live_landscape {
+    if is_trainer_live_director(this) && Hachimi::instance().config.load().trainer_live_landscape {
         set_displayMode(this, DisplayMode::Landscape);
     }
 
@@ -511,6 +517,10 @@ extern "C" fn SetupOrientation(this: *mut Il2CppObject, display_mode: DisplayMod
                 DisplayMode::Portrait
             };
         }
+    }
+
+    if config.trainer_live_landscape && target_display_mode != DisplayMode::Landscape && is_trainer_live_director(this) {
+        target_display_mode = DisplayMode::Landscape;
     }
 
     get_orig_fn!(SetupOrientation, SetupOrientationFn)(this, target_display_mode)
