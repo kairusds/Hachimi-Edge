@@ -284,5 +284,9 @@ static SYMBOL_MAP: Lazy<FnvHashMap<&'static str, CString>> = Lazy::new(|| {
 
 pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
     debug_assert!(!handle.is_null());
-    utils::get_proc_address(HMODULE(handle as _), &SYMBOL_MAP[name])
+    if let Some(symbol) = SYMBOL_MAP.get(name) {
+        utils::get_proc_address(HMODULE(handle as _), symbol)
+    } else {
+        0
+    }
 }
