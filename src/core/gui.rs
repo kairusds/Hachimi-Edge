@@ -146,6 +146,10 @@ pub static GUI_INPUT_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub static WANTS_INPUT: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SCENE: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SLIDER_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+#[cfg(target_os = "windows")]
+pub static GUI_USED_RECT: Mutex<egui::Rect> = Mutex::new(egui::Rect::NOTHING);
+
 static DISABLED_GAME_UIS: Lazy<Mutex<FnvHashSet<SendPtr>>> =
     Lazy::new(|| Mutex::new(FnvHashSet::default()));
 static PLUGIN_MENU_ITEMS: Lazy<Mutex<Vec<PluginMenuItem>>> = Lazy::new(|| Mutex::new(Vec::new()));
@@ -1058,6 +1062,14 @@ impl Gui {
             atomic::Ordering::Release
         );
 
+        #[cfg(target_os = "windows")]
+        {
+            let used_rect = self.context.used_rect() * self.context.zoom_factor();
+            if let Ok(mut rect) = GUI_USED_RECT.lock() {
+                *rect = used_rect;
+            }
+        }
+
         self.context.end_pass()
     }
 
@@ -1755,6 +1767,11 @@ impl Gui {
 
     pub fn wants_input_atomic() -> bool {
         WANTS_INPUT.load(atomic::Ordering::Acquire)
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn gui_used_rect() -> egui::Rect {
+        GUI_USED_RECT.lock().map(|rect| *rect).unwrap_or(egui::Rect::NOTHING)
     }
 
     pub fn toggle_menu(&mut self) {

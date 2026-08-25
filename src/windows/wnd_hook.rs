@@ -15,7 +15,9 @@ use windows::{core::{w, HSTRING}, Win32::{
             SIZE_MINIMIZED,
             SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WM_ENTERSIZEMOVE,
             WM_EXITSIZEMOVE, WM_KEYUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_MOVING, WM_RBUTTONDOWN,
-            WM_RBUTTONUP, WM_SIZE, WM_SIZING, WM_SYSKEYUP, WM_INPUT, WINDOW_LONG_PTR_INDEX, WS_MAXIMIZEBOX
+            WM_RBUTTONUP, WM_SIZE, WM_SIZING, WM_SYSKEYUP, WM_INPUT, WINDOW_LONG_PTR_INDEX, WS_MAXIMIZEBOX,
+            WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDBLCLK, WM_MBUTTONDOWN,
+            WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_RBUTTONDBLCLK
         },
     }
 }};
@@ -37,6 +39,22 @@ static RESIZE_WAIT_FOR_END_FRAME_ADDR: AtomicUsize = AtomicUsize::new(0);
 static FREEFORM_LANDSCAPE_CLOSE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 static SET_WINDOW_LONG_PTR_W_HOOK_ID: AtomicBool = AtomicBool::new(false);
 static SET_WINDOW_LONG_PTR_A_HOOK_ID: AtomicBool = AtomicBool::new(true);
+
+static GUI_POINTER_CAPTURED_L: AtomicBool = AtomicBool::new(false);
+static GUI_POINTER_CAPTURED_R: AtomicBool = AtomicBool::new(false);
+static GUI_POINTER_CAPTURED_M: AtomicBool = AtomicBool::new(false);
+
+fn gui_pointer_captured() -> bool {
+    GUI_POINTER_CAPTURED_L.load(atomic::Ordering::Acquire)
+        || GUI_POINTER_CAPTURED_R.load(atomic::Ordering::Acquire)
+        || GUI_POINTER_CAPTURED_M.load(atomic::Ordering::Acquire)
+}
+
+fn client_pos_over_gui(lparam: isize) -> bool {
+    let x = (lparam & 0xFFFF) as i16 as f32;
+    let y = ((lparam >> 16) & 0xFFFF) as i16 as f32;
+    Gui::gui_used_rect().contains(egui::Pos2::new(x, y))
+}
 
 pub fn get_target_hwnd() -> HWND {
     HWND(TARGET_HWND.load(atomic::Ordering::Relaxed) as *mut _)
@@ -554,6 +572,9 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
 
     // Only capture input if gui needs it
     if !Gui::is_consuming_input_atomic() {
+        GUI_POINTER_CAPTURED_L.store(false, atomic::Ordering::Release);
+        GUI_POINTER_CAPTURED_R.store(false, atomic::Ordering::Release);
+        GUI_POINTER_CAPTURED_M.store(false, atomic::Ordering::Release);
         return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
     }
 
@@ -606,7 +627,31 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
         return LRESULT(0);
     }
 
-    if !Gui::wants_input_atomic() {
+    let swallow = match umsg {
+        WM_LBUTTONDOWN | WM_LBUTTONDBLCLK => {
+            let captured = client_pos_over_gui(lparam.0);
+            GUI_POINTER_CAPTURED_L.store(captured, atomic::Ordering::Release);
+            captured
+        }
+        WM_RBUTTONDOWN | WM_RBUTTONDBLCLK => {
+            let captured = client_pos_over_gui(lparam.0);
+            GUI_POINTER_CAPTURED_R.store(captured, atomic::Ordering::Release);
+            captured
+        }
+        WM_MBUTTONDOWN | WM_MBUTTONDBLCLK => {
+            let captured = client_pos_over_gui(lparam.0);
+            GUI_POINTER_CAPTURED_M.store(captured, atomic::Ordering::Release);
+            captured
+        }
+        WM_LBUTTONUP => GUI_POINTER_CAPTURED_L.swap(false, atomic::Ordering::AcqRel),
+        WM_RBUTTONUP => GUI_POINTER_CAPTURED_R.swap(false, atomic::Ordering::AcqRel),
+        WM_MBUTTONUP => GUI_POINTER_CAPTURED_M.swap(false, atomic::Ordering::AcqRel),
+        WM_MOUSEMOVE => gui_pointer_captured(),
+        WM_MOUSEWHEEL | WM_MOUSEHWHEEL => gui_pointer_captured() || Gui::wants_input_atomic(),
+        _ => Gui::wants_input_atomic(),
+    };
+
+    if !swallow {
         return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
     }
 

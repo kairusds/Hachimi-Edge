@@ -519,7 +519,7 @@ extern "C" fn SetupOrientation(this: *mut Il2CppObject, display_mode: DisplayMod
         }
     }
 
-    if config.trainer_live_landscape && target_display_mode != DisplayMode::Landscape && is_trainer_live_director(this) {
+    if config.trainer_live_landscape && is_trainer_live_director(this) {
         target_display_mode = DisplayMode::Landscape;
     }
 
