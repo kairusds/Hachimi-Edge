@@ -829,7 +829,9 @@ impl Gui {
 
         if config.live_playback_loop && current >= total - 0.1 {
             if live_utils::should_loop_restart(current, total) {
+                live_utils::begin_live_drag();
                 live_utils::move_live_playback(0.0);
+                live_utils::end_live_drag();
                 current = 0.0;
             }
         }
