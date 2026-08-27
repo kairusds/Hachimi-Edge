@@ -40,7 +40,11 @@ extern "C" fn Update(this: *mut Il2CppObject) {
     crate::il2cpp::hook::UnityEngine_TextRenderingModule::TextMesh::apply_translations(&completed);
 
     #[cfg(target_os = "windows")]
-    crate::windows::smtc::on_update();
+    {
+        if microseh::try_seh(|| crate::windows::smtc::on_update()).is_err() {
+            error!("[smtc] SEH exception in on_update!");
+        }
+    }
 }
 
 pub fn init(UnityEngine_UI: *const Il2CppImage) {
