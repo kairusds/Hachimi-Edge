@@ -58,6 +58,17 @@ pub fn is_live_paused() -> bool {
     IS_LIVE_PAUSED.load(Ordering::Acquire)
 }
 
+def_field_value_accessors!(get get__state, _STATE_FIELD, i32);
+
+pub fn is_live_playing() -> bool {
+    let director = instance();
+    if director.is_null() { return false; }
+
+    let state = get__state(director);
+    // Director.State LivePlay = 6
+    state == 6
+}
+
 static mut CLASS: *mut Il2CppClass = 0 as _;
 pub fn class() -> *mut Il2CppClass {
     unsafe { CLASS }
@@ -545,6 +556,7 @@ pub fn init(umamusume: *const Il2CppImage) {
         GETPLAYSONGID_ADDR = get_method_addr(Director, c"GetPlaySongId", 0);
 
         _LIVECURRENTTIME_FIELD = get_field_from_name(Director, c"_liveCurrentTime");
+        _STATE_FIELD = get_field_from_name(Director, c"_state");
         _TRAINERCAMERAFOVRATE_FIELD = get_field_from_name(Director, c"_trainerCameraFovRate");
         _TRAINERCAMERAFOVRATESTART_FIELD = get_field_from_name(Director, c"_trainerCameraFovRateStart");
         _TRAINERCAMERATARGETCAMERA_FIELD = get_field_from_name(Director, c"_trainerCameraTargetCamera");
