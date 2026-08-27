@@ -828,8 +828,16 @@ impl Gui {
         if total <= 0.0 { return; }
 
         if config.live_playback_loop && current >= total - 0.1 {
-            live_utils::move_live_playback(0.0);
-            current = 0.0;
+            if live_utils::should_loop_restart(current, total) {
+                live_utils::move_live_playback(0.0);
+                current = 0.0;
+            }
+        }
+
+        if !Director::is_live_playing() {
+            IS_LIVE_SLIDER_ACTIVE.store(false, atomic::Ordering::Release);
+            live_utils::reset_live_drag_state();
+            return;
         }
 
         let is_paused = Director::is_live_paused();
