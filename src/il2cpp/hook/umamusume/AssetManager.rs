@@ -1,5 +1,5 @@
 use crate::il2cpp::{
-    symbols::{get_method_addr, get_assembly_image, get_class, invoke_object_method},
+    symbols::{get_method_addr, get_assembly_image, get_class},
     types::*
 };
 
@@ -11,10 +11,8 @@ pub fn class() -> *mut Il2CppClass {
 static mut GET_LOADER_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_Loader, GET_LOADER_ADDR, *mut Il2CppObject,);
 
-pub fn LoadAssetHandle(this: *mut Il2CppObject, path: *mut Il2CppString, flag: bool) -> *mut Il2CppObject {
-    let mut params: [*mut std::ffi::c_void; 2] = [path as *mut _, &flag as *const _ as *mut _];
-    invoke_object_method(this, c"LoadAssetHandle", 2, &mut params).unwrap_or(std::ptr::null_mut())
-}
+static mut LOADASSETHANDLE_ADDR: usize = 0;
+impl_addr_wrapper_fn!(LoadAssetHandle, LOADASSETHANDLE_ADDR, *mut Il2CppObject, this: *mut Il2CppObject, path: *mut Il2CppString, flag: bool);
 
 static mut GET_ASSETBUNDLE_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_assetBundle, GET_ASSETBUNDLE_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
@@ -28,6 +26,14 @@ pub fn init(umamusume: *const Il2CppImage) {
     }
 
     if let Ok(cyan_image) = get_assembly_image(c"_Cyan.dll") {
+        if let Ok(loader_class) = get_class(cyan_image, c"Cyan.Loader", c"AssetLoader") {
+            unsafe {
+                LOADASSETHANDLE_ADDR = get_method_addr(loader_class, c"LoadAssetHandle", 2);
+            }
+        } else {
+            error!("Failed to find AssetLoader class in _Cyan.dll");
+        }
+
         if let Ok(asset_handle_class) = get_class(cyan_image, c"Cyan.Loader", c"AssetHandle") {
             unsafe {
                 GET_ASSETBUNDLE_ADDR = get_method_addr(asset_handle_class, c"get_assetBundle", 0);
