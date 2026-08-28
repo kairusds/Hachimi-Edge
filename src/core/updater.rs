@@ -1,9 +1,11 @@
-use std::{sync::{Arc, Mutex}};
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use rust_i18n::t;
 use serde::Deserialize;
 
 use crate::core::{gui::{NotificationGuard, SimpleYesNoDialog}, hachimi::{REPO_PATH, CODEBERG_API, GITHUB_API}, http, Error, Gui, Hachimi};
+
+const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Default)]
 pub struct Updater {
@@ -35,11 +37,18 @@ impl Updater {
         };
         let _guard = checking_notif_id.map(NotificationGuard);
 
-        let latest = match http::get_json::<Release>(&format!("{}/{}/releases/latest", GITHUB_API, REPO_PATH)) {
+        let latest = match http::get_json_with_timeout::<Release>(
+            &format!("{}/{}/releases/latest", GITHUB_API, REPO_PATH), UPDATE_CHECK_TIMEOUT
+        ) {
             Ok(res) => res,
             Err(e) => {
                 warn!("GitHub update check failed, trying Codeberg: {}", e);
-                http::get_json::<Release>(&format!("{}/{}/releases/latest", CODEBERG_API, REPO_PATH))?
+                if let Some(mutex) = Gui::instance() {
+                    mutex.lock().unwrap().show_notification(&t!("notification.github_update_unreachable"));
+                }
+                http::get_json_with_timeout::<Release>(
+                    &format!("{}/{}/releases/latest", CODEBERG_API, REPO_PATH), UPDATE_CHECK_TIMEOUT
+                )?
             }
         };
 
