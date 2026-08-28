@@ -4,7 +4,6 @@ use crate::{
     core::Hachimi,
     windows::free_camera::{self, CameraScene},
     il2cpp::{
-        hook::UnityEngine_CoreModule::Camera,
         symbols::get_method_addr,
         types::*,
     },
@@ -431,20 +430,12 @@ extern "C" fn AlterUpdate_CameraFov(
     sheet: *mut Il2CppObject,
     current_frame: i32,
 ) {
-    if should_override_live_camera() {
+    let trainer_live_landscape = Director::is_trainer_live() && Hachimi::instance().config.load().trainer_live_landscape;
+
+    if should_override_live_camera() || trainer_live_landscape {
         return;
     }
 
-    if Director::is_trainer_live() {
-        let config = Hachimi::instance().config.load();
-        let director = Director::instance();
-        let camera = Director::get_MainCameraObject(director);
-
-        if !camera.is_null() && config.trainer_live_landscape {
-            Camera::set_fieldOfView(camera, 150.0);
-            return;
-        }
-    }
     get_orig_fn!(AlterUpdate_CameraFov, LiveVoidFrameFn)(this, sheet, current_frame);
 }
 
