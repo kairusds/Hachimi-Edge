@@ -11,7 +11,8 @@ use std::{
         atomic::{self, AtomicBool},
         Arc,
         Mutex
-    }
+    },
+    time::Duration
 };
 use std::thread;
 use thread_priority::{ThreadBuilderExt, ThreadPriority};
@@ -21,6 +22,8 @@ use serde::de::DeserializeOwned;
 
 use super::{Error, Hachimi};
 
+const TIMEOUT: Duration = Duration::from_secs(15);
+
 pub struct AsyncRequest<T: Send + Sync> {
     request: Mutex<Option<http::Request<ureq::Body>>>,
     map_fn: fn(http::Response<ureq::Body>) -> Result<T, Error>,
@@ -29,10 +32,15 @@ pub struct AsyncRequest<T: Send + Sync> {
 }
 
 pub fn ureq_config() -> ureq::config::Config {
+    ureq_config_with_timeout(Some(TIMEOUT))
+}
+
+pub fn ureq_config_with_timeout(timeout: Option<Duration>) -> ureq::config::Config {
     use ureq::config::IpFamily::*;
 
     ureq::config::Config::builder()
         .ip_family(if Hachimi::instance().config.load().ipv4_only { Ipv4Only } else { Any })
+        .timeout_global(timeout)
         .build()
 }
 
@@ -77,6 +85,12 @@ impl<T: Send + Sync + 'static + DeserializeOwned> AsyncRequest<T> {
 
 pub fn get_json<T: DeserializeOwned>(url: &str) -> Result<T, Error> {
     let agent: ureq::Agent = ureq::Agent::new_with_config(ureq_config());
+    let res = agent.get(url).call()?;
+    Ok(serde_json::from_str(&res.into_body().read_to_string()?)?)
+}
+
+pub fn get_json_with_timeout<T: DeserializeOwned>(url: &str, timeout: Duration) -> Result<T, Error> {
+    let agent: ureq::Agent = ureq::Agent::new_with_config(ureq_config_with_timeout(Some(timeout)));
     let res = agent.get(url).call()?;
     Ok(serde_json::from_str(&res.into_body().read_to_string()?)?)
 }

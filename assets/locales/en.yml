@@ -81,6 +81,7 @@ notification:
   update_completed: "Update completed."
   errors_during_update: "%{count} errors occurred during update. Check logs for more info."
   checking_for_updates: "Checking for updates..."
+  github_update_unreachable: "GitHub is unreachable, trying Codeberg instead..."
   no_updates: "No updates available."
   ipc_softreset_exec: "IPC remote soft-reset executed"
   atlas_workaround_reset: "Atlas files modified: workaround disabled."
