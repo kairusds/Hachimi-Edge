@@ -58,6 +58,7 @@ macro_rules! add_font {
 }
 
 static PENDING_THEME: Mutex<Option<hachimi::Config>> = Mutex::new(None);
+static PENDING_CONFIG_EDITOR_SEASONS: Mutex<Option<[(BgSeason, String); 5]>> = Mutex::new(None);
 
 pub fn enqueue_theme_preview(config: hachimi::Config) {
     if let Ok(mut lock) = PENDING_THEME.lock() {
@@ -893,6 +894,11 @@ impl Gui {
     }
 
     pub fn run(&mut self) -> egui::FullOutput {
+        let pending_config_editor_seasons = PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap().take();
+        if let Some(seasons) = pending_config_editor_seasons {
+            self.show_window(Box::new(ConfigEditor::new(seasons)));
+        }
+
         if let Ok(mut lock) = PENDING_THEME.lock() {
             if let Some(config) = lock.take() {
                 self.config = config.clone();
@@ -1192,8 +1198,15 @@ impl Gui {
                         ui.heading(t!("menu.config_heading"));
                         if ui.button(t!("menu.open_config_editor")).clicked() {
                             Thread::main_thread().schedule(|| {
-                                let window = Box::new(ConfigEditor::new());
-                                Gui::instance().unwrap().lock().unwrap().show_window(window);
+                                let seasons = [
+                                    (BgSeason::Spring, get_localized_string("Common0108")),
+                                    (BgSeason::Summer, get_localized_string("Common0109")),
+                                    (BgSeason::Fall, get_localized_string("Common0110")),
+                                    (BgSeason::Winter, get_localized_string("Common0111")),
+                                    (BgSeason::CherryBlossom, get_localized_string("Common0112"))
+                                ];
+
+                                *PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap() = Some(seasons);
                             });
                         }
                         if ui.button(t!("menu.reload_config")).clicked() {
@@ -1736,13 +1749,15 @@ impl Gui {
             !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
             self.notifications.is_empty() && self.windows.is_empty() &&
             !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
-            !free_camera::has_overlay_message()
+            !free_camera::has_overlay_message() &&
+            PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap().is_none()
         }
         #[cfg(target_os = "android")]
         {
             !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
             self.notifications.is_empty() && self.windows.is_empty() &&
-            !IS_LIVE_SCENE.load(atomic::Ordering::Acquire)
+            !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
+            PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap().is_none()
         }
     }
 
@@ -2341,19 +2356,12 @@ fn should_show_option(search: &str, label: &str) -> bool {
 }
 
 impl ConfigEditor {
-    pub fn new() -> ConfigEditor {
+    pub fn new(seasons: [(BgSeason, String); 5]) -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
 
         let default_label = t!("default").to_string();
-        // Season text ids from TextId enum
-        let bgseason_options: Vec<(BgSeason, String)> = vec![
-            (BgSeason::None, default_label),
-            (BgSeason::Spring, get_localized_string("Common0108")),
-            (BgSeason::Summer, get_localized_string("Common0109")),
-            (BgSeason::Fall, get_localized_string("Common0110")),
-            (BgSeason::Winter, get_localized_string("Common0111")),
-            (BgSeason::CherryBlossom, get_localized_string("Common0112"))
-        ];
+        let mut bgseason_options = vec![(BgSeason::None, default_label)];
+        bgseason_options.extend(seasons);
 
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
