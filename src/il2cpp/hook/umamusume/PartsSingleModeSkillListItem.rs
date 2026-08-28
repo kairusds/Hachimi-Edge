@@ -132,6 +132,13 @@ extern "C" fn UpdateItemOther(this: *mut Il2CppObject, skill_info: *mut Il2CppOb
     });
 }
 
+type UpdateItemTwFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32);
+extern "C" fn UpdateItemTw(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32) {
+    UpdateItemCommon(this, skill_info, || {
+        get_orig_fn!(UpdateItemTw, UpdateItemTwFn)(this, skill_info, is_plate_effect_enable, resource_hash);
+    });
+}
+
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, PartsSingleModeSkillListItem);
     find_nested_class_or_return!(PartsSingleModeSkillListItem, Info);
@@ -140,13 +147,17 @@ pub fn init(umamusume: *const Il2CppImage) {
         let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 5);
         new_hook!(UpdateItem_addr, UpdateItemJp);
     }
+    else if Hachimi::instance().game.region == Region::Taiwan {
+        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 3);
+        new_hook!(UpdateItem_addr, UpdateItemTw);
+    }
     else {
         let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 2);
         new_hook!(UpdateItem_addr, UpdateItemOther);
     }
 
     unsafe {
-        if Hachimi::instance().game.region != Region::Global {
+        if Hachimi::instance().game.region == Region::Japan {
             _ONCLICKBUTTON_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_onClickButton");
             ACTION_INT_CLASS = il2cpp_class_from_il2cpp_type((*_ONCLICKBUTTON_FIELD).type_);
         }

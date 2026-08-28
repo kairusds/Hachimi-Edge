@@ -3007,7 +3007,7 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.skill_info_dialog")) && Hachimi::instance().game.region != Region::Global {
+            if should_show_option(search, &t!("config_editor.skill_info_dialog")) && Hachimi::instance().game.region == Region::Japan {
                 ui.label(t!("config_editor.skill_info_dialog"));
                 ui.checkbox(&mut config.skill_info_dialog, "");
                 ui.end_row();
