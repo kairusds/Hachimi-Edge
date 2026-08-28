@@ -507,6 +507,15 @@ type AlterUpdateFn = extern "C" fn(this: *mut Il2CppObject, delta_time: f32, is_
 extern "C" fn AlterUpdate(this: *mut Il2CppObject, delta_time: f32, is_update_delta_time: bool) {
     free_camera::begin_live_director_update();
     get_orig_fn!(AlterUpdate, AlterUpdateFn)(this, delta_time, is_update_delta_time);
+    if !Hachimi::instance().config.load().windows.free_camera.enabled && is_trainer_live_director(this) {
+        if Hachimi::instance().config.load().trainer_live_landscape {
+            let camera = get_MainCameraObject(this);
+            if !camera.is_null() {
+                Camera::set_fieldOfView(camera, 60.0);
+            }
+        }
+    }
+
     free_camera::set_live_active();
     apply_live_character_options(this);
     update_live_free_camera_target(this);
