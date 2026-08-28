@@ -730,32 +730,45 @@ unsafe fn init_hwnd(hwnd: HWND) {
 
         info!("Subclassing game window");
         let wnd_proc_orig = SetWindowLongPtrW(hwnd, GWLP_WNDPROC, wnd_proc as *const () as isize);
-        if wnd_proc_orig == 0 {
-            error!("Failed to subclass game window");
-        } else {
+        let actual_wndproc = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
+
+        if wnd_proc_orig != 0 {
             WNDPROC_ORIG.store(wnd_proc_orig, atomic::Ordering::Release);
             GAME_WNDPROC_ORIG.store(wnd_proc_orig, atomic::Ordering::Release);
+        }
 
-            let actual_wndproc = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
-            if actual_wndproc != 0 && actual_wndproc != wnd_proc as *const () as isize {
-                info!("SetWindowLongPtrW was swallowed, falling back to inline WndProc hook");
-                match hachimi.interceptor.hook(
-                    actual_wndproc as usize,
-                    wnd_proc as *const () as _) {
-                    Ok(_) => {
-                        let trampoline = hachimi.interceptor.get_trampoline_addr(
-                            wnd_proc as *const () as usize
-                        );
-                        WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
-                        GAME_WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
-                        WNDPROC_INLINE_HOOKED.store(true, atomic::Ordering::Release);
-                    }
-                    Err(e) => {
-                        error!("Failed to inline-hook window procedure: {}", e);
-                    }
+        let subclass_ok = if actual_wndproc != 0 && actual_wndproc != wnd_proc as *const () as isize {
+            if wnd_proc_orig == 0 {
+                info!("SetWindowLongPtrW returned 0 and the WndProc was not replaced (foreign hook)");
+            }
+            info!("SetWindowLongPtrW was swallowed, falling back to inline WndProc hook");
+            match hachimi.interceptor.hook(
+                actual_wndproc as usize,
+                wnd_proc as *const () as _) {
+                Ok(_) => {
+                    let trampoline = hachimi.interceptor.get_trampoline_addr(
+                        wnd_proc as *const () as usize
+                    );
+                    WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
+                    GAME_WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
+                    WNDPROC_INLINE_HOOKED.store(true, atomic::Ordering::Release);
+                    true
+                }
+                Err(e) => {
+                    error!("Failed to inline-hook window procedure: {}", e);
+                    false
                 }
             }
+        } else if wnd_proc_orig == 0 && actual_wndproc == 0 {
+            error!("Failed to subclass game window");
+            false
+        } else {
+            // Either the install succeeded, or it was swallowed while the
+            // WndProc already points at Hachimi's wnd_proc.
+            true
+        };
 
+        if subclass_ok {
             if Hachimi::instance().game.region != Region::Global {
                 if let Ok(user32) = GetModuleHandleW(w!("user32.dll")) {
                     let set_window_long_ptr_w_addr = utils::get_proc_address(user32, c"SetWindowLongPtrW");
