@@ -1191,7 +1191,10 @@ impl Gui {
 
                         ui.heading(t!("menu.config_heading"));
                         if ui.button(t!("menu.open_config_editor")).clicked() {
-                            show_window = Some(Box::new(ConfigEditor::new()));
+                            Thread::main_thread().schedule(|| {
+                                let window = Box::new(ConfigEditor::new());
+                                Gui::instance().unwrap().lock().unwrap().show_window(window);
+                            });
                         }
                         if ui.button(t!("menu.reload_config")).clicked() {
                             hachimi.reload_config();
