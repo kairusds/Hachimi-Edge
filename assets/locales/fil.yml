@@ -73,6 +73,7 @@ notification:
   freeform_window_disabled_landscape: "Na-disable ang freeform window dahil aktibo ang landscape mode."
   free_camera_unavailable_live: "Hindi available ang Free Camera sa concert na ito dahil sa kilalang isyu."
   recommended_ui_scale_applied: "Nilapat ang recommended na UI scale"
+  github_update_unreachable: "Hindi makakonekta sa GitHub, sinusubukan ang Codeberg..."
 
 first_time_setup:
   title: "First Time Setup"
