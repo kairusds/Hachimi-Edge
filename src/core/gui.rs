@@ -58,7 +58,6 @@ macro_rules! add_font {
 }
 
 static PENDING_THEME: Mutex<Option<hachimi::Config>> = Mutex::new(None);
-static PENDING_CONFIG_EDITOR_SEASONS: Mutex<Option<[(BgSeason, String); 5]>> = Mutex::new(None);
 
 pub fn enqueue_theme_preview(config: hachimi::Config) {
     if let Ok(mut lock) = PENDING_THEME.lock() {
@@ -894,11 +893,6 @@ impl Gui {
     }
 
     pub fn run(&mut self) -> egui::FullOutput {
-        let pending_config_editor_seasons = PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap().take();
-        if let Some(seasons) = pending_config_editor_seasons {
-            self.show_window(Box::new(ConfigEditor::new(seasons)));
-        }
-
         if let Ok(mut lock) = PENDING_THEME.lock() {
             if let Some(config) = lock.take() {
                 self.config = config.clone();
@@ -1197,17 +1191,7 @@ impl Gui {
 
                         ui.heading(t!("menu.config_heading"));
                         if ui.button(t!("menu.open_config_editor")).clicked() {
-                            Thread::main_thread().schedule(|| {
-                                let seasons = [
-                                    (BgSeason::Spring, get_localized_string("Common0108")),
-                                    (BgSeason::Summer, get_localized_string("Common0109")),
-                                    (BgSeason::Fall, get_localized_string("Common0110")),
-                                    (BgSeason::Winter, get_localized_string("Common0111")),
-                                    (BgSeason::CherryBlossom, get_localized_string("Common0112"))
-                                ];
-
-                                *PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap() = Some(seasons);
-                            });
+                            show_window = Some(Box::new(ConfigEditor::new()));
                         }
                         if ui.button(t!("menu.reload_config")).clicked() {
                             hachimi.reload_config();
@@ -1749,15 +1733,13 @@ impl Gui {
             !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
             self.notifications.is_empty() && self.windows.is_empty() &&
             !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
-            !free_camera::has_overlay_message() &&
-            PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap().is_none()
+            !free_camera::has_overlay_message()
         }
         #[cfg(target_os = "android")]
         {
             !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
             self.notifications.is_empty() && self.windows.is_empty() &&
-            !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
-            PENDING_CONFIG_EDITOR_SEASONS.lock().unwrap().is_none()
+            !IS_LIVE_SCENE.load(atomic::Ordering::Acquire)
         }
     }
 
@@ -2356,12 +2338,24 @@ fn should_show_option(search: &str, label: &str) -> bool {
 }
 
 impl ConfigEditor {
-    pub fn new(seasons: [(BgSeason, String); 5]) -> ConfigEditor {
+    pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
 
-        let default_label = t!("default").to_string();
-        let mut bgseason_options = vec![(BgSeason::None, default_label)];
-        bgseason_options.extend(seasons);
+        // Gallop.Localize.Get must run on the Unity main thread on TW, otherwise the game crashes.
+        let bgseason_options = if Hachimi::instance().game.region != Region::Taiwan {
+            let default_label = t!("default").to_string();
+            // Season text ids from TextId enum
+            vec![
+                (BgSeason::None, default_label),
+                (BgSeason::Spring, get_localized_string("Common0108")),
+                (BgSeason::Summer, get_localized_string("Common0109")),
+                (BgSeason::Fall, get_localized_string("Common0110")),
+                (BgSeason::Winter, get_localized_string("Common0111")),
+                (BgSeason::CherryBlossom, get_localized_string("Common0112"))
+            ]
+        } else {
+            Vec::new()
+        };
 
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
@@ -3024,7 +3018,7 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) {
+            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) && Hachimi::instance().game.region != Region::Taiwan {
                 ui.label(t!("config_editor.homescreen_bgseason"));
                 let season_opts: Vec<(BgSeason, &str)> = self.bgseason_options.iter()
                     .map(|(s, l)| (*s, l.as_str())).collect();
