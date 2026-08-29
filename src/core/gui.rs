@@ -2341,16 +2341,21 @@ impl ConfigEditor {
     pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
 
-        let default_label = t!("default").to_string();
-        // Season text ids from TextId enum
-        let bgseason_options: Vec<(BgSeason, String)> = vec![
-            (BgSeason::None, default_label),
-            (BgSeason::Spring, get_localized_string("Common0108")),
-            (BgSeason::Summer, get_localized_string("Common0109")),
-            (BgSeason::Fall, get_localized_string("Common0110")),
-            (BgSeason::Winter, get_localized_string("Common0111")),
-            (BgSeason::CherryBlossom, get_localized_string("Common0112"))
-        ];
+        // Gallop.Localize.Get must run on the Unity main thread on TW, otherwise the game crashes.
+        let bgseason_options = if Hachimi::instance().game.region != Region::Taiwan {
+            let default_label = t!("default").to_string();
+            // Season text ids from TextId enum
+            vec![
+                (BgSeason::None, default_label),
+                (BgSeason::Spring, get_localized_string("Common0108")),
+                (BgSeason::Summer, get_localized_string("Common0109")),
+                (BgSeason::Fall, get_localized_string("Common0110")),
+                (BgSeason::Winter, get_localized_string("Common0111")),
+                (BgSeason::CherryBlossom, get_localized_string("Common0112"))
+            ]
+        } else {
+            Vec::new()
+        };
 
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
@@ -3007,13 +3012,13 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.skill_info_dialog")) && Hachimi::instance().game.region != Region::Global {
+            if should_show_option(search, &t!("config_editor.skill_info_dialog")) && Hachimi::instance().game.region == Region::Japan {
                 ui.label(t!("config_editor.skill_info_dialog"));
                 ui.checkbox(&mut config.skill_info_dialog, "");
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) {
+            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) && Hachimi::instance().game.region != Region::Taiwan {
                 ui.label(t!("config_editor.homescreen_bgseason"));
                 let season_opts: Vec<(BgSeason, &str)> = self.bgseason_options.iter()
                     .map(|(s, l)| (*s, l.as_str())).collect();
