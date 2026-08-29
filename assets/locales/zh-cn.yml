@@ -36,6 +36,9 @@ remove: "移除"
 add: "添加"
 save_changes: "保存更改？"
 back: "返回"
+portrait: "竖屏"
+landscape: "横屏"
+
 menu:
   check_for_updates: "\uf0aa 检查更新"
   fps_text: "帧率: %{fps}"
@@ -84,7 +87,8 @@ notification:
   atlas_workaround_reset: "检测到 Atlas 文件更新: 已重新应用 Atlas 翻译..."
   tl_repo_changed: "翻译仓库已更换，本地化数据已重新加载。"
   tl_repo_folder_missing: "翻译数据文件夹缺失。请检查更新以恢复翻译。"
-  recommended_ui_scale_applied: "已应用推荐的界面缩放比例"
+  recommended_ui_scale_applied: "已应用推荐的 UI 缩放比例"
+  github_update_unreachable: "无法连接 GitHub，正在尝试使用 Codeberg..."
 
 first_time_setup:
   title: "初始化设置"
@@ -234,6 +238,7 @@ config_editor:
   recommended_ui_scale: "应用推荐的界面缩放比例"
   trainer_live_landscape: "在竖屏 Live 中强制使用横屏模式"
   force_orientation_mode: "屏幕方向锁定模式"
+  taskbar_show_progress_on_schedule_book: "训练员手册执行时在任务栏显示进度"
 
 theme_editor:
   title: "覆盖层主题编辑器"
