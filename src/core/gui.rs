@@ -36,10 +36,9 @@ use crate::il2cpp::{
 use crate::il2cpp::hook::UnityEngine_CoreModule::QualitySettings;
 #[cfg(target_os = "windows")]
 use crate::windows::free_camera::{self, FreeCameraMode};
-#[cfg(target_os = "windows")]
-use super::game::Region;
 
 use super::{
+    game::Region,
     hachimi::{self, Language, REPO_PATH, WEBSITE_URL},
     http::{ureq_config, AsyncRequest},
     live_utils,
@@ -147,6 +146,7 @@ pub static GUI_INPUT_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub static WANTS_INPUT: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SCENE: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SLIDER_ACTIVE: AtomicBool = AtomicBool::new(false);
+
 static DISABLED_GAME_UIS: Lazy<Mutex<FnvHashSet<SendPtr>>> =
     Lazy::new(|| Mutex::new(FnvHashSet::default()));
 static PLUGIN_MENU_ITEMS: Lazy<Mutex<Vec<PluginMenuItem>>> = Lazy::new(|| Mutex::new(Vec::new()));
@@ -825,8 +825,18 @@ impl Gui {
         if total <= 0.0 { return; }
 
         if config.live_playback_loop && current >= total - 0.1 {
-            live_utils::move_live_playback(0.0);
-            current = 0.0;
+            if live_utils::should_loop_restart(current, total) {
+                live_utils::begin_live_drag();
+                live_utils::move_live_playback(0.0);
+                live_utils::end_live_drag();
+                current = 0.0;
+            }
+        }
+
+        if !Director::is_live_playing() {
+            IS_LIVE_SLIDER_ACTIVE.store(false, atomic::Ordering::Release);
+            live_utils::reset_live_drag_state();
+            return;
         }
 
         let is_paused = Director::is_live_paused();
@@ -2331,16 +2341,21 @@ impl ConfigEditor {
     pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
 
-        let default_label = t!("default").to_string();
-        // Season text ids from TextId enum
-        let bgseason_options: Vec<(BgSeason, String)> = vec![
-            (BgSeason::None, default_label),
-            (BgSeason::Spring, get_localized_string("Common0108")),
-            (BgSeason::Summer, get_localized_string("Common0109")),
-            (BgSeason::Fall, get_localized_string("Common0110")),
-            (BgSeason::Winter, get_localized_string("Common0111")),
-            (BgSeason::CherryBlossom, get_localized_string("Common0112"))
-        ];
+        // Gallop.Localize.Get must run on the Unity main thread on TW, otherwise the game crashes.
+        let bgseason_options = if Hachimi::instance().game.region != Region::Taiwan {
+            let default_label = t!("default").to_string();
+            // Season text ids from TextId enum
+            vec![
+                (BgSeason::None, default_label),
+                (BgSeason::Spring, get_localized_string("Common0108")),
+                (BgSeason::Summer, get_localized_string("Common0109")),
+                (BgSeason::Fall, get_localized_string("Common0110")),
+                (BgSeason::Winter, get_localized_string("Common0111")),
+                (BgSeason::CherryBlossom, get_localized_string("Common0112"))
+            ]
+        } else {
+            Vec::new()
+        };
 
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
@@ -2692,6 +2707,12 @@ impl ConfigEditor {
                     ui.checkbox(&mut config.windows.taskbar_show_progress_on_connecting, "");
                     ui.end_row();
                 }
+
+                if should_show_option(search, &t!("config_editor.taskbar_show_progress_on_schedule_book")) {
+                    ui.label(t!("config_editor.taskbar_show_progress_on_schedule_book"));
+                    ui.checkbox(&mut config.windows.taskbar_show_progress_on_schedule_book, "");
+                    ui.end_row();
+                }
             }
 
             #[cfg(target_os = "windows")]
@@ -2991,13 +3012,13 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.skill_info_dialog")) {
+            if should_show_option(search, &t!("config_editor.skill_info_dialog")) && Hachimi::instance().game.region == Region::Japan {
                 ui.label(t!("config_editor.skill_info_dialog"));
                 ui.checkbox(&mut config.skill_info_dialog, "");
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) {
+            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) && Hachimi::instance().game.region != Region::Taiwan {
                 ui.label(t!("config_editor.homescreen_bgseason"));
                 let season_opts: Vec<(BgSeason, &str)> = self.bgseason_options.iter()
                     .map(|(s, l)| (*s, l.as_str())).collect();
@@ -3344,8 +3365,10 @@ fn save_and_reload_config(config: hachimi::Config) {
         Ok(_) => {
             #[cfg(target_os = "windows")]
             {
-                crate::windows::wnd_hook::apply_freeform_window_config();
-                free_camera::reload_runtime_config();
+                if Hachimi::instance().game.region != Region::Global {
+                    crate::windows::wnd_hook::apply_freeform_window_config();
+                    free_camera::reload_runtime_config();
+                }
             }
             t!("notification.config_saved").into_owned()
         },

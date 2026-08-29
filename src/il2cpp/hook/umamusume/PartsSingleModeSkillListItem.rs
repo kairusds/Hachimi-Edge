@@ -1,13 +1,11 @@
 use crate::{
     core::{Hachimi, game::Region, utils::str_visual_len},
-    il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_CoreModule::{Component, GameObject, Object, RectTransform, UnityAction}, UnityEngine_UI::{EventSystem, Text}, umamusume::{GallopUtil::without_text_wrap, TextCommon}}, sql::TextDataQuery, symbols::{create_delegate, get_field_from_name, get_field_object_value, get_method_addr}, types::*}
+    il2cpp::{api::il2cpp_class_from_il2cpp_type, ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_CoreModule::{Component, GameObject, RectTransform}, UnityEngine_UI::Text, umamusume::{GallopUtil::without_text_wrap, TextCommon}}, sql::TextDataQuery, symbols::{create_delegate, get_field_from_name, get_field_object_value, get_method_addr}, types::*}
 };
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
-use fnv::FnvHashMap;
-use super::{ButtonCommon, DialogCommon, DialogManager, MasterDataUtil};
+use super::{DialogCommon, DialogManager, MasterDataUtil};
 
-static SKILL_TEXT_CACHE: Lazy<Mutex<FnvHashMap<i32, (String, String)>>> = Lazy::new(|| Mutex::default());
+static mut _ONCLICKBUTTON_FIELD: *mut FieldInfo = 0 as _;
+static mut ACTION_INT_CLASS: *mut Il2CppClass = 0 as _;
 
 // SkillListItem
 static mut NAMETEXT_FIELD: *mut FieldInfo = 0 as _;
@@ -91,11 +89,40 @@ fn UpdateItemCommon(this: *mut Il2CppObject, _skill_info: *mut Il2CppObject, ori
     }
 }
 
-type UpdateItemJpFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32);
-extern "C" fn UpdateItemJp(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32) {
+type UpdateItemJpFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32, on_click_button: *mut Il2CppObject);
+extern "C" fn UpdateItemJp(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, adjuster_data: *mut Il2CppObject, resource_hash: i32, on_click_button: *mut Il2CppObject) {
+    let effective_on_click = if Hachimi::instance().config.load().skill_info_dialog && !skill_info.is_null() {
+        let on_click_fn: fn() = unsafe { std::mem::transmute(on_click_skill_button as *const ()) };
+        create_delegate(unsafe { ACTION_INT_CLASS }, 1, on_click_fn).unwrap() as *mut Il2CppObject
+    } else {
+        on_click_button
+    };
+
     UpdateItemCommon(this, skill_info, || {
-        get_orig_fn!(UpdateItemJp, UpdateItemJpFn)(this, skill_info, is_plate_effect_enable, adjuster_data, resource_hash);
+        get_orig_fn!(UpdateItemJp, UpdateItemJpFn)(this, skill_info, is_plate_effect_enable, adjuster_data, resource_hash, effective_on_click);
     });
+}
+
+// Action<int>
+extern "C" fn on_click_skill_button(_ptr: usize, skill_id: i32) {
+    info!("on_click_skill_button skill_id {}", skill_id);
+    let to_s = |opt_ptr: Option<*mut Il2CppString>| unsafe {
+        opt_ptr.and_then(|p| p.as_ref()).map(|s| s.as_utf16str().to_string())
+    };
+
+    let skill_name = to_s(TextDataQuery::get_skill_name(skill_id)).unwrap_or_else(|| to_s(Some(MasterDataUtil::GetSkillName(skill_id))).unwrap());
+    let skill_desc = to_s(TextDataQuery::get_skill_desc(skill_id)).unwrap_or_else(|| to_s(
+        Some(Hachimi::instance().skill_info.load().get_desc(skill_id).to_il2cpp_string())
+    ).unwrap());
+
+    let typ = if str_visual_len(skill_desc.as_str()) <= 250 {
+        DialogCommon::FormType::SMALL_ONE_BUTTON
+    } else if str_visual_len(skill_desc.as_str()) <= 490 {
+        DialogCommon::FormType::MIDDLE_ONE_BUTTON
+    } else {
+        DialogCommon::FormType::BIG_ONE_BUTTON
+    };
+    DialogManager::single_button_message(&skill_name, &skill_desc.replace("\\n", "\n"), typ);
 }
 
 type UpdateItemOtherFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool);
@@ -105,64 +132,11 @@ extern "C" fn UpdateItemOther(this: *mut Il2CppObject, skill_info: *mut Il2CppOb
     });
 }
 
-fn get_skill_text(skill_id: i32) -> (String, String) {
-    let to_s = |opt_ptr: Option<*mut Il2CppString>| unsafe {
-        opt_ptr.and_then(|p| p.as_ref()).map(|s| s.as_utf16str().to_string())
-    };
-
-    let current_name = to_s(TextDataQuery::get_skill_name(skill_id)).unwrap_or_else(|| to_s(Some(MasterDataUtil::GetSkillName(skill_id))).unwrap());
-    let current_desc = to_s(TextDataQuery::get_skill_desc(skill_id)).unwrap_or_else(|| to_s(
-        Some(Hachimi::instance().skill_info.load().get_desc(skill_id).to_il2cpp_string())
-    ).unwrap());
-
-    let mut cache = SKILL_TEXT_CACHE.lock().unwrap();
-
-    if let Some((cached_name, cached_desc)) = cache.get(&skill_id) {
-        if cached_name == &current_name && cached_desc == &current_desc {
-            return (cached_name.clone(), cached_desc.clone());
-        }
-    }
-
-    cache.insert(skill_id, (current_name.clone(), current_desc.clone()));
-    (current_name, current_desc)
-}
-
-type SetupOnClickSkillButtonFn = extern "C" fn(this: *mut Il2CppObject, info: *mut Il2CppObject);
-extern "C" fn SetupOnClickSkillButton(this: *mut Il2CppObject, info: *mut Il2CppObject) {
-    if !Hachimi::instance().config.load().skill_info_dialog {
-        get_orig_fn!(SetupOnClickSkillButton, SetupOnClickSkillButtonFn)(this, info);
-        return;
-    }
-    let skill_id = get_Id(info);
-    let button = get__bgButton(this);
-    let button_obj = Component::get_gameObject(button);
-    Object::set_name(button_obj, format!("HachimiSkill_{}", skill_id).to_il2cpp_string());
-    get_skill_text(skill_id);
-
-    let delegate = create_delegate(unsafe { UnityAction::UNITYACTION_CLASS }, 0, || {
-        let current_ev = EventSystem::get_current();
-        let clicked_obj = EventSystem::get_currentSelectedGameObject(current_ev);
-        let object_name = Object::get_name(clicked_obj);
-        let name_str = unsafe { (*object_name).as_utf16str() }.to_string();
-
-        if name_str.starts_with("HachimiSkill_") {
-            let id_str = &name_str["HachimiSkill_".len()..];
-            if let Ok(id) = id_str.parse::<i32>() {
-                if let Some(data) = SKILL_TEXT_CACHE.lock().unwrap().get(&id) {
-                    let (name, desc) = data;
-                    let typ = if str_visual_len(desc.as_str()) <= 250 {
-                        DialogCommon::FormType::SMALL_ONE_BUTTON
-                    } else if str_visual_len(desc.as_str()) <= 490 {
-                        DialogCommon::FormType::MIDDLE_ONE_BUTTON
-                    } else {
-                        DialogCommon::FormType::BIG_ONE_BUTTON
-                    };
-                    DialogManager::single_button_message(name, &desc.replace("\\n", "\n"), typ);
-                }
-            }
-        }
+type UpdateItemTwFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32);
+extern "C" fn UpdateItemTw(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32) {
+    UpdateItemCommon(this, skill_info, || {
+        get_orig_fn!(UpdateItemTw, UpdateItemTwFn)(this, skill_info, is_plate_effect_enable, resource_hash);
     });
-    ButtonCommon::SetOnClick(button, delegate.unwrap());
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
@@ -170,18 +144,24 @@ pub fn init(umamusume: *const Il2CppImage) {
     find_nested_class_or_return!(PartsSingleModeSkillListItem, Info);
 
     if Hachimi::instance().game.region == Region::Japan {
-        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 4);
+        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 5);
         new_hook!(UpdateItem_addr, UpdateItemJp);
+    }
+    else if Hachimi::instance().game.region == Region::Taiwan {
+        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 3);
+        new_hook!(UpdateItem_addr, UpdateItemTw);
     }
     else {
         let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 2);
         new_hook!(UpdateItem_addr, UpdateItemOther);
     }
 
-    let SetupOnClickSkillButton_addr = get_method_addr(PartsSingleModeSkillListItem, c"SetupOnClickSkillButton", 1);
-    new_hook!(SetupOnClickSkillButton_addr, SetupOnClickSkillButton);
-
     unsafe {
+        if Hachimi::instance().game.region == Region::Japan {
+            _ONCLICKBUTTON_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_onClickButton");
+            ACTION_INT_CLASS = il2cpp_class_from_il2cpp_type((*_ONCLICKBUTTON_FIELD).type_);
+        }
+
         // PartsSingleModeSkillListItem
         NAMETEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_nameText");
         DESCTEXT_FIELD = get_field_from_name(PartsSingleModeSkillListItem, c"_descText");

@@ -88,6 +88,28 @@ macro_rules! impl_enum_eq {
     };
 }
 
+macro_rules! impl_enum_ord {
+    // impl_enum_ord!(Enum, T)
+    ($enum_ty:ty, $target_ty:ty) => {
+        impl std::cmp::PartialOrd<$target_ty> for $enum_ty {
+            fn partial_cmp(&self, other: &$target_ty) -> Option<std::cmp::Ordering> {
+                (*self as $target_ty).partial_cmp(other)
+            }
+        }
+
+        impl std::cmp::PartialOrd<$enum_ty> for $target_ty {
+            fn partial_cmp(&self, other: &$enum_ty) -> Option<std::cmp::Ordering> {
+                self.partial_cmp(&(*other as $target_ty))
+            }
+        }
+    };
+
+    // Defaults T to i32 if no second arg
+    ($enum_ty:ty) => {
+        impl_enum_ord!($enum_ty, i32);
+    };
+}
+
 macro_rules! def_field_value_accessors {
     ($get_name:ident, $set_name:ident, $field:ident, $t:ty) => {
         static mut $field: *mut FieldInfo = 0 as _;

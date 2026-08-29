@@ -81,6 +81,7 @@ notification:
   update_completed: "Update completed."
   errors_during_update: "%{count} errors occurred during update. Check logs for more info."
   checking_for_updates: "Checking for updates..."
+  github_update_unreachable: "GitHub is unreachable, trying Codeberg instead..."
   no_updates: "No updates available."
   ipc_softreset_exec: "IPC remote soft-reset executed"
   atlas_workaround_reset: "Atlas files modified: workaround disabled."
@@ -178,6 +179,7 @@ config_editor:
   auto_translate_ui: "Auto translate UI (MIGHT BREAK UIs)"
   taskbar_show_progress_on_download: "Taskbar progress on download"
   taskbar_show_progress_on_connecting: "Taskbar progress on connecting"
+  taskbar_show_progress_on_schedule_book: "Taskbar progress in Trainer's Agenda"
   target_fps: "Target FPS"
   virtual_resolution_multiplier: "Virtual resolution multiplier"
   ui_scale: "UI scale"
@@ -414,10 +416,11 @@ update_prompt_dialog:
     A new Hachimi update is available (%{version}). Do you want to install it?
     The game will be restarted in order to apply the update.
   android_content: |
-    A new Hachimi Edge update is available (%{version}). Do you want to install it?
+    A new Hachimi Edge update is available (%{version}).
 
-    Tap "Yes" to open UmaPatcher Edge and re-patch your current game.
-    (No full game or APK re-download required, you only need to patch again like you normally would as UmaPatcher Edge always downloads the latest Hachimi Edge version.)
+    Tap "Yes" to open UmaPatcher Edge, then patch the game the same way you did before.
+
+    Note: No full game or APK re-download needed!
 
 updating_dialog:
   title: "Updating"

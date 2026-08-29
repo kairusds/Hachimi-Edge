@@ -70,6 +70,10 @@ notification:
   menu_open_key_set: "Itinakda ang hotkey ng pagbukas sa %{key}"
   ipc_softreset_exec: "Na-execute ng IPC remote ang soft-reset"
   atlas_workaround_reset: "Nabago ang mga atlas file. Na-disable ang workaround."
+  freeform_window_disabled_landscape: "Na-disable ang freeform window dahil aktibo ang landscape mode."
+  free_camera_unavailable_live: "Hindi available ang Free Camera sa concert na ito dahil sa kilalang isyu."
+  recommended_ui_scale_applied: "Nilapat ang recommended na UI scale"
+  github_update_unreachable: "Hindi makakonekta sa GitHub, sinusubukan ang Codeberg..."
 
 first_time_setup:
   title: "First Time Setup"
@@ -161,7 +165,7 @@ config_editor:
   discord_rpc: "Discord RPC"
   menu_open_key: "Hotkey ng pagbukas ng menu"
   menu_open_key_set: "Itakda"
-  live_vocals_swap: "Pagpalit ng Vocals sa Live"
+  live_vocals_swap: "Pagpalit ng Vocals sa Live Theater"
   skill_info_dialog: "Custom na dialog ng skill info"
   homescreen_bgseason: "Panahon ng Homescreen Background"
   shadow_resolution: "Resolution ng Shadows"
@@ -170,6 +174,7 @@ config_editor:
   tl_auto_updater_interval: "Pagitan ng auto updater"
   taskbar_show_progress_on_download: "Progress sa taskbar kapag nagda-download"
   taskbar_show_progress_on_connecting: "Progress sa taskbar kapag kumokonekta"
+  taskbar_show_progress_on_schedule_book: "Progress sa taskbar kapag ginagamit ang Trainer's Agenda"
   hide_ingame_ui_hotkey_bind: "Keybind sa pagtago ng game UI"
   live_playback_loop: "I-loop ang mga Live Performance"
   champions_live_show_text: "I-override ang Champions Meeting Live Text"
@@ -187,7 +192,93 @@ config_editor:
   ui_loading_show_orientation_guide: "Itago ang oryentasyon sa loading screen"
   replace_to_builtin_font: "Gamitin ang default na font ng laro"
   custom_title_name: "Pasadyang Window Title"
-  live_slider_always_show: "Palaging ipakita ang Live Slider"
+  live_slider_always_show: "Palaging ipakita ang slider sa concert"
+  recommended_ui_scale: "Ilapat ang recommended na UI scale"
+  ingame_webview: "Buksan ang mga link ng Umamusume (balita, tulong, gacha, atbp.) sa webview"
+  trainer_live_landscape: "Pilitin ang landscape mode sa concert na \"Meni Shuki Rush!\""
+  force_orientation_mode: "Pilitin ang orientation mode"
+
+free_camera:
+  settings_title: "Mga Setting sa Free Camera"
+  section_general: "Pangkalahatan"
+  section_race: "Karera"
+  section_keybinds: "Mga keybind sa Windows"
+  remove_camera_effects: "Tanggalin ang camera effects"
+  live_remove_screen_effects: "Tanggalin ang screen effects"
+  live_disable_character_teleport: "I-disable ang pag-teleport sa character"
+  live_force_all_characters_visible: "Palaging ipakita ang lahat ng mga character"
+  show_overlay: "Ipakita ang switch overlay"
+  selfie_use_head_transform: "Gamitin ang selfie stick sa mode na \"Sundan ang Character\""
+  mode_selfie_stick: "Sundan ang Character"
+  mouse_speed: "Bilis ng mouse"
+  live_fov: "FOV sa Concert"
+  race_fov: "FOV sa Karera"
+  key_move_forward: "Lumipat padiretso"
+  key_move_back: "Lumipat paatras"
+  key_move_left: "Lumipat sa kaliwa"
+  key_move_right: "Lumipat sa kanan"
+  key_move_down: "Bumaba"
+  key_move_up: "Tumaas"
+  key_look_up: "Tumingin sa taas"
+  key_look_down: "Tumingin sa baba"
+  key_look_left: "Tumingin sa kaliwa"
+  key_look_right: "Tumingin sa kanan"
+  key_fov_increase: "Itaas ang FOV"
+  key_fov_decrease: "Ibaba ang FOV"
+  key_target_previous: "Nakaraang target"
+  key_target_next: "Susunod na target"
+  key_part_previous: "Nakaraang bahagi ng katawan"
+  key_part_next: "Susunod na bahagi ng katawan"
+  key_reset: "I-reset ang camera position"
+  key_reverse: "Baliktaran ang follow camera perspective (harapan <-> likuran)"
+  cheatsheet_title: "Cheatsheet sa Free Camera"
+
+  cheatsheet_contents: |
+    # Cheatsheet sa Free Camera
+    Gumagana lang ang feature na ito sa **Mga Karera** or **Live Concerts**.
+
+    Ang default na bahagi ng katawan ay ang **Face**.
+
+    Ang default na target ay **Place01**.
+
+    ## Mouse Controls
+    * **Hold Right Click + Drag:** Tumingin
+    * **Scroll Wheel Up / Down:** Itaas o ibaba ang FOV
+
+    ---
+
+    ## Gamepad Controls (Xbox / PlayStation)
+
+    ### **Paggalaw at Anggulo ng Camera**
+    * **Left Joystick:** Lumipat nang pakaliwa / pakanan / diretso / paatras
+    * **Right Joystick:** Tumingin nang pakaliwa / pakanan / pataas / pababa
+    * **Right Trigger (RT / R2):** Lumipat pataas
+    * **Left Trigger (LT / L2):** Lumipat pababa
+    * **Right Shoulder / Bumper (RB / R1):** Itaas ang FOV
+    * **Left Shoulder / Bumper (LB / L1):** Ibaba ang FOV
+
+    ---
+
+    ### Action Buttons
+    * **Y** (Triangle): I-reset ang camera position
+    * **X** (Square): Cycle camera mode
+    * **B** (Circle): Baliktaran ang follow camera perspective *(front <-> back, Follow Camera lang)*
+    * **A** (Cross): I-pause / i-resume ang concert
+
+    ---
+
+    ### D-Pad Controls (Hindi available sa Free Move)
+    * **D-Pad Right:** Susunod na target *(Follow Camera at First Person)*
+    * **D-Pad Left:** Nakaraang target *(Follow Camera at First Person)*
+    * **D-Pad Up:** Susunod na bahagi ng katawan *(Follow Camera lang)*
+    * **D-Pad Down:** Nakaraang bahagi ng katawan *(Follow Camera lang)*
+
+ingame_webview_dialog:
+  open_browser: "Buksan ang Browser"
+  title:
+    notice: "Abiso"
+    general: "In-game na Browser"
+    help: "Tulong"
 
 excludes_editor:
   no_paths_available: "Walang available na path na maaring i-exclude"

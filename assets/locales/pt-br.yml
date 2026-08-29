@@ -36,6 +36,9 @@ edit: "Editar"
 remove: "Remover"
 add: "Adicionar"
 save_changes: "Salvar mudanças?"
+back: "Voltar"
+portrait: "Retrato"
+landscape: "Paisagem"
 
 menu:
   check_for_updates: "\uf0aa Buscar atualizações"
@@ -51,13 +54,13 @@ menu:
   graphics_heading: "\uf03e Gráficos"
   fps_label: "FPS"
   vsync_label: "VSync"
-  stay_on_top: "Mostrar no topo"
+  stay_on_top: "Sempre no topo"
   translation_heading: "\uf02d Tradução"
   reload_localized_data: "\uf021 Recarregar tradução"
   tl_check_for_updates: "\uf0aa Buscar atualizações de tradução"
   tl_check_for_updates_pedantic: "\uf0aa Buscar atualizações de tradução (rigorosamente)"
   dump_localize_dict: "Exportar localize dict"
-  danger_zone_heading: "\uf071 Área Perigosa"
+  danger_zone_heading: "\uf071 Zona de Perigo"
   danger_zone_warning: "Estas opções podem acabar tendo efeitos indesejados no seu jogo. Use com cuidado!"
   soft_restart: "\uf021 Soft-Restart"
   open_in_game_browser: "\uf0ac Abrir navegador do jogo"
@@ -75,7 +78,7 @@ notification:
   checking_for_tl_updates: "Buscando atualizações de tradução..."
   no_tl_updates: "Nenhuma atualização de tradução encontrada."
   update_failed: "Atualização falhou: %{reason}"
-  update_completed: "Atualização realizada."
+  update_completed: "Atualização concluída."
   errors_during_update: "%{count} erros aconteceram durante a atualização. Verifique os registros para mais detalhes."
   checking_for_updates: "Procurando atualizações..."
   no_updates: "Nenhuma atualização encontrada."
@@ -83,6 +86,9 @@ notification:
   atlas_workaround_reset: "Arquivos de atlas modificados: solução temporária desabilitada."
   tl_repo_changed: "O repositório de tradução mudou. Dados de tradução recarregados."
   tl_repo_folder_missing: "A pasta com os dados de tradução não foi encontrada. Por favor, busque atualizações de tradução para restaurá-la."
+  freeform_window_disabled_landscape: "Janela livre foi desabilitada porque o modo paisagem está ativo."
+  free_camera_unavailable_live: "A Câmera Livre está indisponível neste Live devido a um problema conhecido. Ela foi desabilitada para este Live."
+  recommended_ui_scale_applied: "Escala de UI recomendada aplicada."
 
 first_time_setup:
   title: "Configuração inicial"
@@ -99,6 +105,10 @@ first_time_setup:
   select_translation_repo: "Selecione um repositório de tradução:"
   no_compatible_repo: "Nenhum repositório de tradução é compatível com esta versão do jogo."
   skip_translation: "Ignorar traduções."
+  common_settings_heading: "Configurações gerais"
+  common_settings_content: >-
+    Aqui estão algumas configurações que são frequentemente utilizadas e você pode alterar agora.
+    Você também pode alterá-las mais tarde no editor de configurações.
   complete_heading: "Feito!"
   complete_content: >-
     Clique em Finalizar para salvar as configurações.
@@ -125,7 +135,7 @@ license:
 
 tl_updater:
   title: "Atualizando..."
-  warning: "As traduções não irão funcionar enquanto uma atualização estiver sendo realizada"
+  warning: "As traduções não irão funcionar enquanto uma atualização estiver sendo realizada."
 
 config_editor:
   title: "Editor de configurações"
@@ -140,7 +150,7 @@ config_editor:
     isso significa que você NÃO poderá acessar o editor de configurações após ativá-la.
     Se não deseja isso, clique em OK e DESABILITE esta opção.
   ipv4_only: "Usar apenas IPv4 (ureq)"
-  meta_index_url: "URL dos Metadados das Traduções"
+  meta_index_url: "URL dos metadados das traduções"
   debug_mode: "Modo de depuração"
   enable_file_logging: "Habilitar arquivo de registro"
   apply_atlas_workaround: "Solução temporária para arquivos de Atlas"
@@ -155,7 +165,7 @@ config_editor:
   tl_auto_updater_interval: "Intervalo das atualizações automáticas de tradução"
   disable_translations: "Desabilitar traduções"
   enable_ipc: "Habilitar IPC"
-  ipc_listen_all: "IPC: Escutar Tudo"
+  ipc_listen_all: "IPC: Escutar todas as interfaces"
   auto_translate_stories: "Tradução automática das histórias"
   auto_tl_warning: >-
     Nota: este recurso não funcionará por si só; ele requer uma configuração externa.
@@ -168,15 +178,20 @@ config_editor:
   auto_translate_ui: "Tradução automática da UI (PODE QUEBRAR AS UIs)"
   taskbar_show_progress_on_download: "Mostrar progresso do download na barra de tarefas"
   taskbar_show_progress_on_connecting: "Mostrar progresso da conexão na barra de tarefas"
+  taskbar_show_progress_on_schedule_book: "Mostrar progresso do calendário na barra de tarefas"
   target_fps: "FPS Alvo"
   virtual_resolution_multiplier: "Multiplicador virtual de resolução"
   ui_scale: "Escala da UI"
+  recommended_ui_scale: "Aplicar escala de UI recomendada"
   gui_scale: "Escala da sobreposição"
   gui_landscape_ratio: "Proporção da escala da sobreposição (paisagem)"
   ui_animation_scale: "Escala das animações da UI"
   graphics_quality: "Qualidade dos gráficos"
   vsync: "VSync"
   auto_full_screen: "Tela cheia automática"
+  freeform_window: "Janela livre"
+  freeform_ui_scale_auto: "Escala automática da UI na janela livre"
+  freeform_ui_scale_auto_ratio: "Proporção da escala automática da UI"
   full_screen_mode: "Modo de tela cheia"
   full_screen_mode_exclusive: "Exclusiva"
   full_screen_mode_borderless: "Janela sem bordas"
@@ -189,16 +204,17 @@ config_editor:
   story_choice_auto_select_delay: "Atraso nas escolhas durante o modo automático na história"
   story_text_speed_multiplier: "Multiplicador de velocidade do texto da história"
   force_allow_dynamic_camera: "Forçar uso da câmera dinâmica"
+  free_camera: "Câmera livre"
   live_theater_allow_same_chara: "Permitir personagens repetidos nos shows"
   physics_update_mode: "Modo de atualização das físicas"
   cyspring_mono_uncap_frame_scale: "Escala de Quadros CySpring Mono"
   disable_skill_name_translation: "Desabilitar tradução dos nomes das habilidades"
   hide_ingame_ui_hotkey: "Atalho para esconder a UI do jogo"
-  hide_ingame_ui_hotkey_bind: "Atalho para esconder a UI do jogo"
   hide_ingame_ui_hotkey_info: >-
     Esta opção permite que um atalho seja utilizado para alternar a visualização da UI do jogo.
     No Android, você pode tocar três vezes rapidamente no canto superior direito da tela.
     No PC/Android com um teclado conectado, você pode pressionar a tecla Insert ou definir outra tecla nas configurações.
+  hide_ingame_ui_hotkey_bind: "Atalho para esconder a UI do jogo"
   live_slider_always_show: "Sempre mostrar barra de progresso nos shows"
   live_playback_loop: "Reproduzir shows em loop"
   champions_live_show_text: "Substituir textos do show da Champions Meeting"
@@ -215,7 +231,7 @@ config_editor:
   caption_outline_size: "Tamanho do contorno das legendas"
   discord_rpc: "Discord RPC"
   enable_smtc: "Habilitar Controles de Mídia do Windows"
-  menu_open_key: "Atalho para abrir o menu"
+  menu_open_key: "Atalho para abrir o menu:"
   msaa: "MSAA"
   render_scale: "Escala de renderização"
   aniso_level: "Filtragem Anisotrópica"
@@ -225,9 +241,12 @@ config_editor:
   homescreen_bgseason: "Estação da tela de início"
   shadow_resolution: "Resolução das sombras"
   hide_now_loading: "Esconder tela de carregamento"
-  ui_loading_show_orientation_guide: "Esconder tela de carregamento com ícone de orientação da tela"
-  replace_to_builtin_font: "Usar fontes originais do jogo"
+  ui_loading_show_orientation_guide: "Ocultar guia de orientação na tela de carregamento"
+  replace_to_builtin_font: "Usar fonte padrão do jogo"
   custom_title_name: "Título customizado da janela"
+  ingame_webview: "Abrir links do Umamusume (notícias, ajuda, gacha, ...) no navegador do jogo"
+  trainer_live_landscape: "Modo paisagem no show da música Meni Shuki"
+  force_orientation_mode: "Forçar modo de orientação"
 
 theme_editor:
   title: "Editor do tema da GUI"
@@ -242,6 +261,114 @@ set_keybind:
   title: "Definir atalho"
   press_any_key: "Pressione qualquer tecla…"
   bound_key: "Tecla definida: %{key}"
+
+free_camera:
+  settings_title: "Configurações da câmera livre"
+  section_general: "Geral"
+  section_live: "Show"
+  section_race: "Corrida"
+  section_keybinds: "Atalhos do Windows"
+  remove_camera_effects: "Desligar efeitos da câmera"
+  live_remove_screen_effects: "Desligar efeitos da tela"
+  live_disable_character_teleport: "Desligar teleporte de personagens"
+  live_force_all_characters_visible: "Sempre mostrar todas as personagens"
+  show_overlay: "Mostrar aviso de troca de câmera"
+  selfie_use_head_transform: "Usar bastão de selfie no modo \"Acompanhar Personagem\""
+  mode: "Modo"
+  mode_free: "Movimento livre"
+  mode_first_person: "Primeira pessoa"
+  mode_selfie_stick: "Acompanhar Personagem"
+  live_move_step: "Velocidade de movimento (Show)"
+  race_move_step: "Velocidade de movimento (Corrida)"
+  look_step: "Velocidade de rotação da câmera"
+  mouse_speed: "Sensibilidade do mouse"
+  live_fov: "Campo de visão do show"
+  race_fov: "Campo de visão da corrida"
+  gamepad_deadzone: "Zona morta do joystick"
+  gamepad_move_speed: "Velocidade do movimento no gamepad"
+  gamepad_look_speed: "Velocidade da câmera no gamepad"
+  live_target_position: "Posição alvo"
+  live_target_part: "Parte do corpo alvo"
+  live_selfie_horizontal_stabilization: "Zona morta horizontal da câmera de acompanhamento"
+  live_selfie_vertical_stabilization: "Zona morta vertical da câmera de acompanhamento"
+  live_follow_offset: "Deslocamento do acompanhamento"
+  live_follow_lookat_offset: "Deslocamento do ponto de foco"
+  live_follow_smooth: "Suavização da câmera de acompanhamento"
+  live_follow_smooth_lookat_step: "Suavização da rotação da câmera de acompanhamento"
+  live_follow_smooth_pos_step: "Suavização da posição da câmera de acompanhamento"
+  live_first_person_offset: "Deslocamento da visão em primeira pessoa"
+  race_target_index: "Índice do alvo da corrida (-1 = automático)"
+  race_follow_offset: "Deslocamento da câmera de acompanhamento na corrida"
+  race_follow_distance: "Distância da câmera de acompanhamento na corrida"
+  race_first_person_lookat_offset: "Deslocamento da visão em primeira pessoa na corrida"
+  overlay_mode: "Modo: %{mode}"
+  overlay_target: "Alvo: %{target}"
+  overlay_part: "Parte do corpo: %{part}"
+  target_auto: "Automático"
+  target_gate: "Portão %{index}"
+  key_move_forward: "Mover para frente"
+  key_move_back: "Mover para trás"
+  key_move_left: "Mover para esquerda"
+  key_move_right: "Mover para direita"
+  key_move_down: "Mover para baixo"
+  key_move_up: "Mover para cima"
+  key_look_up: "Olhar para cima"
+  key_look_down: "Olhar para baixo"
+  key_look_left: "Olhar para esquerda"
+  key_look_right: "Olhar para direita"
+  key_fov_increase: "Aumentar campo de visão"
+  key_fov_decrease: "Diminuir campo de visão"
+  key_follow_offset_up: "Mover câmera de acompanhamento para cima"
+  key_follow_offset_down: "Mover câmera de acompanhamento para baixo"
+  key_follow_offset_left: "Mover câmera de acompanhamento para esquerda"
+  key_follow_offset_right: "Mover câmera de acompanhamento para direita"
+  key_target_previous: "Alvo anterior"
+  key_target_next: "Próximo alvo"
+  key_part_previous: "Parte do corpo anterior"
+  key_part_next: "Próxima parte do corpo"
+  key_reset: "Redefinir posição da câmera"
+  key_cycle_mode: "Alternar modo"
+  key_reverse: "Inverter perspectiva da câmera de acompanhamento (frente <-> trás)"
+  cheatsheet_title: "Guia rápido da Câmera Livre"
+  cheatsheet_contents: |
+    # Guia rápido da Câmera Livre
+    Este recurso só funciona em **Corridas** ou **Shows da Vitória**.
+
+    A parte do corpo padrão é **Rosto**.
+
+    O alvo padrão é **Place01**.
+
+    ## Controles do mouse
+    * **Segurar botão direito + arrastar:** Olhar ao redor
+    * **Roda do mouse para cima / para baixo:** Aumentar / diminuir campo de visão
+
+    ---
+
+    ## Controles do gamepad (Xbox / PlayStation)
+
+    ### **Movimento e ângulo da câmera**
+    * **Joystick esquerdo:** Mover para esquerda / direita / frente / trás
+    * **Joystick direito:** Olhar para esquerda / direita / cima / baixo
+    * **Gatilho direito (RT / R2):** Mover para cima
+    * **Gatilho esquerdo (LT / L2):** Mover para baixo
+    * **Botão superior direito (RB / R1):** Diminuir campo de visão
+    * **Botão superior esquerdo (LB / L1):** Aumentar campo de visão
+
+    ---
+
+    ### Botões de ação
+    * **Y** (Triângulo): Redefinir posição da câmera
+    * **X** (Quadrado): Alternar modo da câmera
+    * **B** (Círculo): Inverter perspectiva da câmera de acompanhamento *(frente <-> trás, apenas Câmera de Acompanhamento)*
+    * **A** (X): Pausar / retomar show
+
+    ---
+
+    ### Controles do direcional (não disponível no Movimento Livre)
+    * **Direcional direito:** Próximo alvo *(Câmera de Acompanhamento e Primeira Pessoa)*
+    * **Direcional esquerdo:** Alvo anterior *(Câmera de Acompanhamento e Primeira Pessoa)*
+    * **Direcional para cima:** Próxima parte do corpo *(apenas Câmera de Acompanhamento)*
+    * **Direcional para baixo:** Parte do corpo anterior *(apenas Câmera de Acompanhamento)*
 
 excludes_editor:
   title: "Editor de exceções"
@@ -288,10 +415,11 @@ update_prompt_dialog:
     Uma nova atualização do Hachimi está disponível (%{version}). Deseja instalá-la?
     O jogo será reiniciado para aplicar a atualização.
   android_content: |
-    Uma nova atualização do Hachimi Edge está disponível (%{version}). Deseja instalá-la?
+    Uma nova atualização do Hachimi Edge está disponível (%{version}).
 
-    Toque em "Sim" para abrir o UmaPatcher Edge e reaplicar o patch no jogo.
-    (Não será necessário baixar os APKs do jogo novamente. Basta apenas aplicar o patch mais uma vez para que o UmaPatcher Edge instale a última versão do Hachimi Edge.)
+    Toque em "Sim" para abrir o UmaPatcher Edge e aplicar o patch no jogo.
+
+    *Não será necessário baixar os APKs novamente.
 
 updating_dialog:
   title: "Atualizando"
@@ -303,13 +431,23 @@ steam_overlay_conflict_dialog:
     Compras podem não funcionar com a sobreposição do Hachimi habilitada. Se a sobreposição da Steam estiver aparecendo
     por cima desta tela, ignore esta mensagem e pressione Não. Se nada tiver acontecido, pressione Sim
     para desabilitar a sobreposição do Hachimi temporariamente. O jogo será fechado e, ao abri-lo novamente,
-    a sobreposição do Hachimi estará desabilitada e você conseguirá realizar a sua compra normalmente. Após isso,
-    basta reiniciar o seu jogo para habilitar a sobreposição do Hachimi novamente.
+    a sobreposição do Hachimi estará desabilitada e você conseguirá realizar sua compra normalmente. Após isso,
+    basta reiniciar seu jogo para habilitar a sobreposição do Hachimi novamente.
+
+ingame_webview_dialog:
+  open_browser: "Abrir no navegador"
+  title:
+    notice: "Aviso"
+    general: "Navegador"
+    gacha: "Gacha"
+    help: "Ajuda"
+
 key_names:
   left: "Seta esquerda"
   right: "Seta direita"
   up: "Seta cima"
   down: "Seta baixo"
+  back: "Voltar"
   insert: "Insert"
   delete: "Delete"
   home: "Home"
@@ -333,7 +471,6 @@ key_names:
   alt: "Alt"
   ctrl: "Ctrl"
   shift: "Shift"
-  back: "Voltar"
   dpad_up: "D-Pad cima"
   dpad_down: "D-Pad baixo"
   dpad_left: "D-Pad esquerda"
@@ -343,6 +480,16 @@ key_names:
   copy: "Copiar"
   cut: "Cortar"
   paste: "Colar"
+  comma: ","
+  backslash: "\\"
+  slash: "/"
+  left_bracket: "["
+  right_bracket: "]"
+  grave: "`"
+  minus: "-"
+  period: "."
+  plus: "+"
+  equals: "="
   numpad_0: "Numpad 0"
   numpad_1: "Numpad 1"
   numpad_2: "Numpad 2"
