@@ -85,15 +85,15 @@ notification:
   no_updates: "최신 버전을 사용중입니다."
   ipc_softreset_exec: "IPC remote soft-reset executed"
   atlas_workaround_reset: "Atlas files modified: workaround disabled."
-  tl_repo_changed: "Translation repository changed. Localized data reloaded."
-  tl_repo_folder_missing: "Translation data folder is missing. Please check for updates to restore translations."
+  tl_repo_changed: "번역 파일 배포를 번경합니다.번역파일(localized)가 변경되었습니다."
+  tl_repo_folder_missing: "번역 파일이 날라갔습니다. 복구하거나 재설치 하시기 바랍니다."
   freeform_window_disabled_landscape: "Freeform window has been disabled because landscape mode is active."
   free_camera_unavailable_live: "Free Camera is unavailable in this Live because of a known issue. It has been disabled for this Live."
-  recommended_ui_scale_applied: "Applied recommended UI scale"
+  recommended_ui_scale_applied: "UI 크기를 권장 값으로 되돌립니다."
 
 first_time_setup:
-  title: "First Time Setup"
-  welcome_heading: "Welcome"
+  title: "초회 설치"
+  welcome_heading: "안녕하세요"
   welcome_content: >-
     Hachimi has been installed! This will guide you through the initial setup process.
     If you're not interested in using the translation features, you may skip it by closing this dialog.
