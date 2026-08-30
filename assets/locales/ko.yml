@@ -95,21 +95,20 @@ first_time_setup:
   title: "초회 설치"
   welcome_heading: "안녕하세요"
   welcome_content: >-
-    Hachimi has been installed! This will guide you through the initial setup process.
-    If you're not interested in using the translation features, you may skip it by closing this dialog.
+    하치미 패치가 성공적으로 적용되었습니다! 초회 설정을 도와드리겠습니다.
+    만약 번역 패치를 위해 적용하신것이 아니라면 건너뛰셔도 무방합니다.
 
 
-    DISCLAIMER: Hachimi is a community-driven project. All translations were made by various community contributors.
-    It is not developed or endorsed by Cygames, Inc., and violates the game's terms of service. By continuing,
-    you accept that you will be using it at your own risk.
-  translation_repo_heading: "Translation repo"
-  select_translation_repo: "Select a translation repo:"
-  no_compatible_repo: "No translation repos are compatible with this game version."
-  skip_translation: "Skip translations."
-  common_settings_heading: "Common Settings"
+    DISCLAIMER: 하치미는 커뮤니티 소프트웨어 입니다. 모든 번역은 개별 프로젝트 산하입니다.
+    주식회사 cygames,주식회사 kakaogames와 관계가 없습니다.운영정책을 위반하는 용도가 아닙니다. 계속하시면,이 패치를 사용하시는것에 대한 책임은 본인에게 있음에 동의하는것으로 간주됩니다.
+  translation_repo_heading: "번역 파일 배포"
+  select_translation_repo: "선택하세요:"
+  no_compatible_repo: "현재 버전과 호환되는 번역 파일 배포가 없습니다."
+  skip_translation: "번역 설정 건너뛰기."
+  common_settings_heading: "보편적으로 찾는 설정들"
   common_settings_content: >-
-    Here are some commonly used settings that you may want to configure.
-    You can always change these later in the Config Editor.
+    아래는 보편적으로 수정하기 원해하는 경향이 있는 설정들입니다.
+    상술한 설정들은 언제든지 고급 설정에서 변경하실수 있습니다.
   complete_heading: "All done!"
   complete_content: >-
     Click on Done to save the configuration.
