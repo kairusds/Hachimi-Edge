@@ -109,23 +109,21 @@ first_time_setup:
   common_settings_content: >-
     아래는 보편적으로 수정하기 원해하는 경향이 있는 설정들입니다.
     상술한 설정들은 언제든지 고급 설정에서 변경하실수 있습니다.
-  complete_heading: "All done!"
+  complete_heading: "완료!"
   complete_content: >-
-    Click on Done to save the configuration.
-    If you chose a translation repo, an update check will be performed,
-    which will prompt you to download the new translation data.
+    번역파일 업데이트를 확인하시는 것을 권장합니다.
 
 about:
-  title: "About"
-  copyright: "© 2024-%{year} LeadRDRK, kairusds and contributors"
-  view_license: "View License"
-  open_website: "Open Website"
-  view_source_code: "View Source Code"
-  view_contributors: "View Contributors"
+  title: "머리글"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds, 이외 커뮤니티 기여자들"
+  view_license: "이용 허가 보기"
+  open_website: "누리 소통망 열기"
+  view_source_code: "코드 보기"
+  view_contributors: "커뮤니티 기여 보기"
 
 license:
-  title: "License"
-  gpl_v3_only_notice: "GPL-3.0-only License Text"
+  title: "이용 허가"
+  gpl_v3_only_notice: "GPL-3.0-only"
   ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
   font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
   font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
@@ -134,8 +132,8 @@ license:
   font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
-  title: "Updating..."
-  warning: "Translations will not work while update is in progress"
+  title: "업데이트 중..."
+  warning: "업데이트 하는 동안에는 번역이 비활성화 됩니다"
 
 config_editor:
   title: "Config Editor"
