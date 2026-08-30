@@ -136,16 +136,15 @@ tl_updater:
   warning: "업데이트 하는 동안에는 번역이 비활성화 됩니다"
 
 config_editor:
-  title: "Config Editor"
-  general_tab: "\uf013 General"
-  graphics_tab: "\uf03e Graphics"
-  gameplay_tab: "\uf11b Gameplay"
-  language: "Language"
-  restore_defaults: "Restore Defaults"
-  disable_overlay: "Disable overlay (GUI)"
-  disable_overlay_warning: >-
-    This option will disable the Hachimi overlay after you restart the game,
-    which means that you will NOT be able to access the Config Editor after this.
+  title: "고급 설정"
+  general_tab: "\uf013 일반"
+  graphics_tab: "\uf03e 품질"
+  gameplay_tab: "\uf11b 게임"
+  language: "언어"
+  restore_defaults: "기본값으로 되돌리기"
+  disable_overlay: "그래픽 사용자 인터페이스 비활성화: >-
+    이는 흔히 gui라고 칭해지는 그래픽 사용자 인터페이스를 비활성화 합니다,
+    즉 이후에는 클라이언트를 뜯어 직접 confih.json을 txt편집기를 이용해 편집하지 않는 이상 고급 설정을 바꾸실수 없습니다.
     If this was not intentional, close this dialog and DISABLE the option.
   ipv4_only: "IPv4 ureq only"
   meta_index_url: "Translations Meta URL"
