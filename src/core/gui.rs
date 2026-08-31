@@ -1205,7 +1205,7 @@ impl Gui {
                         ui.heading(t!("menu.graphics_heading"));
                         ui.horizontal(|ui| {
                             ui.label(t!("menu.fps_label"));
-                            let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=1000));
+                            let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=690));
                             if res.lost_focus() || res.drag_stopped() {
                                 hachimi.target_fps.store(self.menu_fps_value, atomic::Ordering::Relaxed);
                                 Thread::main_thread().schedule(|| {
@@ -2731,7 +2731,7 @@ impl ConfigEditor {
         // Graphics tab
         if show_all || tab == ConfigEditorTab::Graphics {
             if should_show_option(search, &t!("config_editor.target_fps")) {
-                Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=1000);
+                Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=690);
             }
 
             if should_show_option(search, &t!("config_editor.virtual_resolution_multiplier")) {
@@ -3188,6 +3188,12 @@ impl ConfigEditor {
                     ui.end_row();
                 }
             }
+
+            if should_show_option(search, &t!("config_editor.disable_tap_effect")) {
+                ui.label(t!("config_editor.disable_tap_effect"));
+                ui.checkbox(&mut config.disable_tap_effect, "");
+                ui.end_row();
+            }
         }
         // Gameplay tab end
 
@@ -3524,7 +3530,7 @@ impl Window for FirstTimeSetupWindow {
                         if let Some(ref mut fps) = self.config.target_fps {
                             ui.horizontal(|ui| {
                                 ui.label("");
-                                let _ = ui.add(egui::Slider::new(fps, 30..=1000));
+                                let _ = ui.add(egui::Slider::new(fps, 30..=690));
                             });
                         }
                         ui.horizontal(|ui| {
