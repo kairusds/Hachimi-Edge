@@ -1,10 +1,10 @@
 use std::sync::Mutex;
 use fnv::FnvHashMap;
 use once_cell::sync::Lazy;
-use crate::core::sugoi_client::SugoiClient;
-use crate::il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::UnityEngine_CoreModule::Object, symbols::get_method_addr, types::*};
+use crate::core::sugoi_client::{SugoiClient, SugoiString};
+use crate::il2cpp::{ext::{Il2CppStringExt, StringExt}, symbols::{get_method_addr, GCHandle}, types::*};
 
-pub static ACTIVE_TEXT_MESH_COMPONENTS: Lazy<Mutex<FnvHashMap<usize, String>>> = Lazy::new(|| {
+pub static ACTIVE_TEXT_MESH_COMPONENTS: Lazy<Mutex<FnvHashMap<usize, SugoiString>>> = Lazy::new(|| {
     Mutex::new(FnvHashMap::default())
 });
 
@@ -20,8 +20,12 @@ pub extern "C" fn set_text_hook(this: *mut Il2CppObject, value: *mut Il2CppStrin
     }
 
     let orig_str = unsafe { (*value).as_utf16str().to_string() };
+    let str_info = SugoiString {
+        str_handle: GCHandle::new_weak_ref(this, false),
+        str: orig_str.clone()
+    };
 
-    ACTIVE_TEXT_MESH_COMPONENTS.lock().unwrap().insert(this as usize, orig_str.clone());
+    ACTIVE_TEXT_MESH_COMPONENTS.lock().unwrap().insert(this as usize, str_info);
 
     if let Some(trans) = SugoiClient::instance().get_cached(&orig_str) {
         return get_orig_fn!(set_text_hook, SetTextFn)(this, trans.to_il2cpp_string());
@@ -35,13 +39,13 @@ pub fn apply_translations(completed: &[(String, String)]) {
     {
         let mut tracker = ACTIVE_TEXT_MESH_COMPONENTS.lock().unwrap();
 
-        tracker.retain(|&ptr, _| Object::op_Implicit(ptr as *mut Il2CppObject));
+        tracker.retain(|_, info| !info.original().is_null());
 
         for (orig, trans) in completed {
             let unity_string = trans.to_il2cpp_string();
 
             for (&ptr, saved_orig) in tracker.iter() {
-                if saved_orig == orig {
+                if &saved_orig.str == orig {
                     updates_to_apply.push((ptr, unity_string));
                 }
             }
@@ -49,9 +53,7 @@ pub fn apply_translations(completed: &[(String, String)]) {
     }
 
     for (ptr, unity_string) in updates_to_apply {
-        if Object::op_Implicit(ptr as *mut Il2CppObject) {
-            get_orig_fn!(set_text_hook, SetTextFn)(ptr as *mut Il2CppObject, unity_string);
-        }
+        get_orig_fn!(set_text_hook, SetTextFn)(ptr as *mut Il2CppObject, unity_string);
     }
 }
 
