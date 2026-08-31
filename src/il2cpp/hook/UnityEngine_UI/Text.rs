@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 use fnv::FnvHashMap;
 use once_cell::sync::Lazy;
-use crate::core::sugoi_client::{SugoiClient, SugoiString};
+use crate::core::sugoi_client::{SugoiClient, StringInfo};
 use crate::il2cpp::symbols::GCHandle;
 use crate::il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::UnityEngine_TextRenderingModule::TextAnchor, symbols::get_method_addr, types::*};
 
@@ -63,7 +63,7 @@ pub fn set_best_fit_downscale(this: *mut Il2CppObject) {
     set_best_fit(this, true);
 }
 
-pub static ACTIVE_TEXT_COMPONENTS: Lazy<Mutex<FnvHashMap<usize, SugoiString>>> = Lazy::new(|| {
+pub static ACTIVE_TEXT_COMPONENTS: Lazy<Mutex<FnvHashMap<usize, StringInfo>>> = Lazy::new(|| {
     Mutex::new(FnvHashMap::default())
 });
 
@@ -79,7 +79,7 @@ pub extern "C" fn set_text_hook(this: *mut Il2CppObject, value: *mut Il2CppStrin
     }
 
     let orig_str = unsafe { (*value).as_utf16str().to_string() };
-    let str_info = SugoiString {
+    let str_info = StringInfo {
         str_handle: GCHandle::new_weak_ref(this, false),
         str: orig_str.clone()
     };
@@ -98,7 +98,7 @@ pub fn apply_translations(completed: &[(String, String)]) {
     {
         let mut tracker = ACTIVE_TEXT_COMPONENTS.lock().unwrap();
 
-        tracker.retain(|_, info| !info.original().is_null());
+        tracker.retain(|_, info| !info.object().is_null());
 
         for (orig, trans) in completed {
             let unity_string = trans.to_il2cpp_string();

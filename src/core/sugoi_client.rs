@@ -14,12 +14,12 @@ pub struct SugoiClient {
     request_lock: Mutex<()>,
 }
 
-pub struct SugoiString {
+pub struct StringInfo {
     pub str_handle: GCHandle,
     pub str: String
 }
-impl SugoiString {
-    pub fn original(&self) -> *mut Il2CppString {
+impl StringInfo {
+    pub fn object(&self) -> *mut Il2CppString {
         self.str_handle.target() as _
     }
 }
