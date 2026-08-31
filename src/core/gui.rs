@@ -3391,7 +3391,8 @@ struct FirstTimeSetupWindow {
     index_request: Arc<AsyncRequest<Vec<RepoInfo>>>,
     current_page: usize,
     current_tl_repo: Option<String>,
-    has_auto_selected: bool
+    has_auto_selected: bool,
+    pending_keybind: Arc<Mutex<Option<RawKeybind>>>
 }
 
 impl FirstTimeSetupWindow {
@@ -3404,7 +3405,8 @@ impl FirstTimeSetupWindow {
             index_request: Arc::new(tl_repo::new_meta_index_request()),
             current_page: 0,
             current_tl_repo: None,
-            has_auto_selected: false
+            has_auto_selected: false,
+            pending_keybind: Arc::new(Mutex::new(None))
         }
     }
 }
@@ -3413,6 +3415,13 @@ impl Window for FirstTimeSetupWindow {
     fn run(&mut self, ctx: &egui::Context) -> bool {
         let mut open = true;
         let mut page_open = true;
+
+        if let Some(raw) = self.pending_keybind.lock().unwrap().take() {
+            #[cfg(target_os = "windows")]
+            { self.config.windows.menu_open_key = raw; }
+            #[cfg(target_os = "android")]
+            { self.config.android.menu_open_key = raw; }
+        }
 
         new_window(ctx, self.id, t!("first_time_setup.title"))
         .open(&mut open)
@@ -3530,14 +3539,15 @@ impl Window for FirstTimeSetupWindow {
                             ui.label(crate::android::gui_impl::keymap::keycode_display_label(self.config.android.menu_open_key));
 
                             if ui.button(t!("bind_key")).clicked() {
-                                let config_clone = self.config.clone();
+                                let keybind_slot = self.pending_keybind.clone();
                                 std::thread::spawn(move || {
                                     let Some(gui_mutex) = Gui::instance() else { return };
                                     let mut gui = gui_mutex.lock().unwrap();
                                     gui.show_window(Box::new(SetKeybindWindow::new(move |result| {
                                         let Some(raw) = result else { return };
 
-                                        let mut new_config = config_clone.clone();
+                                        let hachimi = Hachimi::instance();
+                                        let mut new_config = hachimi.config.load().as_ref().clone();
 
                                         #[cfg(target_os = "windows")]
                                         { new_config.windows.menu_open_key = raw; }
@@ -3545,6 +3555,8 @@ impl Window for FirstTimeSetupWindow {
                                         { new_config.android.menu_open_key = raw; }
 
                                         save_and_reload_config(new_config);
+
+                                        *keybind_slot.lock().unwrap() = Some(raw);
                                     })));
                                 });
                             }
