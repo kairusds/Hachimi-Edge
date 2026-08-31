@@ -37,7 +37,6 @@ mod InputSystemManager;
 mod BackKeyInputManager;
 #[cfg(target_os = "windows")]
 pub mod WindowsGamepadControl;
-#[cfg(target_os = "windows")]
 pub mod TapEffectController;
 mod TrainingParamChangePlate;
 mod SingleModeUtils;
@@ -232,6 +231,7 @@ pub fn init() {
     PartsCharaMessageBase::init(image);
     SceneManager::init(image);
     LowResolutionCamera::init(image);
+    TapEffectController::init(image);
 
     #[cfg(target_os = "windows")]
     {
@@ -240,7 +240,6 @@ pub fn init() {
         InputSystemManager::init(image);
         BackKeyInputManager::init(image);
         WindowsGamepadControl::init(image);
-        TapEffectController::init(image);
         PaymentUtility::init(image);
         Connecting::init(image);
         DownloadManager::init(image);
