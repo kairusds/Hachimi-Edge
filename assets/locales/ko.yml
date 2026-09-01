@@ -142,9 +142,10 @@ config_editor:
   gameplay_tab: "\uf11b 게임"
   language: "언어"
   restore_defaults: "기본값으로 되돌리기"
-  disable_overlay: "그래픽 사용자 인터페이스 비활성화: >-
+  disable_overlay: "그래픽 사용자 인터페이스 비활성화"
+  disable_overlay_warning: >-
     이는 흔히 gui라고 칭해지는 그래픽 사용자 인터페이스를 비활성화 합니다,
-    즉 이후에는 클라이언트를 뜯어 직접 confih.json을 txt편집기를 이용해 편집하지 않는 이상 고급 설정을 바꾸실수 없습니다.
+    즉 이후에는 클라이언트를 뜯어 직접 config.json을 txt편집기를 이용해 편집하지 않는 이상 고급 설정을 바꾸실수 없습니다.
   ipv4_only: "IP6 비활성"
   meta_index_url: "번역 파일 배포 목록 출처"
   debug_mode: "오류 수정 모드"
