@@ -4,12 +4,24 @@ use fnv::{FnvHashMap, FnvHashSet};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
+use crate::il2cpp::{symbols::GCHandle,types::Il2CppString};
+
 use super::{Error, Hachimi};
 
 pub struct SugoiClient {
     agent: ureq::Agent,
     url: String,
     request_lock: Mutex<()>,
+}
+
+pub struct StringInfo {
+    pub str_handle: GCHandle,
+    pub str: String
+}
+impl StringInfo {
+    pub fn object(&self) -> *mut Il2CppString {
+        self.str_handle.target() as _
+    }
 }
 
 static INSTANCE: Lazy<Arc<SugoiClient>> = Lazy::new(|| {
