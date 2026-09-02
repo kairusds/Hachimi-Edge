@@ -1,6 +1,9 @@
-name: Check Pull Request
+name: Clippy Check
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
