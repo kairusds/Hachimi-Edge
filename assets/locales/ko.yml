@@ -63,7 +63,7 @@ menu:
   danger_zone_heading: "\uf071 개발자 웁션"
   danger_zone_warning: "게임에 문제를 일으키거나 의도하지 않은 일이 일어날수 있습니다. 주의하세요!"
   soft_restart: "\uf021 게임 재시작(타이틀 화면으로)"
-  open_in_game_browser: "\uf0ac 인게임 브하우져 열기"
+  open_in_game_browser: "\uf0ac 인게임 브라우져 열기"
   toggle_game_ui: "\uf06e 게임 ui 크기"
   discord_rpc: "Discord RPC"
   edit_excludes: "\uf040 예외 설정"
