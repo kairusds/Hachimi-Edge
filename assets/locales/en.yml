@@ -130,6 +130,10 @@ license:
   ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
   font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
   font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
+  font_pretendard: |
+    Pretendard: Copyright (c) 2021, Kil Hyung-jin (https://github.com/orioncactus/pretendard), with Reserved Font Name 'Pretendard'.
+    - Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. Source is a trademark of Adobe in the United States and/or other countries.
+    - Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS), with Reserved Font Name 'M PLUS 1'.
   ofl_notice: "SIL OFL 1.1 License Text"
   font_alibaba_header: "Alibaba PuHuiTi 3.0"
   font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
