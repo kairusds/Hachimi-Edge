@@ -30,6 +30,7 @@ jobs:
           filters: |
             code_changed:
               - 'src/**'
+              - 'assets/locale/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'build.rs'
