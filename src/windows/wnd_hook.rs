@@ -1,15 +1,16 @@
 use std::{os::raw::c_uint, ptr, sync::{Arc, atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, AtomicUsize}}};
 
 use rust_i18n::t;
-use windows::{core::{w, HSTRING}, Win32::{
+use windows::{core::{w, BOOL, HSTRING}, Win32::{
     Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
     Graphics::Gdi::{RedrawWindow, RDW_ALLCHILDREN, RDW_FRAME, RDW_INVALIDATE, RDW_UPDATENOW},
-    System::{LibraryLoader::GetModuleHandleW, Threading::GetCurrentThreadId},
+    System::{LibraryLoader::GetModuleHandleW, Threading::{GetCurrentProcessId, GetCurrentThreadId}},
     UI::{
         Input::{Ime::ISC_SHOWUICOMPOSITIONWINDOW, KeyboardAndMouse::VK_RETURN},
         WindowsAndMessaging::{
-            CallNextHookEx, CallWindowProcW, DefWindowProcW, FindWindowW, GetClientRect, GetWindowLongPtrW, GetWindowRect,
-            SetWindowLongPtrW, SetWindowPos, SetWindowsHookExW, UnhookWindowsHookEx, SetWindowTextW,
+            CallNextHookEx, CallWindowProcW, DefWindowProcW, EnumWindows, GetClassNameW, GetClientRect, GetWindowLongPtrW,
+            GetWindowRect, GetWindowThreadProcessId, SetWindowLongPtrW, SetWindowPos, SetWindowsHookExW,
+            UnhookWindowsHookEx, SetWindowTextW,
             GWLP_WNDPROC, HCBT_MINMAX, HHOOK, SW_RESTORE, WH_CBT, WM_CLOSE, WM_KEYDOWN, WM_SYSKEYDOWN, WNDPROC,
             WM_IME_SETCONTEXT, WM_IME_NOTIFY, WM_ACTIVATE, WA_INACTIVE, GWL_STYLE, SIZE_MAXIMIZED,
             SIZE_MINIMIZED,
@@ -37,9 +38,53 @@ static RESIZE_WAIT_FOR_END_FRAME_ADDR: AtomicUsize = AtomicUsize::new(0);
 static FREEFORM_LANDSCAPE_CLOSE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 static SET_WINDOW_LONG_PTR_W_HOOK_ID: AtomicBool = AtomicBool::new(false);
 static SET_WINDOW_LONG_PTR_A_HOOK_ID: AtomicBool = AtomicBool::new(true);
+static WND_HOOK_INIT_DONE: AtomicBool = AtomicBool::new(false);
+
+fn find_game_window() -> HWND {
+    static FOUND_HWND: AtomicIsize = AtomicIsize::new(0);
+
+    fn wnd_class_is(name: &[u16]) -> bool {
+        let expected = w!("UnityWndClass");
+        unsafe {
+            let mut p = expected.0;
+            for &c in name {
+                if *p == 0 || *p != c {
+                    return false;
+                }
+                p = p.add(1);
+            }
+            *p == 0
+        }
+    }
+
+    extern "system" fn enum_proc(hwnd: HWND, _lparam: LPARAM) -> BOOL {
+        unsafe {
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            if pid != GetCurrentProcessId() {
+                return BOOL(1);
+            }
+
+            let mut class_name = [0u16; 32];
+            let len = GetClassNameW(hwnd, &mut class_name) as usize;
+            if len == 0 || !wnd_class_is(&class_name[..len]) {
+                return BOOL(1);
+            }
+
+            FOUND_HWND.store(hwnd.0 as isize, atomic::Ordering::Release);
+            BOOL(0) // stop enumeration
+        }
+    }
+
+    FOUND_HWND.store(0, atomic::Ordering::Release);
+    unsafe {
+        let _ = EnumWindows(Some(enum_proc), LPARAM(0));
+        HWND(FOUND_HWND.load(atomic::Ordering::Acquire) as *mut _)
+    }
+}
 
 pub fn get_target_hwnd() -> HWND {
-    HWND(TARGET_HWND.load(atomic::Ordering::Relaxed) as *mut _)
+    HWND(TARGET_HWND.load(atomic::Ordering::Acquire) as *mut _)
 }
 
 pub fn get_client_size() -> Option<(i32, i32)> {
@@ -628,26 +673,42 @@ extern "system" fn cbt_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESU
 
 pub fn init() {
     unsafe {
-        let hachimi = Hachimi::instance();
-        let game = &hachimi.game;
-
-        let window_name = if game.region == Region::Japan && game.is_steam_release {
-            // lmao
-            w!("UmamusumePrettyDerby_Jpn")
-        }
-        else if game.region == Region::Taiwan {
-            w!("賽馬娘Pretty Derby")
-        } else {
-            // global technically has "Umamusume" as its title but this api
-            // is case insensitive so it works. why am i surprised
-            w!("umamusume")
-        };
-        let hwnd = FindWindowW(w!("UnityWndClass"), window_name).unwrap_or_default();
+        let hwnd = find_game_window();
         if hwnd.0 == ptr::null_mut() {
-            error!("Failed to find game window");
+            warn!("Game window not found yet, waiting for it to be created");
+            std::thread::spawn(|| {
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+                loop {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    let hwnd = find_game_window();
+                    if hwnd.0 != ptr::null_mut() {
+                        TARGET_HWND.store(hwnd.0 as isize, atomic::Ordering::Release);
+                        Thread::main_thread().schedule(|| {
+                            init_hwnd(get_target_hwnd());
+                        });
+                        return;
+                    }
+                    if std::time::Instant::now() >= deadline {
+                        error!("Timed out waiting for the game window");
+                        return;
+                    }
+                }
+            });
             return;
         }
-        TARGET_HWND.store(hwnd.0 as isize, atomic::Ordering::Relaxed);
+        init_hwnd(hwnd);
+    }
+}
+
+unsafe fn init_hwnd(hwnd: HWND) {
+    if WND_HOOK_INIT_DONE.swap(true, atomic::Ordering::AcqRel) {
+        return;
+    }
+
+    unsafe {
+        let hachimi = Hachimi::instance();
+
+        TARGET_HWND.store(hwnd.0 as isize, atomic::Ordering::Release);
 
         let title = hachimi.config.load().windows.custom_title_name.clone();
         if let Some(t) = title {
@@ -669,32 +730,45 @@ pub fn init() {
 
         info!("Subclassing game window");
         let wnd_proc_orig = SetWindowLongPtrW(hwnd, GWLP_WNDPROC, wnd_proc as *const () as isize);
-        if wnd_proc_orig == 0 {
-            error!("Failed to subclass game window");
-        } else {
+        let actual_wndproc = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
+
+        if wnd_proc_orig != 0 {
             WNDPROC_ORIG.store(wnd_proc_orig, atomic::Ordering::Release);
             GAME_WNDPROC_ORIG.store(wnd_proc_orig, atomic::Ordering::Release);
+        }
 
-            let actual_wndproc = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
-            if actual_wndproc != 0 && actual_wndproc != wnd_proc as *const () as isize {
-                info!("SetWindowLongPtrW was swallowed, falling back to inline WndProc hook");
-                match hachimi.interceptor.hook(
-                    actual_wndproc as usize,
-                    wnd_proc as *const () as _) {
-                    Ok(_) => {
-                        let trampoline = hachimi.interceptor.get_trampoline_addr(
-                            wnd_proc as *const () as usize
-                        );
-                        WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
-                        GAME_WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
-                        WNDPROC_INLINE_HOOKED.store(true, atomic::Ordering::Release);
-                    }
-                    Err(e) => {
-                        error!("Failed to inline-hook window procedure: {}", e);
-                    }
+        let subclass_ok = if actual_wndproc != 0 && actual_wndproc != wnd_proc as *const () as isize {
+            if wnd_proc_orig == 0 {
+                info!("SetWindowLongPtrW returned 0 and the WndProc was not replaced (foreign hook)");
+            }
+            info!("SetWindowLongPtrW was swallowed, falling back to inline WndProc hook");
+            match hachimi.interceptor.hook(
+                actual_wndproc as usize,
+                wnd_proc as *const () as _) {
+                Ok(_) => {
+                    let trampoline = hachimi.interceptor.get_trampoline_addr(
+                        wnd_proc as *const () as usize
+                    );
+                    WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
+                    GAME_WNDPROC_ORIG.store(trampoline as isize, atomic::Ordering::Release);
+                    WNDPROC_INLINE_HOOKED.store(true, atomic::Ordering::Release);
+                    true
+                }
+                Err(e) => {
+                    error!("Failed to inline-hook window procedure: {}", e);
+                    false
                 }
             }
+        } else if wnd_proc_orig == 0 && actual_wndproc == 0 {
+            error!("Failed to subclass game window");
+            false
+        } else {
+            // Either the install succeeded, or it was swallowed while the
+            // WndProc already points at Hachimi's wnd_proc.
+            true
+        };
 
+        if subclass_ok {
             if Hachimi::instance().game.region != Region::Global {
                 if let Ok(user32) = GetModuleHandleW(w!("user32.dll")) {
                     let set_window_long_ptr_w_addr = utils::get_proc_address(user32, c"SetWindowLongPtrW");

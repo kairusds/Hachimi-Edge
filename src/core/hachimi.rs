@@ -755,6 +755,8 @@ pub struct Config {
     #[serde(flatten)]
     pub caption: CaptionConfig,
     #[serde(default)]
+    pub disable_tap_effect: bool,
+    #[serde(default)]
     pub language: Language,
     #[serde(default = "Config::default_meta_index_url")]
     pub meta_index_url: String,

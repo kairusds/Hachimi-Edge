@@ -230,6 +230,7 @@ config_editor:
   caption_color: "Captions Text Color"
   caption_outline_color: "Captions Outline Color"
   caption_outline_size: "Captions Outline Size"
+  disable_tap_effect: "Disable Tap Effect"
   discord_rpc: "Discord RPC"
   enable_smtc: "Enable Windows Media Controls"
   menu_open_key: "Open menu hotkey"

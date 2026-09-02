@@ -8,15 +8,36 @@ permissions:
   attestations: write
 
 jobs:
-  build-android:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: android
+            target: aarch64-linux-android
+          - name: windows
+            target: x86_64-pc-windows-msvc
+
+    name: Build (${{ matrix.name }})
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
-    steps:
-      - uses: actions/checkout@v6
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@v2
 
-      - name: Setup and Patch Dependencies
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> build
+          prefix-key: ${{ matrix.target }}
+
+############### ANDROID ##################
+
+      - name: Setup and Patch Dependencies (Android)
+        if: matrix.target == 'aarch64-linux-android'
         run: |
           pushd ..
           git clone --revision 44cdd653e2317d300fb8a6c9c36b03f23991e803 https://github.com/emilk/egui.git
@@ -28,106 +49,103 @@ jobs:
           echo "egui_extras = { path = '../egui/crates/egui_extras' }" >> Cargo.toml
 
       - name: Grant execute permission to build script
+        if: matrix.target == 'aarch64-linux-android'
         run: chmod +x tools/android/build.sh
-      - uses: dtolnay/rust-toolchain@stable
+
       - name: Build Hachimi for Android
+        if: matrix.target == 'aarch64-linux-android'
         run: |
-          rustup target add aarch64-linux-android
           RELEASE=1 ./tools/android/build.sh
         env:
           HACHIMI_IGNORE_DIRTY: "true"
 
       - name: Attest Android
+        if: matrix.target == 'aarch64-linux-android'
         uses: actions/attest@v4
         with:
           subject-path: |
             build/*.so
             build/sha256.json
 
-      - name: Upload Android binaries
-        uses: actions/upload-artifact@v7
-        with:
-          name: android
-          path: |
-            build/*.so
-            build/sha256.json
-          
-  build-windows:
-    runs-on: windows-latest
-    if: "!contains(github.event.head_commit.message, '[ci skip]')"
-    steps:
-      - uses: actions/checkout@v6
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@v2
+############### WINDOWS ##################
 
-      - name: Setup and Patch Dependencies
-        shell: powershell
+      - name: Setup and Patch Dependencies (Windows)
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         run: |
           pushd ..
-
           git clone --revision 44cdd653e2317d300fb8a6c9c36b03f23991e803 https://github.com/emilk/egui.git
           cd egui
-
-          $File = "crates/egui/src/containers/combo_box.rs"
-          (Get-Content $File) -replace 'ui.set_min_width\(ui.available_width\(\)\);', '// ui.set_min_width(ui.available_width());' | Set-Content $File
-
+          sed -i 's/ui.set_min_width(ui.available_width());/\/\/ ui.set_min_width(ui.available_width());/' crates/egui/src/containers/combo_box.rs
           cd ..
-
           git clone --revision 903043939a076dc81e122a1c8451755bfb3979c8 https://github.com/Nekomaru-PKU/egui-directx11.git
-          cd egui-directx11
-
-          $fxc = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "fxc.exe" | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1
-          if (-not $fxc) { Write-Error "fxc.exe not found"; exit 1 }
-
-          & $fxc.FullName /nologo /O3 /T vs_4_0 /E vs_egui /Fo shaders/vs_egui.bin shaders/egui.hlsl
-          & $fxc.FullName /nologo /O3 /T ps_4_0 /E ps_egui /Fo shaders/ps_egui.bin shaders/egui.hlsl
-
           popd
 
-          Add-Content -Path "Cargo.toml" -Value "`n"
-          $patches = @(
-            "egui-directx11 = { path = '../egui-directx11' }",
-            "egui = { path = '../egui/crates/egui' }",
-            "egui_extras = { path = '../egui/crates/egui_extras' }"
-          )
-          Add-Content -Path "Cargo.toml" -Value $patches
+          cat <<EOF >> Cargo.toml
 
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build Hachimi for Windows
+          egui-directx11 = { path = '../egui-directx11' }
+          egui = { path = '../egui/crates/egui' }
+          egui_extras = { path = '../egui/crates/egui_extras' }
+          EOF
+
+      - name: Setup Windows MSVC Cross-Compile Tools
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         run: |
-          cargo build --target x86_64-pc-windows-msvc --target-dir build --release
-          move build\x86_64-pc-windows-msvc\release\hachimi.dll build
+          sudo apt install -y llvm lld
+          sudo ln -sf /usr/bin/llvm-ar /usr/local/bin/llvm-lib
+
+      - name: Install cargo-xwin
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-xwin@0.23.1
+
+      - name: Cache cargo-xwin MSVC CRT & Windows SDK
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/cargo-xwin
+          key: ${{ runner.os }}-xwin-cache-v1
+
+      - name: Build Hachimi for Windows
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        run: |
+          mkdir -p build
+          cargo xwin build --target ${{ matrix.target }} --target-dir build --release
+          mv build/${{ matrix.target }}/release/hachimi.dll build/
         env:
           HACHIMI_IGNORE_DIRTY: "true"
 
       - name: Build Cellar
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         run: |
           git clone --depth 1 --revision d4c3f79801c8131e26df585766c35e5ce11ec57f https://github.com/Hachimi-Hachimi/Cellar
           cd Cellar
-          cargo build --target x86_64-pc-windows-msvc --target-dir build --release
-          move build\x86_64-pc-windows-msvc\release\cellar.dll build
+          cargo xwin build --target ${{ matrix.target }} --target-dir build --release
+          mv build/${{ matrix.target }}/release/cellar.dll build/
           cd ..
 
       - name: Check out FunnyHoney
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         run: git clone --depth 1 --revision 418b5348bd9b7376cc7485c591ca69d49aa4d805 https://gitlab.com/LeadRDRK/FunnyHoney.git
 
       - name: Build Installer
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         run: |
           git clone --depth 1 --revision 0387eb987aa9bc446415844e321125dff16e210f https://github.com/teiosteppa/Installer
-          copy build\hachimi.dll Installer
-          move Cellar\build\cellar.dll Installer
-          move FunnyHoney\FunnyHoney.exe Installer
+          cp build/hachimi.dll Installer/
+          mv Cellar/build/cellar.dll Installer/
+          mv FunnyHoney/FunnyHoney.exe Installer/
           cd Installer
-          cargo build --target x86_64-pc-windows-msvc --target-dir build --release --features compress_bin
+          cargo xwin build --target ${{ matrix.target }} --target-dir build --release --features compress_bin
           cd ..
-          move Installer\build\x86_64-pc-windows-msvc\release\hachimi_installer.exe build
+          mv Installer/build/${{ matrix.target }}/release/hachimi_installer.exe build/
 
       - name: Get checksums for Windows binaries
-        shell: bash
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         run: |
           cargo install b3sum --locked --version 1.8.6
-          DLL_HASH=($(b3sum build/hachimi.dll | tr -d '\r'))
-          EXE_HASH=($(b3sum build/hachimi_installer.exe | tr -d '\r'))
+          DLL_HASH=$(b3sum --no-names build/hachimi.dll)
+          EXE_HASH=$(b3sum --no-names build/hachimi_installer.exe)
           cat <<EOF > build/blake3.json
           {
             "hachimi.dll": "$DLL_HASH",
@@ -136,6 +154,7 @@ jobs:
           EOF
 
       - name: Attest Windows
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         uses: actions/attest@v4
         with:
           subject-path: |
@@ -143,7 +162,19 @@ jobs:
             build/hachimi.dll
             build/hachimi_installer.exe
 
+############### ARTIFACTS ##################
+
+      - name: Upload Android binaries
+        if: matrix.target == 'aarch64-linux-android'
+        uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: |
+            build/*.so
+            build/sha256.json
+
       - name: Upload Windows binaries
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -153,19 +184,17 @@ jobs:
             build/hachimi_installer.exe
 
   create-release:
-    needs: [build-android, build-windows]
+    needs: build
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Get release version
         id: get_info
         run: |
-          VERSION=$(curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/main/Cargo.toml" | \
-            awk '/^\[package\]/{flag=1} flag && /^version/{print $3; exit}' | \
-            tr -d '"')
+          VERSION=$(awk '/^\[package\]/{flag=1} flag && /^version/{print $3; exit}' Cargo.toml | tr -d '"')
           echo "RELEASE_VERSION=v$VERSION" >> $GITHUB_ENV
 
       - name: Download all build artifacts
@@ -179,7 +208,7 @@ jobs:
             git tag $LATEST_TAG
           fi
 
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${LATEST_TAG}^")
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${LATEST_TAG}^" 2>/dev/null || true)
           if [ -z "$PREVIOUS_TAG" ]; then
             PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
           fi
@@ -219,7 +248,7 @@ jobs:
           LATEST_TAG: ${{ env.RELEASE_VERSION }}
 
       - name: Upload binaries to a release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           body_path: CHANGELOG.md
           files: |

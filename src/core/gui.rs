@@ -1205,7 +1205,7 @@ impl Gui {
                         ui.heading(t!("menu.graphics_heading"));
                         ui.horizontal(|ui| {
                             ui.label(t!("menu.fps_label"));
-                            let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=1000));
+                            let res = ui.add(egui::Slider::new(&mut self.menu_fps_value, 30..=690));
                             if res.lost_focus() || res.drag_stopped() {
                                 hachimi.target_fps.store(self.menu_fps_value, atomic::Ordering::Relaxed);
                                 Thread::main_thread().schedule(|| {
@@ -2731,7 +2731,7 @@ impl ConfigEditor {
         // Graphics tab
         if show_all || tab == ConfigEditorTab::Graphics {
             if should_show_option(search, &t!("config_editor.target_fps")) {
-                Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=1000);
+                Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=690);
             }
 
             if should_show_option(search, &t!("config_editor.virtual_resolution_multiplier")) {
@@ -3188,6 +3188,12 @@ impl ConfigEditor {
                     ui.end_row();
                 }
             }
+
+            if should_show_option(search, &t!("config_editor.disable_tap_effect")) {
+                ui.label(t!("config_editor.disable_tap_effect"));
+                ui.checkbox(&mut config.disable_tap_effect, "");
+                ui.end_row();
+            }
         }
         // Gameplay tab end
 
@@ -3391,7 +3397,8 @@ struct FirstTimeSetupWindow {
     index_request: Arc<AsyncRequest<Vec<RepoInfo>>>,
     current_page: usize,
     current_tl_repo: Option<String>,
-    has_auto_selected: bool
+    has_auto_selected: bool,
+    pending_keybind: Arc<Mutex<Option<RawKeybind>>>
 }
 
 impl FirstTimeSetupWindow {
@@ -3404,7 +3411,8 @@ impl FirstTimeSetupWindow {
             index_request: Arc::new(tl_repo::new_meta_index_request()),
             current_page: 0,
             current_tl_repo: None,
-            has_auto_selected: false
+            has_auto_selected: false,
+            pending_keybind: Arc::new(Mutex::new(None))
         }
     }
 }
@@ -3413,6 +3421,13 @@ impl Window for FirstTimeSetupWindow {
     fn run(&mut self, ctx: &egui::Context) -> bool {
         let mut open = true;
         let mut page_open = true;
+
+        if let Some(raw) = self.pending_keybind.lock().unwrap().take() {
+            #[cfg(target_os = "windows")]
+            { self.config.windows.menu_open_key = raw; }
+            #[cfg(target_os = "android")]
+            { self.config.android.menu_open_key = raw; }
+        }
 
         new_window(ctx, self.id, t!("first_time_setup.title"))
         .open(&mut open)
@@ -3515,7 +3530,7 @@ impl Window for FirstTimeSetupWindow {
                         if let Some(ref mut fps) = self.config.target_fps {
                             ui.horizontal(|ui| {
                                 ui.label("");
-                                let _ = ui.add(egui::Slider::new(fps, 30..=1000));
+                                let _ = ui.add(egui::Slider::new(fps, 30..=690));
                             });
                         }
                         ui.horizontal(|ui| {
@@ -3530,14 +3545,15 @@ impl Window for FirstTimeSetupWindow {
                             ui.label(crate::android::gui_impl::keymap::keycode_display_label(self.config.android.menu_open_key));
 
                             if ui.button(t!("bind_key")).clicked() {
-                                let config_clone = self.config.clone();
+                                let keybind_slot = self.pending_keybind.clone();
                                 std::thread::spawn(move || {
                                     let Some(gui_mutex) = Gui::instance() else { return };
                                     let mut gui = gui_mutex.lock().unwrap();
                                     gui.show_window(Box::new(SetKeybindWindow::new(move |result| {
                                         let Some(raw) = result else { return };
 
-                                        let mut new_config = config_clone.clone();
+                                        let hachimi = Hachimi::instance();
+                                        let mut new_config = hachimi.config.load().as_ref().clone();
 
                                         #[cfg(target_os = "windows")]
                                         { new_config.windows.menu_open_key = raw; }
@@ -3545,6 +3561,8 @@ impl Window for FirstTimeSetupWindow {
                                         { new_config.android.menu_open_key = raw; }
 
                                         save_and_reload_config(new_config);
+
+                                        *keybind_slot.lock().unwrap() = Some(raw);
                                     })));
                                 });
                             }
