@@ -404,10 +404,10 @@ tl_update_dialog:
   changelog_invalid: "파싱 오류"
 
 update_prompt_dialog:
-  title: "New update available"
+  title: "업데이트 가능"
   content: |
-    A new Hachimi update is available (%{version}). Do you want to install it?
-    The game will be restarted in order to apply the update.
+    하치미 패치의 새 업데이트가 있습니다 (%{version}). 설치할까요?
+    업데이트 적용을 위해 재시작합니다.
   android_content: |
     A new Hachimi Edge update is available (%{version}).
 
