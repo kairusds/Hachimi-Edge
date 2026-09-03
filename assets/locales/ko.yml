@@ -365,10 +365,10 @@ free_camera:
     * **D-Pad Down:** Previous body Part *(Follow Camera only)*
 
 excludes_editor:
-  title: "Excludes Editor"
-  no_paths_available: "No available paths to exclude"
-  saved: "Excludes saved successfully"
-  confirm_remove: "Are you sure you want to remove the exclude \"%{path}\"?"
+  title: "제외 설정"
+  no_paths_available: "제외할수 있는 경로가 없습니다."
+  saved: "저장되었습니다."
+  confirm_remove: "\"%{path}\"를 제거할까요?"
 
 change_translation_repo:
   title: "Change Translation Repo"
