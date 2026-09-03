@@ -199,10 +199,10 @@ config_editor:
   story_text_speed_multiplier: "스토리 배속"
   force_allow_dynamic_camera: "우마무스메 1인칭 시점 웁션 강제 활성화"
   free_camera: "Free Camera"
-  live_theater_allow_same_chara: "Live theater allow same chara"
+  live_theater_allow_same_chara: "라이브 다시보기에서 동일한 우마무스메 두명이상 배치 강제 활성화"
   physics_update_mode: "Physics update mode"
   cyspring_mono_uncap_frame_scale: "CySpring Mono Frame Scale Uncap"
-  disable_skill_name_translation: "Disable skill name translation"
+  disable_skill_name_translation: "스킬 이름 번역 끄기"
   hide_ingame_ui_hotkey: "Hide ingame UI hotkey"
   hide_ingame_ui_hotkey_info: >-
     This option allows a shortcut key to toggle the ingame UI.
@@ -210,10 +210,10 @@ config_editor:
     For PC/Android with keyboard, it's the Insert key by default and can be configured in the gui or config.
   hide_ingame_ui_hotkey_bind: "Hide ingame UI keybind"
   live_slider_always_show: "Always Show Live Slider"
-  live_playback_loop: "Loop Live Performances"
-  champions_live_show_text: "Override Champions Meeting Live Text"
-  champions_live_resource_id: "Champions Meeting Title"
-  champions_live_year: "Champions Meeting Year"
+  live_playback_loop: "라이브 반복 재생"
+  champions_live_show_text: "챔미 위닝 라이브 고증 변경"
+  champions_live_resource_id: "대회 이름(별자리,거리)"
+  champions_live_year: "개최년도"
   captions: "Captions"
   caption_lines_char_count: "Captions Characters per line"
   caption_font_size: "Captions Font Size"
@@ -234,12 +234,12 @@ config_editor:
   skill_info_dialog: "Custom skill info dialog"
   homescreen_bgseason: "Homescreen Background Season"
   shadow_resolution: "Shadow Resolution"
-  hide_now_loading: "Hide Now Loading screen"
+  hide_now_loading: "로딩 화면 미표시"
   ui_loading_show_orientation_guide: "Hide now loading orientation guide"
   replace_to_builtin_font: "Use default game font"
   custom_title_name: "Custom window title"
   ingame_webview: "Open Umamusume links (news, help, gacha, ...) in webview"
-  trainer_live_landscape: "Landscape mode on Meni Shuki live"
+  trainer_live_landscape: "Meni Shuki live에서 landscape 모드로 보기"
   force_orientation_mode: "Force orientation mode"
 
 theme_editor:
