@@ -395,13 +395,13 @@ translation_repo_info:
   links: "주소들"
 
 tl_update_dialog:
-  title: "New update available"
-  content: "A new translation update is available (%{size}). Do you want to download it?"
-  content_zip_warning: "A new translation update is available (%{changed_size}). This update will download the full archive (%{download_size}) instead."
-  show_changelog: "Show Changelog"
-  changelog_title: "Changelog"
-  changelog_fetch_failed: "Failed to fetch changelog"
-  changelog_invalid: "Changelog content is not valid plaintext"
+  title: "업데이트 가능"
+  content: "새 업데이트가 있습니다 (%{size}). 다운로드 하시겠습니까?"
+  content_zip_warning: "새 업데이트가 있습니다 (%{changed_size}). 전체 파일을 내려받습니다. (%{download_size}) "
+  show_changelog: "변경사항 보기"
+  changelog_title: "번경사항"
+  changelog_fetch_failed: "통신오류"
+  changelog_invalid: "파싱 오류"
 
 update_prompt_dialog:
   title: "New update available"
