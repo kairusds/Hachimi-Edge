@@ -169,7 +169,7 @@ config_editor:
     sugoi toolkit url을 config.json에 입력하세요, 
     이 작업 없이는 추가적인 번역은 일어나지 않고 오히려 게임 성능만 저하시킬 것입니다.
     서버가 없다면 끈 상태를 유지해 주세요.
-  auto_translate_ui: "Auto translate UI (MIGHT BREAK UIs)"
+  auto_translate_ui: "UI 자동 번역 (UI가 깨질수도 있음)"
   taskbar_show_progress_on_download: "Taskbar progress on download"
   taskbar_show_progress_on_connecting: "Taskbar progress on connecting"
   taskbar_show_progress_on_schedule_book: "Taskbar progress in Trainer's Agenda"
