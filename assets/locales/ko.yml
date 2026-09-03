@@ -387,12 +387,12 @@ add_translation_repo:
   already_downloaded: "(이미 저장됨)"
 
 translation_repo_info:
-  details_title: "Translation Repo Details"
-  homepage: "Homepage"
-  maintainer: "Maintainer"
-  contributors: "Contributors"
-  view_contributors: "View Contributors"
-  links: "Links"
+  details_title: "번역 파일 배포 상세정보"
+  homepage: "누리소통망"
+  maintainer: "개발자"
+  contributors: "기여자"
+  view_contributors: "기여 보니"
+  links: "주소들"
 
 tl_update_dialog:
   title: "New update available"
