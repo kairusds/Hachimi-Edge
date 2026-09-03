@@ -197,7 +197,7 @@ config_editor:
   window_always_on_top: "Window always on top"
   story_choice_auto_select_delay: "Story choice auto select delay"
   story_text_speed_multiplier: "Story text speed multiplier"
-  force_allow_dynamic_camera: "Force allow dynamic camera"
+  force_allow_dynamic_camera: "우마무스메 1인칭 시점 웁션 강제 활성화"
   free_camera: "Free Camera"
   live_theater_allow_same_chara: "Live theater allow same chara"
   physics_update_mode: "Physics update mode"
