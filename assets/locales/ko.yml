@@ -416,8 +416,8 @@ update_prompt_dialog:
     Note: apk파일은 이미 있는것을 사용하시면 됩니다!
 
 updating_dialog:
-  title: "Updating"
-  content: "Downloading update, the game will restart shortly..."
+  title: "업데이트중"
+  content: "다운로드중.잠시후 게임이 재시작 됩니다..."
 
 steam_overlay_conflict_dialog:
   title: "Notice"
