@@ -382,9 +382,9 @@ change_translation_repo:
   remove_in_progress: "한번에 한개의 파일만 지울수 있습니다.잠시만 기다려 주세요."
 
 add_translation_repo:
-  title: "Add Translation Repository"
-  select_translation_repo: "Select a translation repo:"
-  already_downloaded: "(already downloaded)"
+  title: "번역 파일 배포 추가"
+  select_translation_repo: "번역 파일 배포를 고르세요:"
+  already_downloaded: "(이미 저장됨)"
 
 translation_repo_info:
   details_title: "Translation Repo Details"
