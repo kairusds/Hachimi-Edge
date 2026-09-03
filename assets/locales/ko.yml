@@ -165,13 +165,10 @@ config_editor:
   ipc_listen_all: "IPC 항상 허용"
   auto_translate_stories: "스토리 자동번역"
   auto_tl_warning: >-
-    Note: This feature will not work on its own; requires external setup.
-    Enabling this option requires a compatible translation server to be
-    installed on your computer or a cloud service exposing an API such as
-    py3translationServer or Sugoi Toolkit. Without a server running, no
-    additional translation will happen and gameplay may be affected.
-    Please leave this option disabled if you do not have a translation
-    server available.
+    Note: 이 설정은 스스로 작동하지 못합니다.
+    sugoi toolkit url을 config.json에 입력하세요, 
+    이 작업 없이는 추가적인 번역은 일어나지 않고 오히려 게임 성능만 저하시킬 것입니다.
+    서버가 없다면 끈 상태를 유지해 주세요.
   auto_translate_ui: "Auto translate UI (MIGHT BREAK UIs)"
   taskbar_show_progress_on_download: "Taskbar progress on download"
   taskbar_show_progress_on_connecting: "Taskbar progress on connecting"
