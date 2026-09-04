@@ -1,10 +1,8 @@
-hachimi: "Hachimi Edge"
-
 windows:
   menu_open_key: "Kanang arrow"
 
 android:
-  menu_open_key: "Vol Up + Vol Down\n\uf25a o i-tap nang tatlong beses ang top-left ng screen"
+  menu_open_key: "Vol Up + Vol Down\n\uf25a o i-tap nang tatlong beses\nang kaliwang itaas na bahagi ng screen"
 
 splash_sub: "\uf015 Pindutin ang %{open_key_str} para buksan ang menu."
 loading_label: "Naglo-load..."
@@ -22,7 +20,7 @@ enable: "I-enable"
 info: "Impormasyon"
 warning: "Babala"
 confirm_dialog_title: "Kumpirmahin"
-soft_restart_confirm_content: "Gusto mo ba talaga i-soft restart ang laro?"
+soft_restart_confirm_content: "Gusto mo bang i-soft restart ang laro?"
 in_game_browser_confirm_content: "Gusto mo bang buksan ang in-game na browser?"
 remove: "Tanggalin"
 edit: "I-edit"
@@ -48,7 +46,6 @@ menu:
   soft_restart: "\uf021 I-soft restart"
   open_in_game_browser: "\uf0ac Buksan ang in-game na browser"
   toggle_game_ui: "\uf06e I-toggle ang game UI"
-  discord_rpc: "Discord RPC"
   edit_excludes: "\uf040 I-edit ang Excludes"
   change_translation_repo: "\uf0c1 Baguhin ang Translation Repo"
 
@@ -92,6 +89,10 @@ first_time_setup:
   select_translation_repo: "Pumili ng translations repo:"
   no_compatible_repo: "Walang mga repo na compatible sa game version na ito."
   skip_translation: "Laktawan ang translations"
+  common_settings_heading: "Mga Karaniwang Settings"
+  common_settings_content: >-
+    Ito ang ilan sa mga karaniwang ginagamit na setting na baka gusto
+    mong i-configure. Maaari mo silang palitan mamaya sa Config Editor.
   complete_heading: "Tapos na!"
   complete_content: >-
     Pindutin ang "Tapos na" para i-save ang configuration.
@@ -124,8 +125,8 @@ config_editor:
     Idi-disable nito ang Hachimi overlay pagkatapos mo i-restart ang laro.
     na nangangahulugan na HINDI mo maa-access ang Config Editor pagkatpos nito.
     Kapag hindi ito sinasadya, isara ang dialog na ito at I-DISABLE ang opsyon.
-  ipv4_only: "IPv4 na ureq lamang"
-  meta_index_url: "URL ng Translation Meta"
+  ipv4_only: "I-disable ang IPv6 sa Updater"
+  meta_index_url: "URL ng Translation Metadata"
   enable_file_logging: "I-enable ang logging sa file"
   apply_atlas_workaround: "I-apply ang TL atlas workaround"
   skip_first_time_setup: "Laktawan ang first-time setup"
@@ -192,11 +193,12 @@ config_editor:
   ui_loading_show_orientation_guide: "Itago ang oryentasyon sa loading screen"
   replace_to_builtin_font: "Gamitin ang default na font ng laro"
   custom_title_name: "Pasadyang Window Title"
-  live_slider_always_show: "Palaging ipakita ang slider sa concert"
   recommended_ui_scale: "Ilapat ang recommended na UI scale"
   ingame_webview: "Buksan ang mga link ng Umamusume (balita, tulong, gacha, atbp.) sa webview"
   trainer_live_landscape: "Pilitin ang landscape mode sa concert na \"Meni Shuki Rush!\""
   force_orientation_mode: "Pilitin ang orientation mode"
+  live_slider_always_show: "Palaging ipakita ang slider sa Live Concert"
+  race_stat_hud_toggle_key: "Keybind sa pag-toggle ng Race Stat HUD"
 
 free_camera:
   settings_title: "Mga Setting sa Free Camera"
@@ -291,7 +293,7 @@ change_translation_repo:
   browse_repositories: "Mag-browse ng Mga Repository"
   active: "Aktibo"
   confirm_remove: "Gusto mo bang tanggalin ang \"%{name}\"?"
-  cannot_remove_active: "Hindi maaaring burahin ang kasalukuyang aktibong repo. Mag-switch muna sa ibang repo."
+  cannot_remove_active: "Hindi maaaring burahin ang kasalukuyang aktibong repo. Magpalit muna sa ibang repo."
   removing: "Tinatanggal ang translation repo..."
   remove_in_progress: "Hindi mabura ang repo. May ginagawa pang pagtanggal."
 
@@ -307,7 +309,7 @@ translation_repo_info:
   links: "Mga Link"
 
 theme_editor:
-  title: "Editor ng GUI Theme"
+  title: "Editor ng Tema sa GUI"
   ui_accent_color: "Kulay ng Accent"
   ui_window_fill: "Kulay ng Window Background"
   ui_panel_fill: "Kulay ng Panel Background"
@@ -322,8 +324,8 @@ set_keybind:
 
 tl_update_dialog:
   title: "May bagong update"
-  content: "May bagong update sa translations (%{size}). Gusto mo ba ito i-download?"
-  content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}) sa halip."
+  content: "May bagong update sa translations (%{size}). Gusto mo ba itong i-download?"
+  content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}) sa halip. Gusto mo ba itong i-download?"
   show_changelog: "Ipakita ang Mga Pagbabago"
   changelog_title: "Mga Pagbabago"
   changelog_fetch_failed: "Hindi makuha ang changelog"
@@ -351,3 +353,41 @@ steam_overlay_conflict_dialog:
     huwag pansinin ang mensaheng ito at pindutin ang "Hindi". Kung hindi ito gumana, pindutin ang "Oo" para pansamantalang i-disable
     ang Hachimi overlay. Isasara nito ang laro, at sa susunod na magsimula ang laro, hindi na ipapakita ang Hachimi overlay at
     makakabili ka na. Pagkatapos nito, maaari mong i-restart muli ang laro para i-enable ulit ang Hachimi overlay.
+
+race_stat_hud:
+  open_race_mechanics_confirm: "Gusto mo bang buksan ang browser para ipakita ang dokumentasyon tungkol sa Race Mechanics? (Ingles lang)"
+  speed: "Bilis"
+  accel: "Pagpabibilis"
+  min_speed: "Pinakamababang Bilis"
+  phase: "Bahagi"
+  order: "Posisyon"
+  distance: "Distansya"
+  lane: "Linya"
+  start_delay: "Delay ng Pagsimula"
+  finish: "Tapos"
+  used_skills: "Mga Ginamit na Kasanayan"
+  unused_skills: "Mga Kasanayang Di Ginamit"
+  autoscroll: "Awtomatikong mag-scroll"
+  phase_start: "Simula"
+  phase_middle: "Gitna"
+  phase_end: "Huli"
+  phase_last: "Huling pag-agos"
+  phase_finished: "Tapos"
+  lane_inner: "Paloob"
+  lane_middle: "Gitna"
+  lane_outer: "Panlabas"
+  lane_outermost: "Kalayuan"
+  good_start: "Mabuting Pagkasimula"
+  bad_start: "Late na Pagkasimula"
+  rushed: "Nagmamadali"
+  compete_fight: "Lumalaban"
+  compete_top: "Kompetisyon sa Pangunguna"
+  last_spurt: "Huling Spurt"
+  run_at_full_speed: "Punong Bilis"
+  conserve_release: "Ilabas"
+  stamina_limit_break: "Pagkalagpas ng Stamina Limit"
+  stamina_keep: "Pagpapanatili ng Stamina"
+  compete_before_spurt: "Lumalaban Bago Umagos"
+  secure_lead: "Panatilin ang Lead"
+  clog: "Hinarangan"
+
