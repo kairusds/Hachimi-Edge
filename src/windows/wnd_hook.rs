@@ -519,6 +519,11 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 Thread::main_thread().schedule(Gui::toggle_game_ui);
             }
 
+            if Hachimi::instance().game.region == Region::Japan && current_key == Hachimi::instance().config.load().windows.race_stat_hud_toggle_key
+                && Hachimi::instance().config.load().race_stat_hud {
+                Thread::main_thread().schedule(gui::toggle_race_stat_hud);
+            }
+
             if !Gui::is_gui_input_active_atomic() {
                 free_camera::on_windows_key(current_key, true, repeat);
                 if free_camera::is_windows_key_bound(current_key) {

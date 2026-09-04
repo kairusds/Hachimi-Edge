@@ -6,10 +6,14 @@ use crate::il2cpp::{
 static mut GET_GATE_NO_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_GateNo, GET_GATE_NO_ADDR, i32, this: *mut Il2CppObject);
 
+static mut GET_CHARA_NAME_ADDR: usize = 0;
+impl_addr_wrapper_fn!(get_charaName, GET_CHARA_NAME_ADDR, *mut Il2CppString, this: *mut Il2CppObject);
+
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, HorseData);
 
     unsafe {
         GET_GATE_NO_ADDR = get_method_addr(HorseData, c"get_GateNo", 0);
+        GET_CHARA_NAME_ADDR = get_method_addr(HorseData, c"get_charaName", 0);
     }
 }
