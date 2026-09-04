@@ -1,193 +1,182 @@
 hachimi: "Hachimi Edge"
 
 windows:
-  menu_open_key: "Right arrow"
+  menu_open_key: "<"
 
 android:
-  menu_open_key: "Vol Up + Vol Down\n\uf25a or Triple-tap top left"
+  menu_open_key: "불륨키 위 + 불륨키 아래\n\uf25a 또는 왼쪽 삼회 연속 터치"
 
-splash_sub: "\uf015 Press %{open_key_str} to open menu."
-loading_label: "Loading..."
-search_filter: "Type to search..."
-open: "Open"
-cancel: "Cancel"
-save: "Save"
-done: "Done"
-next: "Next"
-previous: "Previous"
-yes: "Yes"
-no: "No"
-ok: "OK"
-retry: "Retry"
-default: "Default"
-off: "Off"
-on: "On"
-enable: "Enable"
-disabled: "Disabled"
-minutes: "minutes"
-info: "Info"
-warning: "Warning"
-confirm_dialog_title: "Confirm"
-soft_restart_confirm_content: "Are you sure you want to soft restart the game?"
-in_game_browser_confirm_content: "Are you sure you want to open the in-game browser?"
-browser_dialog_title: "Browser"
+splash_sub: "\uf015 메뉴를 열려면 %{open_key_str} 을 누루세요."
+loading_label: "로딩중..."
+search_filter: "검색"
+open: "열기"
+cancel: "취소"
+save: "확인"
+done: "완료"
+next: "다음"
+previous: "이전"
+yes: "네"
+no: "아니요"
+ok: "확인"
+retry: "재시도"
+default: "기본값"
+off: "끄기"
+on: "켜기"
+enable: "켜짐"
+disabled: "꺼짐"
+minutes: "분"
+info: "정보"
+warning: "경고"
+confirm_dialog_title: "확인"
+soft_restart_confirm_content: "게임을 재시작 할까요?타이틀 화면으로 돌아갑니다.프리징이 걸린경우 이외에는 사용하지 않는것을 권장합니다."
+in_game_browser_confirm_content: "인게임 브라우져를 열까요?"
+browser_dialog_title: "브라우져"
 bind_key: "Bind key"
-edit: "Edit"
-remove: "Remove"
-add: "Add"
-save_changes: "Save changes?"
-back: "Back"
+edit: "수정"
+remove: "제거"
+add: "추가"
+save_changes: "변경 사항을 저장할까요?"
+back: "뒤"
 portrait: "Portrait"
 landscape: "Landscape"
 
 menu:
-  check_for_updates: "\uf0aa Check for updates"
-  fps_text: "FPS: %{fps}"
-  close_menu: "\uf00d Close menu"
-  stats_heading: "\uf022 Stats"
-  localize_dict_entries: "localize_dict entries: %{count}"
-  hashed_dict_entries: "hashed_dict entries: %{count}"
-  config_heading: "\uf0ad Config"
-  open_config_editor: "\uf040 Open config editor"
-  reload_config: "\uf021 Reload config"
-  open_first_time_setup: "\uf135 Open first time setup"
-  graphics_heading: "\uf03e Graphics"
-  fps_label: "FPS"
+  check_for_updates: "\uf0aa 업데이트 확인"
+  fps_text: "초당 프레임: %{fps}"
+  close_menu: "\uf00d 메뉴 닫기"
+  stats_heading: "\uf022 상황"
+  localize_dict_entries: "번역 파일(localize) 편집기 열기: %{count}"
+  hashed_dict_entries: "번역 파일(hash) 편집기 열기: %{count}"
+  config_heading: "\uf0ad 고급 설정"
+  open_config_editor: "\uf040 고급 설정 편집기 열기"
+  reload_config: "\uf021 고급 설정 재로드"
+  open_first_time_setup: "\uf135 초회 설정 열기"
+  graphics_heading: "\uf03e 품질"
+  fps_label: "초당 프레임"
   vsync_label: "VSync"
   stay_on_top: "Stay on top"
-  translation_heading: "\uf02d Translation"
-  reload_localized_data: "\uf021 Reload localized data"
-  tl_check_for_updates: "\uf0aa Check for translation updates"
-  tl_check_for_updates_pedantic: "\uf0aa Check for translation updates (pedantic)"
-  dump_localize_dict: "Dump localize dict"
-  danger_zone_heading: "\uf071 Danger Zone"
-  danger_zone_warning: "These options might have unintended effects on the game. Use with caution!"
-  soft_restart: "\uf021 Soft restart"
-  open_in_game_browser: "\uf0ac Open in-game browser"
-  toggle_game_ui: "\uf06e Toggle game UI"
+  translation_heading: "\uf02d 번역"
+  reload_localized_data: "\uf021 번역 파일(localized) 재로드"
+  tl_check_for_updates: "\uf0aa 번역 업데이트 확인"
+  tl_check_for_updates_pedantic: "\uf0aa 번역 업데이트 확인 (pedantic)"
+  dump_localize_dict: "번역 파일(localized) 덤프 만들기"
+  danger_zone_heading: "\uf071 개발자 웁션"
+  danger_zone_warning: "게임에 문제를 일으키거나 의도하지 않은 일이 일어날수 있습니다. 주의하세요!"
+  soft_restart: "\uf021 게임 재시작(타이틀 화면으로)"
+  open_in_game_browser: "\uf0ac 인게임 브라우져 열기"
+  toggle_game_ui: "\uf06e 게임 ui 크기"
   discord_rpc: "Discord RPC"
-  edit_excludes: "\uf040 Edit Excludes"
-  change_translation_repo: "\uf0c1 Change Translation Repo"
+  edit_excludes: "\uf040 예외 설정"
+  change_translation_repo: "\uf0c1 번역 배포 변경"
 
 notification:
-  saved_localize_dump: "Saved to localize_dump.json"
-  config_reloaded: "Config reloaded."
-  config_saved: "Config saved."
-  config_error: "The config has been corrupted. Using defaults instead..."
-  localized_data_reloaded: "Localized data reloaded."
-  checking_for_tl_updates: "Checking for translation updates..."
-  no_tl_updates: "No translation updates available."
-  update_failed: "Update failed: %{reason}"
-  update_completed: "Update completed."
-  errors_during_update: "%{count} errors occurred during update. Check logs for more info."
-  checking_for_updates: "Checking for updates..."
-  github_update_unreachable: "GitHub is unreachable, trying Codeberg instead..."
-  no_updates: "No updates available."
+  saved_localize_dump: "localize_dump.json 에 저장됨"
+  config_reloaded: "고급 설정 재로드됨."
+  config_saved: "고급 설정 저장됨."
+  config_error: "고급 설정이 문제를 일으키거나 게임과 충돌했습니다. 기본값으로 되돌립니다..."
+  localized_data_reloaded: "번역 파일(localized) 재로드됨."
+  checking_for_tl_updates: "번역 업데이트 확인..."
+  no_tl_updates: "최신 버전을 사용하고 있습니다."
+  update_failed: "업데이트 실패: %{reason}"
+  update_completed: "업데이트 완료."
+  errors_during_update: "%{count}개의 오류가 발생했습니다. 자세한 정보를 확인하세요."
+  checking_for_updates: "업데이트를 확인합니다..."
+  github_update_unreachable: "GitHub가 차단된것 같습니다, Codeberg에 연결을 시도합니다..."
+  no_updates: "최신 버전을 사용중입니다."
   ipc_softreset_exec: "IPC remote soft-reset executed"
   atlas_workaround_reset: "Atlas files modified: workaround disabled."
-  tl_repo_changed: "Translation repository changed. Localized data reloaded."
-  tl_repo_folder_missing: "Translation data folder is missing. Please check for updates to restore translations."
+  tl_repo_changed: "번역 파일 배포를 번경합니다.번역파일(localized)가 변경되었습니다."
+  tl_repo_folder_missing: "번역 파일이 날라갔습니다. 복구하거나 재설치 하시기 바랍니다."
   freeform_window_disabled_landscape: "Freeform window has been disabled because landscape mode is active."
   free_camera_unavailable_live: "Free Camera is unavailable in this Live because of a known issue. It has been disabled for this Live."
-  recommended_ui_scale_applied: "Applied recommended UI scale"
+  recommended_ui_scale_applied: "UI 크기를 권장 값으로 되돌립니다."
 
 first_time_setup:
-  title: "First Time Setup"
-  welcome_heading: "Welcome"
+  title: "초회 설치"
+  welcome_heading: "안녕하세요"
   welcome_content: >-
-    Hachimi has been installed! This will guide you through the initial setup process.
-    If you're not interested in using the translation features, you may skip it by closing this dialog.
+    하치미 패치가 성공적으로 적용되었습니다! 초회 설정을 도와드리겠습니다.
+    만약 번역 패치를 위해 적용하신것이 아니라면 건너뛰셔도 무방합니다.
 
 
-    DISCLAIMER: Hachimi is a community-driven project. All translations were made by various community contributors.
-    It is not developed or endorsed by Cygames, Inc., and violates the game's terms of service. By continuing,
-    you accept that you will be using it at your own risk.
-  translation_repo_heading: "Translation repo"
-  select_translation_repo: "Select a translation repo:"
-  no_compatible_repo: "No translation repos are compatible with this game version."
-  skip_translation: "Skip translations."
-  common_settings_heading: "Common Settings"
+    DISCLAIMER: 하치미는 커뮤니티 소프트웨어 입니다. 모든 번역은 개별 프로젝트 산하입니다.
+    주식회사 cygames,주식회사 kakaogames와 관계가 없습니다.운영정책을 위반하는 용도가 아닙니다. 계속하시면,이 패치를 사용하시는것에 대한 책임은 본인에게 있음에 동의하는것으로 간주됩니다.
+  translation_repo_heading: "번역 파일 배포"
+  select_translation_repo: "선택하세요:"
+  no_compatible_repo: "현재 버전과 호환되는 번역 파일 배포가 없습니다."
+  skip_translation: "번역 설정 건너뛰기."
+  common_settings_heading: "보편적으로 찾는 설정들"
   common_settings_content: >-
-    Here are some commonly used settings that you may want to configure.
-    You can always change these later in the Config Editor.
-  complete_heading: "All done!"
+    아래는 보편적으로 수정하기 원해하는 경향이 있는 설정들입니다.
+    상술한 설정들은 언제든지 고급 설정에서 변경하실수 있습니다.
+  complete_heading: "완료!"
   complete_content: >-
-    Click on Done to save the configuration.
-    If you chose a translation repo, an update check will be performed,
-    which will prompt you to download the new translation data.
+    번역파일 업데이트를 확인하시는 것을 권장합니다.
 
 about:
-  title: "About"
-  copyright: "© 2024-%{year} LeadRDRK, kairusds and contributors"
-  view_license: "View License"
-  open_website: "Open Website"
-  view_source_code: "View Source Code"
-  view_contributors: "View Contributors"
+  title: "머리글"
+  copyright: "© 2024-%{year} LeadRDRK, kairusds, 이외 커뮤니티 기여자들"
+  view_license: "이용 허가 보기"
+  open_website: "누리 소통망 열기"
+  view_source_code: "코드 보기"
+  view_contributors: "커뮤니티 기여 보기"
 
 license:
-  title: "License"
-  gpl_v3_only_notice: "GPL-3.0-only License Text"
+  title: "이용 허가"
+  gpl_v3_only_notice: "GPL-3.0-only"
   ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
   font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
   font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
-  font_pretendard: |
-    Pretendard: Copyright (c) 2021, Kil Hyung-jin (https://github.com/orioncactus/pretendard), with Reserved Font Name 'Pretendard'.
-    - Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. Source is a trademark of Adobe in the United States and/or other countries.
-    - Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS), with Reserved Font Name 'M PLUS 1'.
   ofl_notice: "SIL OFL 1.1 License Text"
   font_alibaba_header: "Alibaba PuHuiTi 3.0"
   font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
-  title: "Updating..."
-  warning: "Translations will not work while update is in progress"
+  title: "업데이트 중..."
+  warning: "업데이트 하는 동안에는 번역이 비활성화 됩니다"
 
 config_editor:
-  title: "Config Editor"
-  general_tab: "\uf013 General"
-  graphics_tab: "\uf03e Graphics"
-  gameplay_tab: "\uf11b Gameplay"
-  language: "Language"
-  restore_defaults: "Restore Defaults"
-  disable_overlay: "Disable overlay (GUI)"
+  title: "고급 설정"
+  general_tab: "\uf013 일반"
+  graphics_tab: "\uf03e 품질"
+  gameplay_tab: "\uf11b 게임"
+  language: "언어"
+  restore_defaults: "기본값으로 되돌리기"
+  disable_overlay: "그래픽 사용자 인터페이스 비활성화"
   disable_overlay_warning: >-
-    This option will disable the Hachimi overlay after you restart the game,
-    which means that you will NOT be able to access the Config Editor after this.
-    If this was not intentional, close this dialog and DISABLE the option.
-  ipv4_only: "IPv4 ureq only"
-  meta_index_url: "Translations Meta URL"
-  debug_mode: "Debug mode"
-  enable_file_logging: "Enable file logging"
-  apply_atlas_workaround: "Apply TL Atlas Workaround"
-  translator_mode: "Translator mode"
-  skip_first_time_setup: "Skip first time setup"
-  lazy_translation_updates: "Lazy translation updates"
-  etag_translation_updates: "Fastpath translation updates"
-  disable_auto_update_check: "Disable auto update check"
-  tl_auto_updater_mode: "Translation auto updater mode"
-  tl_auto_updater_periodic: "Periodic (Prompt)"
-  tl_auto_updater_silent: "Silent (Auto)"
-  tl_auto_updater_interval: "Translation auto updater interval"
-  disable_translations: "Disable translations"
-  enable_ipc: "Enable IPC"
-  ipc_listen_all: "IPC listen all"
-  auto_translate_stories: "Auto translate stories"
+    이는 흔히 gui라고 칭해지는 그래픽 사용자 인터페이스를 비활성화 합니다,
+    즉 이후에는 클라이언트를 뜯어 직접 config.json을 txt편집기를 이용해 편집하지 않는 이상 고급 설정을 바꾸실수 없습니다.
+  ipv4_only: "IP6 비활성"
+  meta_index_url: "번역 파일 배포 목록 출처"
+  debug_mode: "오류 수정 모드"
+  enable_file_logging: "로그 파일 기록 키기"
+  apply_atlas_workaround: "tl workaround 키기"
+  translator_mode: "번역 모드"
+  skip_first_time_setup: "초회 설정 키기"
+  lazy_translation_updates: "느린 번역 업데이트"
+  etag_translation_updates: "빠른 번역 업데이트"
+  disable_auto_update_check: "자동 업데이트 끄기"
+  tl_auto_updater_mode: "업데이트 방법"
+  tl_auto_updater_periodic: "하드코딩 (프롬포트)"
+  tl_auto_updater_silent: "소프트코딩 (자동)"
+  tl_auto_updater_interval: "번역 파일 업데이트 주기"
+  disable_translations: "번역 끄기"
+  enable_ipc: "IPC 키기"
+  ipc_listen_all: "IPC 항상 허용"
+  auto_translate_stories: "스토리 자동번역"
   auto_tl_warning: >-
-    Note: This feature will not work on its own; requires external setup.
-    Enabling this option requires a compatible translation server to be
-    installed on your computer or a cloud service exposing an API such as
-    py3translationServer or Sugoi Toolkit. Without a server running, no
-    additional translation will happen and gameplay may be affected.
-    Please leave this option disabled if you do not have a translation
-    server available.
-  auto_translate_ui: "Auto translate UI (MIGHT BREAK UIs)"
+    Note: 이 설정은 스스로 작동하지 못합니다.
+    sugoi toolkit url을 config.json에 입력하세요, 
+    이 작업 없이는 추가적인 번역은 일어나지 않고 오히려 게임 성능만 저하시킬 것입니다.
+    서버가 없다면 끈 상태를 유지해 주세요.
+  auto_translate_ui: "UI 자동 번역 (UI가 깨질수도 있음)"
   taskbar_show_progress_on_download: "Taskbar progress on download"
   taskbar_show_progress_on_connecting: "Taskbar progress on connecting"
   taskbar_show_progress_on_schedule_book: "Taskbar progress in Trainer's Agenda"
-  target_fps: "Target FPS"
+  target_fps: "초당 프레임"
   virtual_resolution_multiplier: "Virtual resolution multiplier"
-  ui_scale: "UI scale"
-  recommended_ui_scale: "Apply recommended UI scale"
+  ui_scale: "UI 크기"
+  recommended_ui_scale: "권장값 사용"
   gui_scale: "Overlay scale"
   gui_landscape_ratio: "Landscape overlay scale ratio"
   ui_animation_scale: "UI animation scale"
@@ -206,14 +195,14 @@ config_editor:
   resolution_scaling_ssize: "Scale to screen size"
   resolution_scaling_wsize: "Scale to window size"
   window_always_on_top: "Window always on top"
-  story_choice_auto_select_delay: "Story choice auto select delay"
-  story_text_speed_multiplier: "Story text speed multiplier"
-  force_allow_dynamic_camera: "Force allow dynamic camera"
+  story_choice_auto_select_delay: "스토리 자동 진행 지연"
+  story_text_speed_multiplier: "스토리 배속"
+  force_allow_dynamic_camera: "우마무스메 1인칭 시점 웁션 강제 활성화"
   free_camera: "Free Camera"
-  live_theater_allow_same_chara: "Live theater allow same chara"
+  live_theater_allow_same_chara: "라이브 다시보기에서 동일한 우마무스메 두명이상 배치 강제 활성화"
   physics_update_mode: "Physics update mode"
   cyspring_mono_uncap_frame_scale: "CySpring Mono Frame Scale Uncap"
-  disable_skill_name_translation: "Disable skill name translation"
+  disable_skill_name_translation: "스킬 이름 번역 끄기"
   hide_ingame_ui_hotkey: "Hide ingame UI hotkey"
   hide_ingame_ui_hotkey_info: >-
     This option allows a shortcut key to toggle the ingame UI.
@@ -221,10 +210,10 @@ config_editor:
     For PC/Android with keyboard, it's the Insert key by default and can be configured in the gui or config.
   hide_ingame_ui_hotkey_bind: "Hide ingame UI keybind"
   live_slider_always_show: "Always Show Live Slider"
-  live_playback_loop: "Loop Live Performances"
-  champions_live_show_text: "Override Champions Meeting Live Text"
-  champions_live_resource_id: "Champions Meeting Title"
-  champions_live_year: "Champions Meeting Year"
+  live_playback_loop: "라이브 반복 재생"
+  champions_live_show_text: "챔미 위닝 라이브 고증 변경"
+  champions_live_resource_id: "대회 이름(별자리,거리)"
+  champions_live_year: "개최년도"
   captions: "Captions"
   caption_lines_char_count: "Captions Characters per line"
   caption_font_size: "Captions Font Size"
@@ -234,7 +223,6 @@ config_editor:
   caption_color: "Captions Text Color"
   caption_outline_color: "Captions Outline Color"
   caption_outline_size: "Captions Outline Size"
-  disable_tap_effect: "Disable Tap Effect"
   discord_rpc: "Discord RPC"
   enable_smtc: "Enable Windows Media Controls"
   menu_open_key: "Open menu hotkey"
@@ -246,12 +234,12 @@ config_editor:
   skill_info_dialog: "Custom skill info dialog"
   homescreen_bgseason: "Homescreen Background Season"
   shadow_resolution: "Shadow Resolution"
-  hide_now_loading: "Hide Now Loading screen"
+  hide_now_loading: "로딩 화면 미표시"
   ui_loading_show_orientation_guide: "Hide now loading orientation guide"
   replace_to_builtin_font: "Use default game font"
   custom_title_name: "Custom window title"
   ingame_webview: "Open Umamusume links (news, help, gacha, ...) in webview"
-  trainer_live_landscape: "Landscape mode on Meni Shuki live"
+  trainer_live_landscape: "Meni Shuki live에서 landscape 모드로 보기"
   force_orientation_mode: "Force orientation mode"
 
 theme_editor:
@@ -377,76 +365,71 @@ free_camera:
     * **D-Pad Down:** Previous body Part *(Follow Camera only)*
 
 excludes_editor:
-  title: "Excludes Editor"
-  no_paths_available: "No available paths to exclude"
-  saved: "Excludes saved successfully"
-  confirm_remove: "Are you sure you want to remove the exclude \"%{path}\"?"
+  title: "제외 설정"
+  no_paths_available: "제외할수 있는 경로가 없습니다."
+  saved: "저장되었습니다."
+  confirm_remove: "\"%{path}\"를 제거할까요?"
 
 change_translation_repo:
-  title: "Change Translation Repo"
-  no_repos: "No translation repos downloaded yet."
-  browse_repositories: "Browse Repositories"
-  active: "Active"
-  available: "Available"
-  confirm_remove: "Are you sure you want to remove \"%{name}\"?"
-  cannot_remove_active: "Cannot remove the currently active repo. Switch to another repo first."
-  removing: "Removing translation repo..."
-  remove_in_progress: "Cannot remove translation repo. Another removal is already in progress."
+  title: "번역 파일 배포 변경"
+  no_repos: "현재 아무런 번역 파일도 설치되어 있지 않습니다."
+  browse_repositories: "배포 보기"
+  active: "사용중"
+  available: "사용 가능"
+  confirm_remove: "\"%{name}\"을 삭제할까요?"
+  cannot_remove_active: "삭제 할수 없습니다.먼저 다른 배포판으로 바꾸세요."
+  removing: "삭제증..."
+  remove_in_progress: "한번에 한개의 파일만 지울수 있습니다.잠시만 기다려 주세요."
 
 add_translation_repo:
-  title: "Add Translation Repository"
-  select_translation_repo: "Select a translation repo:"
-  already_downloaded: "(already downloaded)"
+  title: "번역 파일 배포 추가"
+  select_translation_repo: "번역 파일 배포를 고르세요:"
+  already_downloaded: "(이미 저장됨)"
 
 translation_repo_info:
-  details_title: "Translation Repo Details"
-  homepage: "Homepage"
-  maintainer: "Maintainer"
-  contributors: "Contributors"
-  view_contributors: "View Contributors"
-  links: "Links"
+  details_title: "번역 파일 배포 상세정보"
+  homepage: "누리소통망"
+  maintainer: "개발자"
+  contributors: "기여자"
+  view_contributors: "기여 보니"
+  links: "주소들"
 
 tl_update_dialog:
-  title: "New update available"
-  content: "A new translation update is available (%{size}). Do you want to download it?"
-  content_zip_warning: "A new translation update is available (%{changed_size}). This update will download the full archive (%{download_size}) instead."
-  show_changelog: "Show Changelog"
-  changelog_title: "Changelog"
-  changelog_fetch_failed: "Failed to fetch changelog"
-  changelog_invalid: "Changelog content is not valid plaintext"
+  title: "업데이트 가능"
+  content: "새 업데이트가 있습니다 (%{size}). 다운로드 하시겠습니까?"
+  content_zip_warning: "새 업데이트가 있습니다 (%{changed_size}). 전체 파일을 내려받습니다. (%{download_size}) "
+  show_changelog: "변경사항 보기"
+  changelog_title: "번경사항"
+  changelog_fetch_failed: "통신오류"
+  changelog_invalid: "파싱 오류"
 
 update_prompt_dialog:
-  title: "New update available"
+  title: "업데이트 가능"
   content: |
-    A new Hachimi update is available (%{version}). Do you want to install it?
-    The game will be restarted in order to apply the update.
+    하치미 패치의 새 업데이트가 있습니다 (%{version}). 설치할까요?
+    업데이트 적용을 위해 재시작합니다.
   android_content: |
-    A new Hachimi Edge update is available (%{version}).
+    하치미 패치의 새 업데이트가 있습니다 (%{version}).
 
-    Tap "Yes" to open UmaPatcher Edge, then patch the game the same way you did before.
+    UmaPatcher Edge에서 다시 패치하세요.
 
-    Note: No full game or APK re-download needed!
+    Note: apk파일은 이미 있는것을 사용하시면 됩니다!
 
 updating_dialog:
-  title: "Updating"
-  content: "Downloading update, the game will restart shortly..."
+  title: "업데이트중"
+  content: "다운로드중.잠시후 게임이 재시작 됩니다..."
 
 steam_overlay_conflict_dialog:
   title: "Notice"
   content: >-
-    Purchases might not work with the Hachimi overlay enabled. If the Steam overlay already showed
-    up for you to make a purchase, please ignore this message and press No. If it didn't work, press Yes
-    to temporarily disable the Hachimi overlay. It will close the game, and the next time the game starts up,
-    the Hachimi overlay will be disabled and you will be able to make a purchase. After that, you may restart
-    the game again to re-enable the Hachimi overlay.
-
+    구매를 취소하세요.이후에 하치미 패치가 비활성화 된 상태로 게임이 재시작 될것입니다.이후 결제를 진행해 주세요.
 ingame_webview_dialog:
-  open_browser: "Open in Browser"
+  open_browser: "브라우저에서 열림"
   title:
-    notice: "Notice"
-    general: "Ingame Browser"
-    gacha: "Gacha"
-    help: "Help"
+    notice: "공지"
+    general: "인게임 브라우져"
+    gacha: "뽑기"
+    help: "도움말"
 
 key_names:
   left: "Left arrow"
