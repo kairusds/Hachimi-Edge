@@ -57,6 +57,17 @@ macro_rules! find_nested_class_or_return {
     )
 }
 
+// shorter ver of doing impl_addr_wrapper_fn!()
+macro_rules! def_method_wrapper_fn {
+    ($name:tt, $addr:tt, $ret:ty, $($v:ident: $t:ty),*) => {
+        static mut $addr: usize = 0;
+        pub fn $name($($v: $t),*) -> $ret {
+            let orig_fn: extern "C" fn($($v: $t),*) -> $ret = unsafe { std::mem::transmute($addr) };
+            orig_fn($($v),*)
+        }
+    };
+}
+
 macro_rules! impl_addr_wrapper_fn {
     ($name:tt, $addr:tt, $ret:ty, $($v:ident: $t:ty),*) => {
         pub fn $name($($v: $t),*) -> $ret {

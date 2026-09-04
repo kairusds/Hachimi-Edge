@@ -1,4 +1,3 @@
-use crate::il2cpp::types::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Copy, Clone, Serialize, Deserialize, Eq, PartialOrd, PartialEq)]
@@ -14,6 +13,3 @@ pub enum BgSeason {
 
 impl_enum_eq!(BgSeason);
 impl_enum_ord!(BgSeason);
-
-pub fn init(_UnityEngine_CoreModule: *const Il2CppImage) {
-}

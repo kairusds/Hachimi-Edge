@@ -7,7 +7,7 @@ impl_addr_wrapper_fn!(
     OPEN_ADDR, 
     *mut Il2CppObject, 
     text: *mut Il2CppString,
-    keyboardType: TouchScreenKeyboardType::KeyboardType,
+    keyboardType: TouchScreenKeyboardType,
     autocorrection: bool,
     multiline: bool,
     secure: bool

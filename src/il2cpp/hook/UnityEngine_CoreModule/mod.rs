@@ -14,8 +14,13 @@ pub mod Component;
 pub mod UnityAction;
 #[cfg(target_os = "android")]
 pub mod TouchScreenKeyboard;
+
 #[cfg(target_os = "android")]
-pub mod TouchScreenKeyboardType;
+#[path = "TouchScreenKeyboardType.rs"]
+mod touch_screen_keyboard_type;
+#[cfg(target_os = "android")]
+pub use touch_screen_keyboard_type::TouchScreenKeyboardType;
+
 pub mod RectTransform;
 pub mod Transform;
 pub mod RectOffset;
@@ -62,7 +67,6 @@ pub fn init() {
     #[cfg(target_os = "android")]
     {
         TouchScreenKeyboard::init(image);
-        TouchScreenKeyboardType::init(image);
     }
 
     #[cfg(target_os = "windows")]

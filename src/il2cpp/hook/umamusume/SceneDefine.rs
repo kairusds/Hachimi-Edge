@@ -1,5 +1,3 @@
-use crate::il2cpp::types::*;
-
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[allow(dead_code)]
@@ -230,6 +228,3 @@ pub enum ViewId {
 }
 
 impl_enum_eq!(ViewId);
-
-pub fn init(_umamusume: *const Il2CppImage) {
-}
