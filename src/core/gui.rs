@@ -168,10 +168,29 @@ pub fn toggle_race_stat_hud() {
 }
 
 // portrait: full width, fixed at 38% of the screen height
+#[cfg(target_os = "android")]
 const RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO: f32 = 0.38;
 // landscape: fixed at 40% of the screen width and 55% of the screen height
+#[cfg(target_os = "android")]
 const RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO: f32 = 0.4;
+#[cfg(target_os = "android")]
 const RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO: f32 = 0.55;
+
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_SPLIT_LEFT_RATIO: f32 = 148.0 / 1920.0;
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_SPLIT_CENTER_RATIO: f32 = 810.0 / 1920.0;
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_FIXED_LANDSCAPE: (f32, f32) = (320.0, 198.0);
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_FIXED_PORTRAIT: (f32, f32) = (360.0, 304.0);
+
+const RACE_STAT_HUD_WIDTH_SCALE_MIN: f32 = 0.5;
+const RACE_STAT_HUD_WIDTH_SCALE_MAX: f32 = 3.0;
+const RACE_STAT_HUD_HEIGHT_SCALE_MIN: f32 = 0.3;
+const RACE_STAT_HUD_HEIGHT_SCALE_MAX: f32 = 3.0;
+
+const RACE_STAT_HUD_DRAG_SAVE_THRESHOLD: f32 = 6.0;
 
 // evenly spaced hues for the skill chips, so adjacent ones always differ
 const SKILL_CHIP_HUES: [f32; 10] = [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95];
@@ -297,6 +316,8 @@ struct RaceStatHud {
     selected_character: usize,
     select_player_on_race_start: bool,
     current_tab: RaceStatHudTab,
+    drag_pos: Option<(f32, f32)>,
+    drag_travel: f32,
     config: hachimi::Config,
     last_used_skills: Vec<i32>,
     last_unused_skills: Vec<i32>,
@@ -311,6 +332,8 @@ impl RaceStatHud {
             selected_character: 0,
             select_player_on_race_start: false,
             current_tab: RaceStatHudTab::Stats,
+            drag_pos: None,
+            drag_travel: 0.0,
             config: (**Hachimi::instance().config.load()).clone(),
             last_used_skills: Vec::new(),
             last_unused_skills: Vec::new(),
@@ -321,11 +344,24 @@ impl RaceStatHud {
     fn set_visible(&mut self, visible: bool) {
         if visible && !self.visible {
             self.config = (**Hachimi::instance().config.load()).clone();
+            self.drag_pos = Self::saved_drag_pos(&self.config);
+            self.drag_travel = 0.0;
         }
         if !visible && self.visible {
             self.save_autoscroll_config();
         }
         self.visible = visible;
+    }
+
+    // stored drag position from the config, ignored unless both axes are
+    // normalized within [0, 1] (negative = unset / reset)
+    fn saved_drag_pos(config: &hachimi::Config) -> Option<(f32, f32)> {
+        let (x, y) = (config.race_stat_hud_drag_x, config.race_stat_hud_drag_y);
+        if (0.0..=1.0).contains(&x) && (0.0..=1.0).contains(&y) {
+            Some((x, y))
+        } else {
+            None
+        }
     }
 
     fn save_autoscroll_config(&mut self) {
@@ -397,15 +433,197 @@ impl RaceStatHud {
         let toggle_button = Hachimi::instance().config.load().race_stat_hud_toggle_button;
         let scale = get_scale(ctx);
         let screen = ctx.viewport_rect();
+        let (game_view, split, source) = Self::game_view(ctx, screen);
+        let is_vertical = game_view.width() <= game_view.height();
+        let (width_scale, height_scale) = {
+            let config = Hachimi::instance().config.load();
+            (config.race_stat_hud_width_scale, config.race_stat_hud_height_scale)
+        };
+        let hud_scale = scale;
+        let panel = Self::panel_size(game_view, is_vertical, hud_scale, width_scale, height_scale);
+        Self::log_game_view(split, game_view, source, panel, hud_scale);
 
-        hud.run_hud(ctx, screen, scale, toggle_button);
+        hud.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button);
 
         if toggle_button && !hud.visible {
-            hud.run_button(ctx, screen, scale);
+            hud.run_button(ctx, game_view, hud_scale);
         }
     }
 
-    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, scale: f32, toggle_button: bool) {
+    #[cfg(target_os = "windows")]
+    fn game_view(ctx: &egui::Context, screen: egui::Rect) -> (egui::Rect, bool, &'static str) {
+        Self::game_view_windows(screen, ctx.pixels_per_point())
+    }
+
+    #[cfg(target_os = "android")]
+    fn game_view(_ctx: &egui::Context, screen: egui::Rect) -> (egui::Rect, bool, &'static str) {
+        (screen, false, "window")
+    }
+
+    fn clamp_size_scale(v: f32, min: f32, max: f32) -> f32 {
+        if v.is_finite() { v.clamp(min, max) } else { 1.0 }
+    }
+
+    fn panel_size(game_view: egui::Rect, vertical: bool, scale: f32, width_scale: f32, height_scale: f32) -> egui::Vec2 {
+        let ws = Self::clamp_size_scale(width_scale, RACE_STAT_HUD_WIDTH_SCALE_MIN, RACE_STAT_HUD_WIDTH_SCALE_MAX);
+        let hs = Self::clamp_size_scale(height_scale, RACE_STAT_HUD_HEIGHT_SCALE_MIN, RACE_STAT_HUD_HEIGHT_SCALE_MAX);
+
+        #[cfg(target_os = "windows")]
+        let base = if vertical {
+            let (w, h) = RACE_STAT_HUD_FIXED_PORTRAIT;
+            egui::vec2(w, h)
+        } else {
+            let (w, h) = RACE_STAT_HUD_FIXED_LANDSCAPE;
+            egui::vec2(w, h)
+        };
+        #[cfg(target_os = "android")]
+        let base = if vertical {
+            // portrait: full width at the bottom of the game view
+            egui::vec2(game_view.width(), game_view.height() * RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO)
+        } else {
+            // landscape: bottom right corner of the game view
+            egui::vec2(game_view.width() * RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO, game_view.height() * RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO)
+        };
+
+        let panel = egui::vec2(base.x * scale * ws, base.y * scale * hs);
+
+        egui::vec2(
+            panel.x.min(game_view.width().max(0.0)),
+            panel.y.min(game_view.height().max(0.0)),
+        )
+    }
+
+    #[cfg(target_os = "windows")]
+    fn game_view_windows(screen: egui::Rect, ppp: f32) -> (egui::Rect, bool, &'static str) {
+        use crate::il2cpp::hook::umamusume::{LandscapeUIManager, Screen as GallopScreen};
+
+        let window = egui::vec2(screen.width() * ppp, screen.height() * ppp);
+
+        let use_game_view = Hachimi::instance().config.load().windows.race_stat_hud_landscapeui_portrait;
+        if !use_game_view || !GallopScreen::get_IsSplitWindow() {
+            return (screen, false, "window");
+        }
+
+        let mut source = "constants";
+        let mut rect_px = Self::split_rect_constants(window);
+
+        if let Some((x, y, w, h)) = LandscapeUIManager::game_screen_info() {
+            let physical = (h - window.y).abs() <= window.y * 0.02;
+            let rate = LandscapeUIManager::get_WindowScaleRate();
+            let (r, src) = if physical {
+                (egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(w, h)), "gamescreeninfo")
+            } else {
+                (
+                    egui::Rect::from_min_size(egui::pos2(x * rate, y * rate), egui::vec2(w * rate, h * rate)),
+                    "gamescreeninfo+rate",
+                )
+            };
+
+            if Self::split_rect_sane(r, window) {
+                rect_px = r;
+                source = src;
+            }
+        }
+
+        let game_view = egui::Rect::from_min_size(
+            egui::pos2(rect_px.min.x / ppp, rect_px.min.y / ppp),
+            egui::vec2(rect_px.width() / ppp, rect_px.height() / ppp),
+        );
+        (game_view, true, source)
+    }
+
+    #[cfg(target_os = "windows")]
+    fn split_rect_constants(window: egui::Vec2) -> egui::Rect {
+        let x = window.x * RACE_STAT_HUD_SPLIT_LEFT_RATIO;
+        let w = window.x * RACE_STAT_HUD_SPLIT_CENTER_RATIO;
+        egui::Rect::from_min_size(egui::pos2(x, 0.0), egui::vec2(w, window.y))
+    }
+
+    #[cfg(target_os = "windows")]
+    fn split_rect_sane(rect: egui::Rect, window: egui::Vec2) -> bool {
+        rect.width() > 0.0
+            && rect.height() > 0.0
+            && rect.min.x >= -1.0
+            && rect.min.y >= -1.0
+            && rect.max.x <= window.x * 1.02
+            && rect.max.y <= window.y * 1.02
+            && rect.width() * rect.height() >= window.x * window.y * 0.15
+    }
+
+    fn log_game_view(split: bool, rect: egui::Rect, source: &'static str, panel: egui::Vec2, scale: f32) {
+        static LAST: Lazy<Mutex<Option<(bool, [i64; 4], &'static str, [i64; 2], i64)>>> =
+            Lazy::new(|| Mutex::new(None));
+
+        let key = (
+            split,
+            [
+                rect.min.x.round() as i64,
+                rect.min.y.round() as i64,
+                rect.width().round() as i64,
+                rect.height().round() as i64,
+            ],
+            source,
+            [panel.x.round() as i64, panel.y.round() as i64],
+            (scale * 100.0).round() as i64,
+        );
+        let mut last = LAST.lock().unwrap();
+        if *last != Some(key) {
+            *last = Some(key);
+            info!(
+                "race stat hud game view: {}x{} at ({}, {}) [{}] (split: {}, panel {}x{}, scale {:.2})",
+                key.1[2], key.1[3], key.1[0], key.1[1], source, split, key.3[0], key.3[1], scale
+            );
+        }
+    }
+
+    fn panel_base_min(game_view: egui::Rect, panel: egui::Vec2, vertical: bool) -> egui::Pos2 {
+        if vertical {
+            egui::pos2(game_view.left(), game_view.bottom() - panel.y)
+        } else {
+            egui::pos2(game_view.right() - panel.x, game_view.bottom() - panel.y)
+        }
+    }
+
+    // panel top-left clamped so the panel stays inside the game view
+    fn clamp_panel_min(game_view: egui::Rect, panel: egui::Vec2, min: egui::Pos2) -> egui::Pos2 {
+        let max_x = (game_view.right() - panel.x).max(game_view.left());
+        let max_y = (game_view.bottom() - panel.y).max(game_view.top());
+        egui::pos2(min.x.clamp(game_view.left(), max_x), min.y.clamp(game_view.top(), max_y))
+    }
+
+    // a drag offset clamped back inside the game view
+    fn clamped_drag_offset(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, offset: egui::Vec2) -> egui::Vec2 {
+        let base = Self::panel_base_min(game_view, panel, vertical);
+        Self::clamp_panel_min(game_view, panel, base + offset) - base
+    }
+
+    // offset for a stored normalized position (0..1 within the game view)
+    fn drag_offset_from_pos(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, pos: Option<(f32, f32)>) -> egui::Vec2 {
+        let Some((nx, ny)) = pos else {
+            return egui::Vec2::ZERO;
+        };
+        let base = Self::panel_base_min(game_view, panel, vertical);
+        let desired = egui::pos2(
+            game_view.left() + nx.clamp(0.0, 1.0) * game_view.width(),
+            game_view.top() + ny.clamp(0.0, 1.0) * game_view.height(),
+        );
+        Self::clamp_panel_min(game_view, panel, desired) - base
+    }
+
+    // normalized position for a drag offset (what gets stored in the config)
+    fn drag_pos_from_offset(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, offset: egui::Vec2) -> (f32, f32) {
+        let base = Self::panel_base_min(game_view, panel, vertical);
+        let min = Self::clamp_panel_min(game_view, panel, base + offset);
+        if game_view.width() <= 0.0 || game_view.height() <= 0.0 {
+            return (0.0, 0.0);
+        }
+        (
+            (min.x - game_view.left()) / game_view.width(),
+            (min.y - game_view.top()) / game_view.height(),
+        )
+    }
+
+    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, game_view: egui::Rect, panel: egui::Vec2, scale: f32, toggle_button: bool) {
         if !self.visible {
             return;
         }
@@ -415,43 +633,111 @@ impl RaceStatHud {
             return;
         }
 
-        let is_vertical = screen.width() <= screen.height();
+        let is_vertical = game_view.width() <= game_view.height();
 
-        let panel = if is_vertical {
-            // portrait: full width at the bottom
-            egui::vec2(screen.width(), screen.height() * RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO)
-        } else {
-            // landscape: bottom right corner
-            egui::vec2(screen.width() * RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO, screen.height() * RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO)
-        };
         let anchor = if is_vertical { egui::Align2::LEFT_BOTTOM } else { egui::Align2::RIGHT_BOTTOM };
+        let offset = if is_vertical {
+            egui::vec2(game_view.left() - screen.left(), game_view.bottom() - screen.bottom())
+        } else {
+            egui::vec2(game_view.right() - screen.right(), game_view.bottom() - screen.bottom())
+        };
+
+        let config = Hachimi::instance().config.load();
+        let draggable = config.race_stat_hud_draggable;
+        let drag_save = config.race_stat_hud_draggable_save;
+        drop(config);
+
+        let mut drag_offset = if draggable {
+            Self::drag_offset_from_pos(game_view, panel, is_vertical, self.drag_pos)
+        } else {
+            egui::Vec2::ZERO
+        };
+        let mut drag_active = false;
+        let mut drag_travel = self.drag_travel;
 
         let area_id = egui::Id::new("race_stat_hud_overlay").with(is_vertical);
         egui::Area::new(area_id)
-            .anchor(anchor, egui::Vec2::ZERO)
+            .anchor(anchor, offset + drag_offset)
             .show(ctx, |ui| {
+                // the whole panel is also a drag handle, registered BELOW the contents so widgets and the scroll area keep their own
+                // input: drags that start on non-interactive panel space (header, margins, empty rows) move the HUD
+                let drag_response = if draggable {
+                    let handle = egui::Rect::from_min_size(
+                        Self::panel_base_min(game_view, panel, is_vertical) + drag_offset,
+                        panel,
+                    );
+                    Some(ui.interact(handle, area_id.with("drag"), egui::Sense::drag()))
+                } else {
+                    None
+                };
+
                 egui::Frame::NONE
                     .fill(egui::Color32::from_black_alpha(200))
                     .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 100)))
-                    .inner_margin(egui::Margin::same((8.0 * scale) as i8))
+                    .inner_margin(egui::Margin::same((8.0 * scale).min(120.0) as i8))
                     .show(ui, |ui| {
-                        ui.set_width(panel.x - 16.0 * scale);
-                        self.hud_contents(ui, &all_stats, course_info.as_ref(), scale, panel.y - 16.0 * scale, toggle_button);
+                        // let the fixed egui interaction minimums shrink with the HUD scale so small
+                        // layouts keep their ratios
+                        let style = ui.style_mut();
+                        style.spacing.interact_size.y = style.spacing.interact_size.y.min(20.0 * scale);
+                        // egui labels are drag-selectable by default, which
+                        // lets row text steal drags from the scroll area
+                        style.interaction.selectable_labels = false;
+                        // commit to the panel size so rows wrap inside it and short pages pad to it, 
+                        // so the size stays identical across tabs and content
+                        let inner = panel - egui::vec2(16.0 * scale, 16.0 * scale);
+                        ui.set_min_width(inner.x);
+                        ui.set_max_width(inner.x);
+                        ui.set_min_height(inner.y);
+
+                        self.hud_contents(ui, &all_stats, course_info.as_ref(), scale, inner.y, toggle_button, draggable);
                     });
+
+                // process the whole-panel drag handle registered above
+                if let Some(resp) = drag_response {
+                    if resp.dragged() {
+                        drag_active = true;
+                        if resp.drag_started() {
+                            drag_travel = 0.0;
+                        }
+                        drag_travel += resp.drag_delta().length();
+                        drag_offset += resp.drag_delta();
+                        drag_offset = Self::clamped_drag_offset(game_view, panel, is_vertical, drag_offset);
+                    }
+
+                    if resp.drag_stopped() {
+                        drag_active = true;
+                        // a click (press + release without movement) is not a drag:
+                        // egui marks drag-only widgets as dragged from the press on, so gate the save on real travel
+                        if drag_save && drag_travel >= RACE_STAT_HUD_DRAG_SAVE_THRESHOLD * scale {
+                            let pos = Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset);
+                            let mut new_config = (**Hachimi::instance().config.load()).clone();
+                            new_config.race_stat_hud_drag_x = pos.0;
+                            new_config.race_stat_hud_drag_y = pos.1;
+                            save_and_reload_config(new_config);
+                        }
+                        drag_travel = 0.0;
+                    }
+                }
             });
+
+        self.drag_travel = drag_travel;
+        if draggable && drag_active {
+            self.drag_pos = Some(Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset));
+        }
     }
 
-    fn run_button(&mut self, ctx: &egui::Context, screen: egui::Rect, scale: f32) {
+    fn run_button(&mut self, ctx: &egui::Context, game_view: egui::Rect, scale: f32) {
         let btn_size = 20.0 * scale;
         let margin = 4.0 * scale;
-        let is_vertical = screen.width() <= screen.height();
+        let is_vertical = game_view.width() <= game_view.height();
         let x = if is_vertical {
-            screen.right() - btn_size - margin
+            game_view.right() - btn_size - margin
         } else {
             // margin for Android navigation bars
-            screen.right() - btn_size - 48.0 * scale
+            game_view.right() - btn_size - 48.0 * scale
         };
-        let btn_pos = egui::Pos2::new(x, screen.center().y - btn_size / 2.0);
+        let btn_pos = egui::Pos2::new(x, game_view.center().y - btn_size / 2.0);
 
         let icon = "\u{f0d9}";
         egui::Area::new(egui::Id::new("race_stat_hud_toggle_btn"))
@@ -467,7 +753,7 @@ impl RaceStatHud {
             });
     }
 
-    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool) {
+    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool, draggable_page: bool) {
         let mut selected = self.selected_character;
         let mut visible = self.visible;
         let current_tab = self.current_tab;
@@ -486,8 +772,12 @@ impl RaceStatHud {
                     }
                 }
 
+                // cap the combo to half the row so long uma names ellipsize
+                // instead of growing the header past the fixed panel width
+                let combo_cap = (ui.available_width() * 0.5).max(60.0 * scale);
+                let combo_text = Self::ellipsized(ui, &all_stats[selected].name, combo_cap, 13.0 * scale);
                 egui::ComboBox::new(ui.id().with("character_select"), "")
-                    .selected_text(&all_stats[selected].name)
+                    .selected_text(combo_text)
                     .show_ui(ui, |combo_ui| {
                         for (i, stats) in all_stats.iter().enumerate() {
                             combo_ui.selectable_value(&mut selected, i, &stats.name);
@@ -581,6 +871,11 @@ impl RaceStatHud {
             .id_salt(page_id)
             .auto_shrink([false, false])
             .max_height(page_h)
+            .min_scrolled_height(24.0 * scale)
+            .scroll_source(egui::containers::scroll_area::ScrollSource {
+                drag: if cfg!(target_os = "android") { true } else { !draggable_page },
+                ..Default::default()
+            })
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                 match tab {
@@ -608,7 +903,7 @@ impl RaceStatHud {
 
     fn stats_page(ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
         // speed, with the min speed on the side 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.speed")).size(13.0 * scale));
             Self::value_chip(ui, &format!("{:.1}", stats.speed), VALUE_CHIP_HUE_SPEED, scale);
             ui.label(egui::RichText::new(format!("{} {:.1}", t!("race_stat_hud.min_speed"), stats.min_speed)).size(11.0 * scale).color(egui::Color32::from_gray(150)));
@@ -650,7 +945,7 @@ impl RaceStatHud {
         });
 
         // acceleration
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.accel")).size(13.0 * scale));
 
             let gauge_w = 100.0 * scale;
@@ -690,7 +985,7 @@ impl RaceStatHud {
         });
 
         // stamina (hp bar), with the drain rate
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.stamina")).size(13.0 * scale));
             let hp_ratio = if stats.max_hp > 0.0 { stats.hp / stats.max_hp } else { 0.0 };
             Self::value_chip(ui, &format!("{:.0}/{:.0}", stats.hp, stats.max_hp), Self::hp_chip_hue(hp_ratio), scale);
@@ -729,13 +1024,13 @@ impl RaceStatHud {
         });
 
         // phase
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.phase")).size(13.0 * scale));
             Self::value_chip(ui, &Self::phase_name(stats.phase), VALUE_CHIP_HUE_PHASE, scale);
         });
 
         // order
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.order")).size(13.0 * scale));
             let text = if stats.cur_order >= 0 {
                 Self::ordinal(stats.cur_order + 1)
@@ -746,7 +1041,7 @@ impl RaceStatHud {
         });
 
         // distance
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.distance")).size(13.0 * scale));
             let text = match course {
                 Some(c) => format!("{:.0} / {:.0} m", stats.distance.clamp(0.0, c.course_distance), c.course_distance),
@@ -759,13 +1054,13 @@ impl RaceStatHud {
         }
 
         // lane (11.25m per course width, same as the world transform)
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.lane")).size(13.0 * scale));
             Self::value_chip(ui, &format!("{} ({:.1} m)", Self::lane_name(stats.lane), stats.lane_distance * 11.25), VALUE_CHIP_HUE_LANE, scale);
         });
 
         // start delay
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.start_delay")).size(13.0 * scale));
             Self::value_chip(ui, &format!("{:+.2} s", stats.delay_time), VALUE_CHIP_HUE_START_DELAY, scale);
         });
@@ -774,7 +1069,7 @@ impl RaceStatHud {
         Self::state_chips(ui, stats, scale);
 
         if stats.phase == HorsePhase::Finished {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(t!("race_stat_hud.finish")).size(13.0 * scale));
                 let text = if stats.finish_time_diff > 0.0 {
                     format!("{} - {:.2} s (+{:.2})", Self::ordinal(stats.finish_order + 1), stats.finish_time_scaled, stats.finish_time_diff)
@@ -909,6 +1204,28 @@ impl RaceStatHud {
         } else {
             0.02
         }
+    }
+
+    fn ellipsized(ui: &egui::Ui, text: &str, cap: f32, font_size: f32) -> String {
+        let font = egui::FontId::proportional(font_size);
+        let width = |s: &str| {
+            ui.painter()
+                .layout_no_wrap(s.to_owned(), font.clone(), egui::Color32::PLACEHOLDER)
+                .size()
+                .x
+        };
+        if width(text) <= cap || text.is_empty() {
+            return text.to_owned();
+        }
+        // estimate how many chars fit, then trim until the ellipsis fits too
+        let est = ((text.chars().count() as f32) * (cap / width(text))).floor() as usize;
+        let mut truncated: String = text.chars().take(est.saturating_sub(1)).collect();
+        truncated.push('\u{2026}');
+        while truncated.chars().count() > 1 && width(&truncated) > cap {
+            truncated = truncated.chars().take(truncated.chars().count().saturating_sub(2)).collect();
+            truncated.push('\u{2026}');
+        }
+        truncated
     }
 
     fn glint_active(stats: &CharacterStats) -> bool {
@@ -1986,6 +2303,7 @@ impl Gui {
         add_font!(fonts, proportional_fonts, "FontAwesome.otf");
         add_font!(fonts, proportional_fonts, "Inter_24pt-Regular.ttf");
         add_font!(fonts, proportional_fonts, "AlibabaPuHuiTi-3-45-Light.otf");
+        add_font!(fonts, proportional_fonts, "MPLUS1-Regular.ttf");
         add_font!(fonts, proportional_fonts, "Pretendard-Regular.ttf");
 
         fonts
@@ -2840,8 +3158,14 @@ impl Gui {
         scale: f32
     ) {
         let font = egui::FontId::proportional(12.0 * scale);
-        let galley = ui.painter().layout_no_wrap(name.to_owned(), font, text_color);
         let padding = egui::vec2(6.0 * scale, 3.0 * scale);
+        let wrap_w = (ui.max_rect().width() - padding.x * 2.0).max(24.0 * scale);
+        let natural = ui.painter().layout_no_wrap(name.to_owned(), font.clone(), text_color);
+        let galley = if natural.size().x <= wrap_w {
+            natural
+        } else {
+            ui.painter().layout(name.to_owned(), font, text_color, wrap_w)
+        };
         let size = galley.size() + padding * 2.0;
         let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
         let radius = egui::CornerRadius::same((3.0 * scale) as u8);
@@ -4452,6 +4776,59 @@ impl ConfigEditor {
                         });
                     }
                 });
+                ui.end_row();
+            }
+
+            #[cfg(target_os = "windows")]
+            if should_show_option(search, &t!("config_editor.race_stat_hud_landscapeui_portrait")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_landscapeui_portrait"));
+                ui.checkbox(&mut config.windows.race_stat_hud_landscapeui_portrait, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_draggable")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_draggable"));
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut config.race_stat_hud_draggable, "");
+                    if ui.button(t!("reset")).clicked() {
+                        config.race_stat_hud_drag_x = -1.0;
+                        config.race_stat_hud_drag_y = -1.0;
+                        let mut new_config = Hachimi::instance().config.load().as_ref().clone();
+                        new_config.race_stat_hud_drag_x = -1.0;
+                        new_config.race_stat_hud_drag_y = -1.0;
+                        save_and_reload_config(new_config);
+                        if let Ok(mut hud) = RACE_STAT_HUD.lock() {
+                            hud.drag_pos = None;
+                        }
+                    }
+                });
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_draggable_save")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud && config.race_stat_hud_draggable {
+                ui.label(t!("config_editor.race_stat_hud_draggable_save"));
+                ui.checkbox(&mut config.race_stat_hud_draggable_save, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_width_scale")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_width_scale"));
+                ui.add(egui::Slider::new(&mut config.race_stat_hud_width_scale,
+                    RACE_STAT_HUD_WIDTH_SCALE_MIN..=RACE_STAT_HUD_WIDTH_SCALE_MAX
+                ).step_by(0.05).fixed_decimals(2));
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_height_scale")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_height_scale"));
+                ui.add(egui::Slider::new(&mut config.race_stat_hud_height_scale,
+                    RACE_STAT_HUD_HEIGHT_SCALE_MIN..=RACE_STAT_HUD_HEIGHT_SCALE_MAX
+                ).step_by(0.05).fixed_decimals(2));
                 ui.end_row();
             }
 
@@ -6984,6 +7361,7 @@ impl Window for LicenseWindow {
                 ui.group(|ui| {
                     ui.label(t!("license.font_inter"));
                     ui.label(t!("license.font_font_awesome"));
+                    ui.label(t!("license.font_m_plus_1"));
                     ui.label(t!("license.font_pretendard"));
                 });
 
