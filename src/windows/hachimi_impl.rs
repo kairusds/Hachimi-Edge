@@ -66,6 +66,8 @@ pub struct Config {
     #[serde(default = "Config::default_race_stat_hud_toggle_key")]
     pub race_stat_hud_toggle_key: u16,
     #[serde(default)]
+    pub race_stat_hud_landscapeui_portrait: bool,
+    #[serde(default)]
     pub auto_full_screen: bool,
     #[serde(default, alias = "freeFormWindow")]
     pub freeform_window: bool,
