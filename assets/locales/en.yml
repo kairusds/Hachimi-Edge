@@ -40,6 +40,11 @@ back: "Back"
 portrait: "Portrait"
 landscape: "Landscape"
 reset: "Reset"
+spring: "Spring"
+summer: "Summer"
+fall: "Autumn"
+winter: "Winter"
+cherry_blossom: "Sakura"
 
 menu:
   check_for_updates: "\uf0aa Check for updates"
