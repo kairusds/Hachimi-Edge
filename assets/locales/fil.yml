@@ -26,6 +26,10 @@ remove: "Tanggalin"
 edit: "I-edit"
 add: "Magdagdag"
 save_changes: "I-save ang mga pagbabago?"
+reset: "I-reset"
+spring: "Tagsibol"
+summer: "Tag-init"
+fall: "Taglagas"
 
 menu:
   check_for_updates: "\uf0aa Tignan kung may update"
@@ -198,7 +202,12 @@ config_editor:
   trainer_live_landscape: "Pilitin ang landscape mode sa concert na \"Meni Shuki Rush!\""
   force_orientation_mode: "Pilitin ang orientation mode"
   live_slider_always_show: "Palaging ipakita ang slider sa Live Concert"
-  race_stat_hud_toggle_key: "Keybind sa pag-toggle ng Race Stat HUD"
+  race_stad_hud_toggle_button: "Race Stat HUD - Ipakita ang toggle button"
+  race_stat_hud_toggle_key: "Race Stat HUD - Keybind sa pag-toggle"
+  race_stat_hud_landscapeui_portrait: "I-adjust ang Race Stat HUD para sa Landscape UI"
+  race_stat_hud_draggable: "Gawing draggable ang Race Stat HUD"
+  race_stat_hud_draggable_save: "I-save ang posisyon ng na-drag na Race Stat HUD"
+
 
 free_camera:
   settings_title: "Mga Setting sa Free Camera"
