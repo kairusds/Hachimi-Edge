@@ -27,7 +27,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     let region = &Hachimi::instance().game.region;
     unsafe {
         match region {
-            &Region::Japan => {
+            &Region::Japan | &Region::Taiwan => {
                 CHANGELIVE_ONSUCCESS_ADDR = get_method_addr(LiveTheaterViewController, c"<ChangeLive>b__48_1", 1);
             }
             _ => { // Global
