@@ -207,6 +207,7 @@ config_editor:
   race_stat_hud_landscapeui_portrait: "I-adjust ang Race Stat HUD para sa Landscape UI"
   race_stat_hud_draggable: "Gawing draggable ang Race Stat HUD"
   race_stat_hud_draggable_save: "I-save ang posisyon ng na-drag na Race Stat HUD"
+  disable_tap_effect: "I-disable ang particle effect sa pag-tap"
 
 
 free_camera:
