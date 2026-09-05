@@ -56,7 +56,7 @@ use super::{
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
-    utils::{self, get_localized_string, umamusume_enum_options, SendPtr},
+    utils::{self, umamusume_enum_options, SendPtr},
     Hachimi
 };
 
@@ -1206,7 +1206,7 @@ impl RaceStatHud {
         }
     }
 
-    fn ellipsized(ui: &egui::Ui, text: &str, cap: f32, font_size: f32) -> String {
+    fn ellipsized<'a>(ui: &egui::Ui, text: &'a str, cap: f32, font_size: f32) -> Cow<'a, str> {
         let font = egui::FontId::proportional(font_size);
         let width = |s: &str| {
             ui.painter()
@@ -1214,10 +1214,11 @@ impl RaceStatHud {
                 .size()
                 .x
         };
+
         if width(text) <= cap || text.is_empty() {
-            return text.to_owned();
+            return Cow::Borrowed(text);
         }
-        // estimate how many chars fit, then trim until the ellipsis fits too
+
         let est = ((text.chars().count() as f32) * (cap / width(text))).floor() as usize;
         let mut truncated: String = text.chars().take(est.saturating_sub(1)).collect();
         truncated.push('\u{2026}');
@@ -1225,7 +1226,8 @@ impl RaceStatHud {
             truncated = truncated.chars().take(truncated.chars().count().saturating_sub(2)).collect();
             truncated.push('\u{2026}');
         }
-        truncated
+
+        Cow::Owned(truncated)
     }
 
     fn glint_active(stats: &CharacterStats) -> bool {
@@ -1347,29 +1349,24 @@ impl RaceStatHud {
         )
     }
 
-    fn skill_name(&mut self, skill_id: i32) -> String {
+    fn skill_name(&mut self, skill_id: i32) -> &str {
         use crate::il2cpp::{
             ext::Il2CppStringExt,
             hook::umamusume::MasterDataUtil,
             sql::TextDataQuery
         };
 
-        if let Some(name) = self.skill_name_cache.get(&skill_id) {
-            return name.clone();
-        }
-
-        let to_s = |ptr: *mut Il2CppString| unsafe {
-            ptr.as_ref().map(|s| s.as_utf16str().to_string())
-        };
-
-        // only cache resolved names, the fallback may resolve later in the race
-        if let Some(name) = to_s(TextDataQuery::get_skill_name(skill_id).unwrap_or(0 as _))
-            .or_else(|| to_s(MasterDataUtil::GetSkillName(skill_id))) {
-            self.skill_name_cache.insert(skill_id, name.clone());
-            return name;
-        }
-
-        format!("Skill {}", skill_id)
+        self.skill_name_cache
+            .entry(skill_id)
+            .or_insert_with(|| {
+                let to_s = |ptr: *mut Il2CppString| unsafe {
+                    ptr.as_ref().map(|s| s.as_utf16str().to_string())
+                };
+    
+                to_s(TextDataQuery::get_skill_name(skill_id).unwrap_or(0 as _))
+                    .or_else(|| to_s(MasterDataUtil::GetSkillName(skill_id)))
+                    .unwrap_or_else(|| format!("Skill {}", skill_id))
+            })
     }
 
     fn collect_stats(&mut self) -> (Vec<CharacterStats>, Option<RaceCourseInfo>) {
@@ -3264,8 +3261,9 @@ impl Gui {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
 
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+                    let search_lower = search_term.to_lowercase();
                     for (choice_val, label) in choices {
-                        if !search_term.is_empty() && !label.to_lowercase().contains(&search_term.to_lowercase()) {
+                        if !search_lower.is_empty() && !label.to_lowercase().contains(&search_lower) {
                             continue;
                         }
 
@@ -3965,7 +3963,6 @@ struct ConfigEditor {
     font_color_options: Vec<String>,
     outline_size_options: Vec<String>,
     outline_color_options: Vec<String>,
-    bgseason_options: Vec<(BgSeason, String)>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -3992,23 +3989,6 @@ fn should_show_option(search: &str, label: &str) -> bool {
 impl ConfigEditor {
     pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
-
-        // Gallop.Localize.Get must run on the Unity main thread on TW, otherwise the game crashes.
-        let bgseason_options = if Hachimi::instance().game.region != Region::Taiwan {
-            let default_label = t!("default").to_string();
-            // Season text ids from TextId enum
-            vec![
-                (BgSeason::None, default_label),
-                (BgSeason::Spring, get_localized_string("Common0108")),
-                (BgSeason::Summer, get_localized_string("Common0109")),
-                (BgSeason::Fall, get_localized_string("Common0110")),
-                (BgSeason::Winter, get_localized_string("Common0111")),
-                (BgSeason::CherryBlossom, get_localized_string("Common0112"))
-            ]
-        } else {
-            Vec::new()
-        };
-
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
             config: (**Hachimi::instance().config.load()).clone(),
@@ -4020,7 +4000,6 @@ impl ConfigEditor {
             font_color_options: umamusume_enum_options(c"FontColorType"),
             outline_size_options: umamusume_enum_options(c"OutlineSizeType"),
             outline_color_options: umamusume_enum_options(c"OutlineColorType"),
-            bgseason_options
         }
     }
 
@@ -4670,11 +4649,19 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) && Hachimi::instance().game.region != Region::Taiwan {
+            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) {
                 ui.label(t!("config_editor.homescreen_bgseason"));
-                let season_opts: Vec<(BgSeason, &str)> = self.bgseason_options.iter()
-                    .map(|(s, l)| (*s, l.as_str())).collect();
-                Gui::run_combo(ui, "homescreen_bgseason", &mut config.homescreen_bgseason, &season_opts);
+                let localized_data = Hachimi::instance().localized_data.load();
+                let get = |k, default| localized_data.localize_dict.get(k).map_or(default, |s| s.as_str());
+
+                Gui::run_combo(ui, "homescreen_bgseason", &mut config.homescreen_bgseason, &[
+                    (BgSeason::None, t!("default").as_ref()),
+                    (BgSeason::Spring, get("Common0108", t!("spring").as_ref())),
+                    (BgSeason::Summer, get("Common0109", t!("summer").as_ref())),
+                    (BgSeason::Fall, get("Common0110", t!("fall").as_ref())),
+                    (BgSeason::Winter, get("Common0111", t!("winter").as_ref())),
+                    (BgSeason::CherryBlossom, get("Common0112", t!("cherry_blossom").as_ref())),
+                ]);
                 ui.end_row();
             }
 
@@ -4968,7 +4955,7 @@ impl Window for ConfigEditor {
             self.config = (**global_handle).clone();
             self.last_ptr_config = global_ptr;
         }
-        let mut config = self.config.clone();
+        let mut config = std::mem::take(&mut self.config);
         #[cfg(target_os = "windows")]
         {
             config.windows.menu_open_key = global_handle.windows.menu_open_key;
@@ -6230,12 +6217,12 @@ impl Window for ExcludesEditorWindow {
                         let mut to_remove: Option<usize> = None;
                         let mut to_edit: Option<usize> = None;
 
+                        let search_lower = self.search_term.to_lowercase();
                         let display_items: Vec<(usize, String)> = self.excludes
                             .iter()
                             .enumerate()
                             .filter(|(_, exclude)| {
-                                self.search_term.is_empty()
-                                    || exclude.to_lowercase().contains(&self.search_term.to_lowercase())
+                                search_lower.is_empty() || exclude.to_lowercase().contains(&search_lower)
                             })
                             .map(|(i, exclude)| (i, exclude.clone()))
                             .collect();
@@ -6440,7 +6427,7 @@ impl Window for ChangeTranslationRepoWindow {
         let mut open2 = true;
 
         let hachimi = Hachimi::instance();
-        let manager = hachimi.tl_repo_manager.lock().unwrap().clone();
+        let manager = hachimi.tl_repo_manager.lock().unwrap();
         let current_repo_id = hachimi.config.load().selected_tl_repo_id;
         let has_repos = !manager.repos.is_empty();
 
