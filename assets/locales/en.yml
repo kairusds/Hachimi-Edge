@@ -39,6 +39,7 @@ save_changes: "Save changes?"
 back: "Back"
 portrait: "Portrait"
 landscape: "Landscape"
+reset: "Reset"
 
 menu:
   check_for_updates: "\uf0aa Check for updates"
@@ -130,6 +131,7 @@ license:
   ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
   font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
   font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
+  font_m_plus_1: "M PLUS 1: Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS)"
   font_pretendard: |
     Pretendard: Copyright (c) 2021, Kil Hyung-jin (https://github.com/orioncactus/pretendard), with Reserved Font Name 'Pretendard'.
     - Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. Source is a trademark of Adobe in the United States and/or other countries.
@@ -223,6 +225,11 @@ config_editor:
   race_stat_hud: "Race Stat HUD"
   race_stat_hud_toggle_button: "Race Stat HUD Toggle Button"
   race_stat_hud_toggle_key: "Race Stat HUD Toggle Keybind"
+  race_stat_hud_landscapeui_portrait: "Race Stat HUD Landscape UI game view"
+  race_stat_hud_draggable: "Race Stat HUD draggable"
+  race_stat_hud_draggable_save: "Race Stat HUD save dragged position"
+  race_stat_hud_width_scale: "Race Stat HUD width scale"
+  race_stat_hud_height_scale: "Race Stat HUD height scale"
   live_slider_always_show: "Always Show Live Slider"
   live_playback_loop: "Loop Live Performances"
   champions_live_show_text: "Override Champions Meeting Live Text"

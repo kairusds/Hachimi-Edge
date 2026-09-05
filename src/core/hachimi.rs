@@ -761,6 +761,18 @@ pub struct Config {
     pub race_stat_had_autoscroll_0: bool,
     #[serde(default)]
     pub race_stat_had_autoscroll_1: bool,
+    #[serde(default)]
+    pub race_stat_hud_draggable: bool,
+    #[serde(default)]
+    pub race_stat_hud_draggable_save: bool,
+    #[serde(default = "Config::default_race_stat_hud_drag_x")]
+    pub race_stat_hud_drag_x: f32,
+    #[serde(default = "Config::default_race_stat_hud_drag_y")]
+    pub race_stat_hud_drag_y: f32,
+    #[serde(default = "Config::default_race_stat_hud_width_scale")]
+    pub race_stat_hud_width_scale: f32,
+    #[serde(default = "Config::default_race_stat_hud_height_scale")]
+    pub race_stat_hud_height_scale: f32,
     #[serde(flatten)]
     pub caption: CaptionConfig,
     #[serde(default)]
@@ -838,6 +850,10 @@ impl Config {
     pub fn default_text_color() -> egui::Color32 { egui::Color32::from_gray(170) }
     pub fn default_window_rounding() -> f32 { 10.0 }
     fn default_tl_auto_updater_interval_sec() -> u64 { 3600 }
+    fn default_race_stat_hud_drag_x() -> f32 { -1.0 }
+    fn default_race_stat_hud_drag_y() -> f32 { -1.0 }
+    fn default_race_stat_hud_width_scale() -> f32 { 1.0 }
+    fn default_race_stat_hud_height_scale() -> f32 { 1.0 }
 }
 
 impl Default for Config {
