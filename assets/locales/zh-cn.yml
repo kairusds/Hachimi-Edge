@@ -38,6 +38,12 @@ save_changes: "保存更改？"
 back: "返回"
 portrait: "竖屏"
 landscape: "横屏"
+reset: "重置"
+spring: "春"
+summer: "夏"
+fall: "秋"
+winter: "冬"
+cherry_blossom: "樱"
 
 menu:
   check_for_updates: "\uf0aa 检查更新"
@@ -242,6 +248,12 @@ config_editor:
   race_stat_hud: "比赛状态HUD"
   race_stat_hud_toggle_button: "比赛状态HUD切换按钮"
   race_stat_hud_toggle_key: "比赛状态HUD切换快捷键"
+  race_stat_hud_landscapeui_portrait: "比赛统计HUD横屏UI游戏视图"
+  race_stat_hud_draggable: "比赛统计HUD可拖动"
+  race_stat_hud_draggable_save: "比赛统计HUD保存拖动位置"
+  race_stat_hud_width_scale: "比赛统计HUD宽度缩放"
+  race_stat_hud_height_scale: "比赛统计HUD高度缩放"
+  disable_tap_effect: "禁用点击效果"
 
 theme_editor:
   title: "覆盖层主题编辑器"
