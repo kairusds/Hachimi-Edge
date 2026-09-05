@@ -18,10 +18,23 @@ use chrono::{Utc, Datelike};
 use crate::il2cpp::{
     ext::StringExt,
     hook::{
-        umamusume::{CameraData::ShadowResolution, CySpringController::SpringUpdateMode, Director, GameSystem, GraphicSettings::{GraphicsQuality, MsaaQuality}, Localize, GameDefine::BgSeason, SceneManager as UmaSceneManager},
+        umamusume::{
+            CameraData::ShadowResolution,
+            CySpringController::SpringUpdateMode,
+            Director,
+            GameSystem,
+            GraphicSettings::{GraphicsQuality, MsaaQuality},
+            Localize,
+            GameDefine::BgSeason,
+            RaceDefine::{HorsePhase, LaneType},
+            TemptationMode,
+            SimulateEventType,
+            SceneManager as UmaSceneManager
+        },
         UnityEngine_CoreModule::{Application, Texture::AnisoLevel}
     },
-    symbols::Thread
+    symbols::Thread,
+    types::{Il2CppObject, Il2CppString}
 };
 
 #[cfg(target_os = "android")]
@@ -39,7 +52,7 @@ use crate::windows::free_camera::{self, FreeCameraMode};
 
 use super::{
     game::Region,
-    hachimi::{self, Language, REPO_PATH, WEBSITE_URL},
+    hachimi::{self, Language, REPO_PATH, WEBSITE_URL, RACE_MECHANICS_URL},
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
@@ -146,6 +159,1296 @@ pub static GUI_INPUT_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub static WANTS_INPUT: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SCENE: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SLIDER_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+static TOGGLE_RACE_STAT_HUD_REQUESTED: AtomicBool = AtomicBool::new(false);
+static RACE_STAT_HUD: Lazy<Mutex<RaceStatHud>> = Lazy::new(|| Mutex::new(RaceStatHud::new()));
+
+pub fn toggle_race_stat_hud() {
+    TOGGLE_RACE_STAT_HUD_REQUESTED.store(true, atomic::Ordering::Release);
+}
+
+// portrait: full width, fixed at 38% of the screen height
+const RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO: f32 = 0.38;
+// landscape: fixed at 40% of the screen width and 55% of the screen height
+const RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO: f32 = 0.4;
+const RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO: f32 = 0.55;
+
+// evenly spaced hues for the skill chips, so adjacent ones always differ
+const SKILL_CHIP_HUES: [f32; 10] = [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95];
+// semantic hues for the state chips
+const STATE_CHIP_HUE_GOOD: f32 = 0.33;
+const STATE_CHIP_HUE_BAD: f32 = 0.02;
+const STATE_CHIP_HUE_CONTEST: f32 = 0.09;
+// neutral hue for the stamina keep chip (conserving hp instead of fighting)
+const STATE_CHIP_HUE_INFO: f32 = 0.58;
+// distinctive hue for the zenkai spurt chip (5th anniversary mechanic)
+const STATE_CHIP_HUE_ZENKAI: f32 = 0.75;
+
+const VALUE_CHIP_HUE_SPEED: f32 = 0.50;
+const VALUE_CHIP_HUE_DISTANCE: f32 = 0.42;
+const VALUE_CHIP_HUE_PHASE: f32 = 0.18;
+const VALUE_CHIP_HUE_ORDER: f32 = 0.24;
+const VALUE_CHIP_HUE_START_DELAY: f32 = 0.90;
+const VALUE_CHIP_HUE_FINISH: f32 = 0.13;
+const VALUE_CHIP_HUE_LANE: f32 = 0.66;
+
+// glint sweep period seconds for the zenkai spurt effect on the speed and stamina visualizers
+const ZENKAI_GLINT_PERIOD: f32 = 1.2;
+
+#[derive(Eq, PartialEq, Clone, Copy)]
+enum RaceStatHudTab {
+    Stats,
+    UsedSkills,
+    UnusedSkills
+}
+
+impl RaceStatHudTab {
+    fn display_list() -> [(RaceStatHudTab, Cow<'static, str>); 3] {
+        [
+            (RaceStatHudTab::Stats, t!("race_stat_hud.stats")),
+            (RaceStatHudTab::UsedSkills, t!("race_stat_hud.used_skills")),
+            (RaceStatHudTab::UnusedSkills, t!("race_stat_hud.unused_skills"))
+        ]
+    }
+}
+
+struct CharacterStats {
+    name: String,
+    speed: f32,
+    accel: Option<f32>,
+    min_speed: f32,
+    max_speed_in_race: f32,
+    hp: f32,
+    max_hp: f32,
+    hp_drain: Option<f32>,
+    phase: HorsePhase,
+    cur_order: i32,
+    distance: f32,
+    lane: LaneType,
+    lane_distance: f32,
+    delay_time: f32,
+    is_good_start: bool,
+    is_bad_start: bool,
+    is_start_dash: bool,
+    is_clog: bool,
+    is_compete_fight: bool,
+    compete_fight_count: i32,
+    is_compete_top: bool,
+    compete_top_count: i32,
+    compete_top_remain_time: f32,
+    temptation_mode: TemptationMode,
+    temptation_count: i32,
+    is_last_spurt: bool,
+    last_spurt_start_distance: f32,
+    finish_order: i32,
+    finish_time_scaled: f32,
+    finish_time_diff: f32,
+    sim_events: SimEventStates,
+    used_skill_ids: Vec<i32>,
+    all_skill_ids: Vec<i32>
+}
+
+#[derive(Clone, Copy, PartialEq)]
+struct SimEvent {
+    kind: SimulateEventType,
+    start_distance: f32,
+    finish_distance: f32
+}
+
+#[derive(Clone, Copy, Default, PartialEq)]
+struct SimEventStates {
+    release_conserve_power: bool,
+    stamina_limit_break: bool,
+    stamina_keep: bool,
+    run_at_full_speed: bool,
+    compete_before_spurt: bool,
+    compete_before_spurt_count: i32,
+    secure_lead: bool,
+    secure_lead_count: i32
+}
+
+struct RaceCourseInfo {
+    course_distance: f32,
+    phase_middle: f32,
+    phase_end: f32,
+    phase_last: f32
+}
+
+#[derive(Clone, Copy, Default)]
+struct SimRates {
+    accel: Option<f32>,
+    hp_drain: Option<f32>
+}
+
+// accel gauge range (m/s^2), typical values stay well within it
+const ACCEL_GAUGE_MAX: f32 = 5.0;
+
+// fallback scale (m/s) for the speed bar when the uma's max speed in race
+// is not available yet, the race mechanics doc caps target speed at 30 m/s
+const SPEED_BAR_MAX_FALLBACK: f32 = 30.0;
+
+// delta indicator colors, shared by the accel gauge and the hp drain rate
+const DELTA_UP_COLOR: egui::Color32 = egui::Color32::from_rgb(90, 200, 110);
+const DELTA_DOWN_COLOR: egui::Color32 = egui::Color32::from_rgb(225, 85, 85);
+
+struct RaceStatHud {
+    visible: bool,
+    elements_showing: bool,
+    selected_character: usize,
+    select_player_on_race_start: bool,
+    current_tab: RaceStatHudTab,
+    config: hachimi::Config,
+    last_used_skills: Vec<i32>,
+    last_unused_skills: Vec<i32>,
+    skill_name_cache: HashMap<i32, String>
+}
+
+impl RaceStatHud {
+    fn new() -> RaceStatHud {
+        RaceStatHud {
+            visible: false,
+            elements_showing: false,
+            selected_character: 0,
+            select_player_on_race_start: false,
+            current_tab: RaceStatHudTab::Stats,
+            config: (**Hachimi::instance().config.load()).clone(),
+            last_used_skills: Vec::new(),
+            last_unused_skills: Vec::new(),
+            skill_name_cache: HashMap::new()
+        }
+    }
+
+    fn set_visible(&mut self, visible: bool) {
+        if visible && !self.visible {
+            self.config = (**Hachimi::instance().config.load()).clone();
+        }
+        if !visible && self.visible {
+            self.save_autoscroll_config();
+        }
+        self.visible = visible;
+    }
+
+    fn save_autoscroll_config(&mut self) {
+        let live = (**Hachimi::instance().config.load()).clone();
+        if live.race_stat_had_autoscroll_0 == self.config.race_stat_had_autoscroll_0
+            && live.race_stat_had_autoscroll_1 == self.config.race_stat_had_autoscroll_1 {
+            return;
+        }
+
+        let mut new_config = live;
+        new_config.race_stat_had_autoscroll_0 = self.config.race_stat_had_autoscroll_0;
+        new_config.race_stat_had_autoscroll_1 = self.config.race_stat_had_autoscroll_1;
+        save_and_reload_config(new_config);
+    }
+
+    fn elements_showing() -> bool {
+        if TOGGLE_RACE_STAT_HUD_REQUESTED.load(atomic::Ordering::Acquire) {
+            return true;
+        }
+
+        Self::elements_showing_locked(&RACE_STAT_HUD.lock().unwrap())
+    }
+
+    fn elements_showing_locked(hud: &RaceStatHud) -> bool {
+        use crate::il2cpp::hook::umamusume::RaceHorseManagerBase;
+
+        if Hachimi::instance().game.region != Region::Japan {
+            return false;
+        }
+
+        let config = Hachimi::instance().config.load();
+        if !config.race_stat_hud {
+            return false;
+        }
+
+        if !RaceHorseManagerBase::is_race_active() {
+            return false;
+        }
+
+        hud.visible || config.race_stat_hud_toggle_button
+    }
+
+    fn is_active() -> bool {
+        RACE_STAT_HUD.lock().unwrap().elements_showing
+    }
+
+    fn run(ctx: &egui::Context) {
+        let mut hud = RACE_STAT_HUD.lock().unwrap();
+
+        if TOGGLE_RACE_STAT_HUD_REQUESTED.swap(false, atomic::Ordering::AcqRel) {
+            let visible = !hud.visible;
+            hud.set_visible(visible);
+        }
+
+        let was_showing = hud.elements_showing;
+        hud.elements_showing = Self::elements_showing_locked(&hud);
+        if was_showing && !hud.elements_showing {
+            hud.save_autoscroll_config();
+        } else if !was_showing && hud.elements_showing {
+            hud.config = (**Hachimi::instance().config.load()).clone();
+            hud.last_used_skills.clear();
+            hud.last_unused_skills.clear();
+            hud.select_player_on_race_start = true;
+        }
+        if !hud.elements_showing {
+            return;
+        }
+
+        let toggle_button = Hachimi::instance().config.load().race_stat_hud_toggle_button;
+        let scale = get_scale(ctx);
+        let screen = ctx.viewport_rect();
+
+        hud.run_hud(ctx, screen, scale, toggle_button);
+
+        if toggle_button && !hud.visible {
+            hud.run_button(ctx, screen, scale);
+        }
+    }
+
+    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, scale: f32, toggle_button: bool) {
+        if !self.visible {
+            return;
+        }
+
+        let (all_stats, course_info) = self.collect_stats();
+        if all_stats.is_empty() {
+            return;
+        }
+
+        let is_vertical = screen.width() <= screen.height();
+
+        let panel = if is_vertical {
+            // portrait: full width at the bottom
+            egui::vec2(screen.width(), screen.height() * RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO)
+        } else {
+            // landscape: bottom right corner
+            egui::vec2(screen.width() * RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO, screen.height() * RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO)
+        };
+        let anchor = if is_vertical { egui::Align2::LEFT_BOTTOM } else { egui::Align2::RIGHT_BOTTOM };
+
+        let area_id = egui::Id::new("race_stat_hud_overlay").with(is_vertical);
+        egui::Area::new(area_id)
+            .anchor(anchor, egui::Vec2::ZERO)
+            .show(ctx, |ui| {
+                egui::Frame::NONE
+                    .fill(egui::Color32::from_black_alpha(200))
+                    .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 100)))
+                    .inner_margin(egui::Margin::same((8.0 * scale) as i8))
+                    .show(ui, |ui| {
+                        ui.set_width(panel.x - 16.0 * scale);
+                        self.hud_contents(ui, &all_stats, course_info.as_ref(), scale, panel.y - 16.0 * scale, toggle_button);
+                    });
+            });
+    }
+
+    fn run_button(&mut self, ctx: &egui::Context, screen: egui::Rect, scale: f32) {
+        let btn_size = 20.0 * scale;
+        let margin = 4.0 * scale;
+        let is_vertical = screen.width() <= screen.height();
+        let x = if is_vertical {
+            screen.right() - btn_size - margin
+        } else {
+            // margin for Android navigation bars
+            screen.right() - btn_size - 48.0 * scale
+        };
+        let btn_pos = egui::Pos2::new(x, screen.center().y - btn_size / 2.0);
+
+        let icon = "\u{f0d9}";
+        egui::Area::new(egui::Id::new("race_stat_hud_toggle_btn"))
+            .fixed_pos(btn_pos)
+            .show(ctx, |ui| {
+                let btn = egui::Button::new(
+                    egui::RichText::new(icon).size(14.0 * scale)
+                ).min_size(egui::Vec2::new(btn_size, btn_size));
+
+                if ui.add(btn).clicked() {
+                    self.set_visible(true);
+                }
+            });
+    }
+
+    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool) {
+        let mut selected = self.selected_character;
+        let mut visible = self.visible;
+        let current_tab = self.current_tab;
+
+        // character select
+        ui.horizontal(|ui| {
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                if toggle_button {
+                    let btn_size = 20.0 * scale;
+                    let btn = egui::Button::new(
+                        egui::RichText::new("\u{f0da}").size(14.0 * scale)
+                    ).min_size(egui::Vec2::new(btn_size, btn_size));
+
+                    if ui.add(btn).clicked() {
+                        visible = false;
+                    }
+                }
+
+                egui::ComboBox::new(ui.id().with("character_select"), "")
+                    .selected_text(&all_stats[selected].name)
+                    .show_ui(ui, |combo_ui| {
+                        for (i, stats) in all_stats.iter().enumerate() {
+                            combo_ui.selectable_value(&mut selected, i, &stats.name);
+                        }
+                    });
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    if ui.button(" \u{f29c} ").clicked() {
+                        thread::spawn(|| {
+                            Gui::instance().unwrap()
+                            .lock().unwrap()
+                            .show_window(Box::new(SimpleYesNoDialog::new(&t!("confirm_dialog_title"), &t!("race_stat_hud.open_race_mechanics_confirm"), |ok| {
+                                if !ok { return; }
+                                Thread::main_thread().schedule(|| {
+                                    Application::OpenURL(RACE_MECHANICS_URL.to_il2cpp_string());
+                                });
+                            })));
+                        });
+                    }
+
+                    if current_tab != RaceStatHudTab::Stats {
+                        let mut autoscroll = match current_tab {
+                            RaceStatHudTab::UsedSkills => self.config.race_stat_had_autoscroll_0,
+                            RaceStatHudTab::UnusedSkills => self.config.race_stat_had_autoscroll_1,
+                            _ => false
+                        };
+                        if ui.checkbox(&mut autoscroll, t!("race_stat_hud.autoscroll")).changed() {
+                            match current_tab {
+                                RaceStatHudTab::UsedSkills => self.config.race_stat_had_autoscroll_0 = autoscroll,
+                                RaceStatHudTab::UnusedSkills => self.config.race_stat_had_autoscroll_1 = autoscroll,
+                                _ => {}
+                            }
+                            self.save_autoscroll_config();
+                        }
+                    }
+                });
+            });
+        });
+        self.selected_character = selected;
+        self.set_visible(visible);
+
+        ui.add_space(4.0 * scale);
+
+        let mut current_tab = self.current_tab;
+        ui.horizontal_wrapped(|ui| {
+            let style = ui.style_mut();
+            style.spacing.button_padding = egui::vec2(8.0 * scale, 5.0 * scale);
+            style.spacing.item_spacing = egui::vec2(0.0, 4.0 * scale);
+            let widgets = &mut style.visuals.widgets;
+            widgets.inactive.corner_radius = egui::CornerRadius::ZERO;
+            widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
+            widgets.active.corner_radius = egui::CornerRadius::ZERO;
+
+            for (tab, label) in RaceStatHudTab::display_list() {
+                if ui.selectable_label(current_tab == tab, egui::RichText::new(label).size(13.0 * scale)).clicked() {
+                    current_tab = tab;
+                }
+            }
+        });
+        self.current_tab = current_tab;
+
+        ui.add_space(4.0 * scale);
+
+        let used_h = ui.next_widget_position().y - ui.min_rect().min.y;
+        let page_h = (panel_h - used_h).max(24.0 * scale);
+
+        let tab = self.current_tab;
+        let page_id = match tab {
+            RaceStatHudTab::Stats => "race_stat_hud_page_stats",
+            RaceStatHudTab::UsedSkills => "race_stat_hud_page_used",
+            RaceStatHudTab::UnusedSkills => "race_stat_hud_page_unused"
+        };
+        let stats = &all_stats[selected];
+        let unused_ids = if tab == RaceStatHudTab::UnusedSkills {
+            let used: FnvHashSet<i32> = stats.used_skill_ids.iter().copied().collect();
+            Some(stats.all_skill_ids.iter().copied().filter(|id| !used.contains(id)).collect())
+        } else {
+            None
+        };
+
+        let mut scroll_to_bottom = false;
+        if tab == RaceStatHudTab::UsedSkills {
+            scroll_to_bottom = self.config.race_stat_had_autoscroll_0 && self.last_used_skills != stats.used_skill_ids;
+        } else if tab == RaceStatHudTab::UnusedSkills {
+            if let Some(unused) = unused_ids.as_ref() {
+                scroll_to_bottom = self.config.race_stat_had_autoscroll_1 && self.last_unused_skills != *unused;
+            }
+        }
+
+        egui::ScrollArea::vertical()
+            .id_salt(page_id)
+            .auto_shrink([false, false])
+            .max_height(page_h)
+            .show(ui, |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                match tab {
+                    RaceStatHudTab::Stats => Self::stats_page(ui, stats, course, scale),
+                    RaceStatHudTab::UsedSkills => self.skills_page(ui, &stats.used_skill_ids, scale),
+                    RaceStatHudTab::UnusedSkills => {
+                        self.skills_page(ui, unused_ids.as_deref().unwrap_or(&[]), scale);
+                    }
+                };
+
+                if scroll_to_bottom {
+                    ui.scroll_to_cursor_animation(
+                        Some(egui::Align::BOTTOM),
+                        egui::style::ScrollAnimation::none()
+                    );
+                }
+            });
+
+        if tab == RaceStatHudTab::UsedSkills {
+            self.last_used_skills = stats.used_skill_ids.clone();
+        } else if tab == RaceStatHudTab::UnusedSkills {
+            self.last_unused_skills = unused_ids.unwrap_or_default();
+        }
+    }
+
+    fn stats_page(ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
+        // speed, with the min speed on the side 
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.speed")).size(13.0 * scale));
+            Self::value_chip(ui, &format!("{:.1}", stats.speed), VALUE_CHIP_HUE_SPEED, scale);
+            ui.label(egui::RichText::new(format!("{} {:.1}", t!("race_stat_hud.min_speed"), stats.min_speed)).size(11.0 * scale).color(egui::Color32::from_gray(150)));
+
+            // speed bar: 0..max scale, fill up to the current speed, min
+            // speed marked with a tick on top of the fill
+            let bar_w = 100.0 * scale;
+            let bar_h = 10.0 * scale;
+            let (bar_rect, _) = ui.allocate_exact_size(egui::vec2(bar_w, bar_h), egui::Sense::hover());
+            let bar_max = if stats.max_speed_in_race > stats.min_speed {
+                stats.max_speed_in_race
+            } else {
+                SPEED_BAR_MAX_FALLBACK
+            };
+            let speed_ratio = (stats.speed / bar_max).clamp(0.0, 1.0);
+            let min_ratio = (stats.min_speed / bar_max).clamp(0.0, 1.0);
+
+            ui.painter().rect_filled(bar_rect, 0.0, egui::Color32::from_gray(60));
+            ui.painter().rect_filled(
+                egui::Rect::from_min_max(
+                    bar_rect.min,
+                    egui::pos2(bar_rect.min.x + bar_rect.width() * speed_ratio, bar_rect.max.y),
+                ),
+                0.0,
+                egui::Color32::from_gray(170)
+            );
+            // min speed floor tick
+            let tick_w = 1.0 * scale;
+            let min_x = bar_rect.min.x + bar_rect.width() * min_ratio;
+            ui.painter().rect_filled(
+                egui::Rect::from_min_max(egui::pos2(min_x - tick_w / 2.0, bar_rect.min.y), egui::pos2(min_x + tick_w / 2.0, bar_rect.max.y)),
+                0.0,
+                egui::Color32::from_gray(220)
+            );
+            // zenkai spurt glint while the uma is still running
+            if Self::glint_active(stats) {
+                Self::zenkai_glint(ui, bar_rect, scale);
+            }
+        });
+
+        // acceleration
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.accel")).size(13.0 * scale));
+
+            let gauge_w = 100.0 * scale;
+            let gauge_h = 10.0 * scale;
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(gauge_w, gauge_h), egui::Sense::hover());
+            let center_x = rect.center().x;
+
+            let ratio = (stats.accel.unwrap_or(0.0) / ACCEL_GAUGE_MAX).clamp(-1.0, 1.0);
+            let half = gauge_w / 2.0 * ratio.abs();
+            let tick_w = 1.0 * scale;
+
+            ui.painter().rect_filled(rect, 0.0, egui::Color32::from_gray(60));
+            // center tick marking zero accel
+            ui.painter().rect_filled(
+                egui::Rect::from_min_max(egui::pos2(center_x - tick_w / 2.0, rect.min.y), egui::pos2(center_x + tick_w / 2.0, rect.max.y)),
+                0.0,
+                egui::Color32::from_gray(90)
+            );
+            if half > 0.0 {
+                let color = if ratio > 0.0 { DELTA_UP_COLOR } else { DELTA_DOWN_COLOR };
+                let fill_rect = if ratio > 0.0 {
+                    egui::Rect::from_min_max(egui::pos2(center_x, rect.min.y), egui::pos2(center_x + half, rect.max.y))
+                } else {
+                    egui::Rect::from_min_max(egui::pos2(center_x - half, rect.min.y), egui::pos2(center_x, rect.max.y))
+                };
+                ui.painter().rect_filled(fill_rect, 0.0, color);
+            }
+
+            let (text, color) = match stats.accel {
+                Some(v) => (
+                    format!("{:+.1} m/s\u{00b2}", v),
+                    if v > 0.05 { DELTA_UP_COLOR } else if v < -0.05 { DELTA_DOWN_COLOR } else { egui::Color32::from_gray(140) }
+                ),
+                None => ("-".to_string(), egui::Color32::from_gray(140))
+            };
+            ui.label(egui::RichText::new(text).size(13.0 * scale).color(color));
+        });
+
+        // stamina (hp bar), with the drain rate
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.stamina")).size(13.0 * scale));
+            let hp_ratio = if stats.max_hp > 0.0 { stats.hp / stats.max_hp } else { 0.0 };
+            Self::value_chip(ui, &format!("{:.0}/{:.0}", stats.hp, stats.max_hp), Self::hp_chip_hue(hp_ratio), scale);
+            let bar_width = 100.0 * scale;
+            let bar_height = 10.0 * scale;
+            let (rect, _) = ui.allocate_exact_size(
+                egui::vec2(bar_width, bar_height),
+                egui::Sense::hover(),
+            );
+            let bar_color = if hp_ratio > 0.5 {
+                egui::Color32::GREEN
+            } else if hp_ratio > 0.25 {
+                egui::Color32::YELLOW
+            } else {
+                egui::Color32::RED
+            };
+            ui.painter().rect_filled(rect, 0.0, egui::Color32::from_gray(60));
+            let filled_rect = egui::Rect::from_min_max(
+                rect.min,
+                egui::pos2(rect.min.x + rect.width() * hp_ratio, rect.max.y),
+            );
+            ui.painter().rect_filled(filled_rect, 0.0, bar_color);
+            if Self::glint_active(stats) {
+                Self::zenkai_glint(ui, rect, scale);
+            }
+
+            let (text, color) = match stats.hp_drain {
+                // hp drain
+                Some(v) => (
+                    format!("{:+.1}/s", -v),
+                    if v > 0.05 { DELTA_DOWN_COLOR } else if v < -0.05 { DELTA_UP_COLOR } else { egui::Color32::from_gray(140) }
+                ),
+                None => ("-".to_string(), egui::Color32::from_gray(140))
+            };
+            ui.label(egui::RichText::new(text).size(11.0 * scale).color(color));
+        });
+
+        // phase
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.phase")).size(13.0 * scale));
+            Self::value_chip(ui, &Self::phase_name(stats.phase), VALUE_CHIP_HUE_PHASE, scale);
+        });
+
+        // order
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.order")).size(13.0 * scale));
+            let text = if stats.cur_order >= 0 {
+                Self::ordinal(stats.cur_order + 1)
+            } else {
+                "-".to_string()
+            };
+            Self::value_chip(ui, &text, VALUE_CHIP_HUE_ORDER, scale);
+        });
+
+        // distance
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.distance")).size(13.0 * scale));
+            let text = match course {
+                Some(c) => format!("{:.0} / {:.0} m", stats.distance.clamp(0.0, c.course_distance), c.course_distance),
+                None => format!("{:.0} m", stats.distance)
+            };
+            Self::value_chip(ui, &text, VALUE_CHIP_HUE_DISTANCE, scale);
+        });
+        if let Some(course) = course {
+            Self::distance_bar(ui, stats, course, scale);
+        }
+
+        // lane (11.25m per course width, same as the world transform)
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.lane")).size(13.0 * scale));
+            Self::value_chip(ui, &format!("{} ({:.1} m)", Self::lane_name(stats.lane), stats.lane_distance * 11.25), VALUE_CHIP_HUE_LANE, scale);
+        });
+
+        // start delay
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new(t!("race_stat_hud.start_delay")).size(13.0 * scale));
+            Self::value_chip(ui, &format!("{:+.2} s", stats.delay_time), VALUE_CHIP_HUE_START_DELAY, scale);
+        });
+
+        // live state chips
+        Self::state_chips(ui, stats, scale);
+
+        if stats.phase == HorsePhase::Finished {
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(t!("race_stat_hud.finish")).size(13.0 * scale));
+                let text = if stats.finish_time_diff > 0.0 {
+                    format!("{} - {:.2} s (+{:.2})", Self::ordinal(stats.finish_order + 1), stats.finish_time_scaled, stats.finish_time_diff)
+                } else {
+                    format!("{} - {:.2} s", Self::ordinal(stats.finish_order + 1), stats.finish_time_scaled)
+                };
+                Self::value_chip(ui, &text, VALUE_CHIP_HUE_FINISH, scale);
+            });
+        }
+    }
+
+    fn distance_bar(ui: &mut egui::Ui, stats: &CharacterStats, course: &RaceCourseInfo, scale: f32) {
+        let bar_height = 8.0 * scale;
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), bar_height), egui::Sense::hover());
+        ui.painter().rect_filled(rect, 0.0, egui::Color32::from_gray(60));
+        let total = course.course_distance;
+        if total <= 0.0 {
+            return;
+        }
+
+        let progress = (stats.distance / total).clamp(0.0, 1.0);
+        let filled_rect = egui::Rect::from_min_max(
+            rect.min,
+            egui::pos2(rect.min.x + rect.width() * progress, rect.max.y),
+        );
+        ui.painter().rect_filled(filled_rect, 0.0, egui::Color32::from_gray(170));
+
+        // ticks at the phase boundaries (early | mid | late | final)
+        let tick_width = 1.0 * scale;
+        for tick in [course.phase_middle, course.phase_end, course.phase_last] {
+            let x = rect.min.x + rect.width() * (tick / total).clamp(0.0, 1.0);
+            ui.painter().rect_filled(
+                egui::Rect::from_min_max(egui::pos2(x - tick_width / 2.0, rect.min.y), egui::pos2(x + tick_width / 2.0, rect.max.y)),
+                0.0,
+                egui::Color32::from_gray(220)
+            );
+        }
+
+        // last spurt start
+        if stats.is_last_spurt && stats.last_spurt_start_distance >= 0.0 {
+            let x = rect.min.x + rect.width() * (stats.last_spurt_start_distance / total).clamp(0.0, 1.0);
+            ui.painter().rect_filled(
+                egui::Rect::from_min_max(egui::pos2(x - tick_width, rect.min.y), egui::pos2(x + tick_width, rect.max.y)),
+                0.0,
+                egui::Color32::GREEN
+            );
+        }
+    }
+
+    fn state_chips(ui: &mut egui::Ui, stats: &CharacterStats, scale: f32) {
+        if stats.phase == HorsePhase::Finished {
+            return;
+        }
+
+        let se = &stats.sim_events;
+        if !stats.is_good_start && !stats.is_start_dash && !stats.is_last_spurt
+            && !stats.is_bad_start && !stats.is_clog && stats.temptation_mode == 0
+            && !stats.is_compete_fight && !stats.is_compete_top
+            && !se.release_conserve_power && !se.stamina_limit_break
+            && !se.stamina_keep && !se.run_at_full_speed
+            && !se.compete_before_spurt && !se.secure_lead {
+            return;
+        }
+
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(4.0 * scale, 4.0 * scale);
+            if stats.is_good_start {
+                Self::state_chip(ui, &t!("race_stat_hud.good_start"), STATE_CHIP_HUE_GOOD, scale);
+            }
+            if stats.is_start_dash {
+                Self::state_chip(ui, &t!("race_stat_hud.start_dash"), STATE_CHIP_HUE_GOOD, scale);
+            }
+            if stats.is_last_spurt {
+                Self::state_chip(ui, &t!("race_stat_hud.last_spurt"), STATE_CHIP_HUE_GOOD, scale);
+            }
+            if stats.is_bad_start {
+                Self::state_chip(ui, &t!("race_stat_hud.bad_start"), STATE_CHIP_HUE_BAD, scale);
+            }
+            if stats.is_clog {
+                Self::state_chip(ui, &t!("race_stat_hud.clog"), STATE_CHIP_HUE_BAD, scale);
+            }
+            if stats.temptation_mode != 0 {
+                let text = format!("{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count);
+                Self::state_chip(ui, &text, STATE_CHIP_HUE_BAD, scale);
+            }
+            if stats.is_compete_fight {
+                let text = format!("{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count);
+                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+            }
+            if stats.is_compete_top {
+                let text = format!("{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count, stats.compete_top_remain_time);
+                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+            }
+            if se.run_at_full_speed {
+                Self::state_chip(ui, &t!("race_stat_hud.run_at_full_speed"), STATE_CHIP_HUE_ZENKAI, scale);
+            }
+            if se.release_conserve_power {
+                Self::state_chip(ui, &t!("race_stat_hud.conserve_release"), STATE_CHIP_HUE_GOOD, scale);
+            }
+            if se.stamina_limit_break {
+                Self::state_chip(ui, &t!("race_stat_hud.stamina_limit_break"), STATE_CHIP_HUE_GOOD, scale);
+            }
+            if se.stamina_keep {
+                Self::state_chip(ui, &t!("race_stat_hud.stamina_keep"), STATE_CHIP_HUE_INFO, scale);
+            }
+            if se.compete_before_spurt {
+                let text = format!("{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count);
+                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+            }
+            if se.secure_lead {
+                let text = format!("{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count);
+                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+            }
+        });
+    }
+
+    fn state_chip(ui: &mut egui::Ui, text: &str, hue: f32, scale: f32) {
+        let (bg, border, text_color) = Self::chip_colors(ui, hue);
+        Gui::run_chip(ui, text, bg, border, text_color, scale);
+    }
+
+    fn value_chip(ui: &mut egui::Ui, text: &str, hue: f32, scale: f32) {
+        let (bg, border, text_color) = Self::chip_colors(ui, hue);
+        Gui::run_chip(ui, text, bg, border, text_color, scale);
+    }
+
+    fn hp_chip_hue(hp_ratio: f32) -> f32 {
+        if hp_ratio > 0.5 {
+            0.33
+        } else if hp_ratio > 0.25 {
+            0.16
+        } else {
+            0.02
+        }
+    }
+
+    fn glint_active(stats: &CharacterStats) -> bool {
+        stats.sim_events.run_at_full_speed && stats.phase != HorsePhase::Finished
+    }
+
+    // zenkai spurt effect on the speed/hp visualizers
+    fn zenkai_glint(ui: &mut egui::Ui, rect: egui::Rect, scale: f32) {
+        let time = ui.input(|i| i.time) as f32;
+        let phase = time.rem_euclid(ZENKAI_GLINT_PERIOD) / ZENKAI_GLINT_PERIOD;
+        let band_w = (rect.width() * 0.3).max(6.0 * scale);
+        let slope = rect.height() * 1.6;
+        let travel = rect.width() + band_w + slope * 2.0;
+        let lead = rect.min.x - band_w - slope + phase * travel;
+
+        let painter = ui.painter_at(rect);
+        let halo = egui::Color32::from(egui::ecolor::Hsva::new(STATE_CHIP_HUE_ZENKAI, 0.70, 0.60, 0.45));
+        let core = egui::Color32::from(egui::ecolor::Hsva::new(STATE_CHIP_HUE_ZENKAI, 0.30, 1.00, 0.85));
+
+        let band = |x: f32, w: f32| vec![
+            egui::pos2(x, rect.max.y),
+            egui::pos2(x + w, rect.max.y),
+            egui::pos2(x + w + slope, rect.min.y),
+            egui::pos2(x + slope, rect.min.y)
+        ];
+
+        painter.add(egui::Shape::convex_polygon(
+            band(lead - band_w * 0.6, band_w * 1.6),
+            halo,
+            egui::Stroke::NONE
+        ));
+        painter.add(egui::Shape::convex_polygon(
+            band(lead, band_w),
+            core,
+            egui::Stroke::NONE
+        ));
+    }
+
+    fn phase_name(phase: HorsePhase) -> Cow<'static, str> {
+        match phase {
+            HorsePhase::RunUp => t!("race_stat_hud.phase_runup"),
+            HorsePhase::Start => t!("race_stat_hud.phase_start"),
+            HorsePhase::MiddleRun => t!("race_stat_hud.phase_middle"),
+            HorsePhase::End => t!("race_stat_hud.phase_end"),
+            HorsePhase::Last => t!("race_stat_hud.phase_last"),
+            HorsePhase::Finished => t!("race_stat_hud.phase_finished"),
+        }
+    }
+
+    fn lane_name(lane: LaneType) -> Cow<'static, str> {
+        match lane {
+            LaneType::Uti => t!("race_stat_hud.lane_inner"),
+            LaneType::Naka => t!("race_stat_hud.lane_middle"),
+            LaneType::Soto => t!("race_stat_hud.lane_outer"),
+            LaneType::Oosoto => t!("race_stat_hud.lane_outermost"),
+        }
+    }
+
+    fn temptation_mode_name(mode: TemptationMode) -> Cow<'static, str> {
+        match mode {
+            TemptationMode::PositionSashi => t!("race_stat_hud.temptation_sashi"),
+            TemptationMode::PositionSenko => t!("race_stat_hud.temptation_senko"),
+            TemptationMode::PositionNige => t!("race_stat_hud.temptation_nige"),
+            TemptationMode::Boost => t!("race_stat_hud.temptation_boost"),
+            _ => Cow::Borrowed("")
+        }
+    }
+
+    fn ordinal(n: i32) -> String {
+        let suffix = if n / 10 % 10 == 1 {
+            "th"
+        } else {
+            match n % 10 {
+                1 => "st",
+                2 => "nd",
+                3 => "rd",
+                _ => "th"
+            }
+        };
+        format!("{}{}", n, suffix)
+    }
+
+    fn skills_page(&mut self, ui: &mut egui::Ui, skill_ids: &[i32], scale: f32) {
+        if skill_ids.is_empty() {
+            ui.label(egui::RichText::new("-").size(12.0 * scale));
+            return;
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(4.0 * scale, 4.0 * scale);
+            for (i, &skill_id) in skill_ids.iter().enumerate() {
+                let (bg, border, text_color) = Self::skill_chip_colors(ui, i);
+                Gui::run_chip(ui, &self.skill_name(skill_id), bg, border, text_color, scale);
+            }
+        });
+    }
+
+    fn skill_chip_colors(ui: &egui::Ui, index: usize) -> (egui::Color32, egui::Color32, egui::Color32) {
+        Self::chip_colors(ui, SKILL_CHIP_HUES[index % SKILL_CHIP_HUES.len()])
+    }
+
+    fn chip_colors(ui: &egui::Ui, hue: f32) -> (egui::Color32, egui::Color32, egui::Color32) {
+        let (bg, border, text) = if ui.visuals().dark_mode {
+            (
+                egui::ecolor::Hsva::new(hue, 0.40, 0.28, 1.0),
+                egui::ecolor::Hsva::new(hue, 0.55, 0.65, 1.0),
+                egui::ecolor::Hsva::new(hue, 0.04, 0.79, 1.0)
+            )
+        } else {
+            (
+                egui::ecolor::Hsva::new(hue, 0.50, 0.94, 1.0),
+                egui::ecolor::Hsva::new(hue, 0.65, 0.55, 1.0),
+                egui::ecolor::Hsva::new(hue, 0.25, 0.35, 1.0)
+            )
+        };
+        (
+            egui::Color32::from(bg),
+            egui::Color32::from(border),
+            egui::Color32::from(text)
+        )
+    }
+
+    fn skill_name(&mut self, skill_id: i32) -> String {
+        use crate::il2cpp::{
+            ext::Il2CppStringExt,
+            hook::umamusume::MasterDataUtil,
+            sql::TextDataQuery
+        };
+
+        if let Some(name) = self.skill_name_cache.get(&skill_id) {
+            return name.clone();
+        }
+
+        let to_s = |ptr: *mut Il2CppString| unsafe {
+            ptr.as_ref().map(|s| s.as_utf16str().to_string())
+        };
+
+        // only cache resolved names, the fallback may resolve later in the race
+        if let Some(name) = to_s(TextDataQuery::get_skill_name(skill_id).unwrap_or(0 as _))
+            .or_else(|| to_s(MasterDataUtil::GetSkillName(skill_id))) {
+            self.skill_name_cache.insert(skill_id, name.clone());
+            return name;
+        }
+
+        format!("Skill {}", skill_id)
+    }
+
+    fn collect_stats(&mut self) -> (Vec<CharacterStats>, Option<RaceCourseInfo>) {
+        use crate::il2cpp::{
+            hook::umamusume::{RaceManager, RaceHorseManagerBase},
+            symbols::Array
+        };
+
+        let race_manager = RaceManager::instance();
+        if race_manager.is_null() {
+            return (Vec::new(), None);
+        }
+
+        let horse_manager = RaceManager::get__horseManager(race_manager);
+        if horse_manager.is_null() {
+            return (Vec::new(), None);
+        }
+
+        let horse_infos = RaceHorseManagerBase::GetHorseRaceInfos(horse_manager);
+        if horse_infos.is_null() {
+            return (Vec::new(), None);
+        }
+
+        let arr: Array<*mut Il2CppObject> = Array::from(horse_infos);
+        let character_count = arr.len();
+        if character_count == 0 {
+            return (Vec::new(), None);
+        }
+
+        let sim_rates = Self::collect_sim_rates(horse_manager, character_count);
+        let sim_events = Self::collect_sim_events(horse_manager, character_count);
+
+        let all_stats: Vec<CharacterStats> = (0..character_count)
+            .filter_map(|i| {
+                let race_info = unsafe { arr.as_slice()[i] };
+                Self::collect_character_stats(
+                    race_info,
+                    sim_rates.get(i).copied().unwrap_or_default(),
+                    sim_events.get(i).map(Vec::as_slice).unwrap_or(&[])
+                )
+            })
+            .collect();
+
+        if !all_stats.is_empty() {
+            let player_idx = RaceHorseManagerBase::GetPlayerHorseIndex(horse_manager);
+            let player_idx = if player_idx >= 0 && (player_idx as usize) < character_count {
+                player_idx as usize
+            } else {
+                0
+            };
+
+            if self.select_player_on_race_start {
+                self.select_player_on_race_start = false;
+                self.selected_character = player_idx.min(all_stats.len() - 1);
+            } else if self.selected_character >= all_stats.len() {
+                self.selected_character = player_idx.min(all_stats.len() - 1);
+            }
+        }
+
+        (all_stats, Self::collect_course_info())
+    }
+
+    fn collect_course_info() -> Option<RaceCourseInfo> {
+        use crate::il2cpp::hook::umamusume::{RaceInfo, RaceManager};
+
+        let race_info = RaceManager::get_RaceInfo();
+        if race_info.is_null() {
+            return None;
+        }
+
+        Some(RaceCourseInfo {
+            // the umas start at the gate, so the bar total includes the run up
+            course_distance: (RaceInfo::get_CourseOnlyDistance(race_info) + RaceInfo::get_RunUpDistance(race_info)) as f32,
+            phase_middle: RaceInfo::get_PhaseMiddleStartDistance(race_info),
+            phase_end: RaceInfo::get_PhaseEndStartDistance(race_info),
+            phase_last: RaceInfo::get_PhaseLastStartDistance(race_info)
+        })
+    }
+
+    fn collect_sim_rates(horse_manager: *mut Il2CppObject, horse_count: usize) -> Vec<SimRates> {
+        use crate::il2cpp::{
+            hook::umamusume::{
+                RaceSimulateData,
+                RaceSimulateReader,
+                RaceHorseManagerReplay,
+                RaceSimulateFrameData,
+                RaceSimulateHorseFrameData
+            },
+            symbols::{Array, IList}
+        };
+
+        let mut rates = vec![SimRates::default(); horse_count];
+
+        if !RaceHorseManagerReplay::is_replay_manager(horse_manager) {
+            return rates;
+        }
+
+        let reader = RaceHorseManagerReplay::get__reader(horse_manager);
+        if reader.is_null() {
+            return rates;
+        }
+
+        let sim_data = RaceSimulateReader::get__simData(reader);
+        if sim_data.is_null() {
+            return rates;
+        }
+
+        let frame_list = RaceSimulateData::get_FrameDataList(sim_data);
+        let Some(frames) = IList::<*mut Il2CppObject>::new(frame_list) else {
+            return rates;
+        };
+
+        let frame_count = frames.count();
+        if frame_count < 2 {
+            return rates;
+        }
+
+        // binary search for the newest frame whose time is <= the reader's
+        // current time (frames are stored in ascending time order)
+        let cur_time = RaceSimulateReader::get__curTime(reader);
+        let mut lo = 0;
+        let mut hi = frame_count - 1;
+        let mut idx = -1;
+        while lo <= hi {
+            let mid = lo + (hi - lo) / 2;
+            let Some(frame) = frames.get(mid) else { break };
+            if !frame.is_null() && RaceSimulateFrameData::get_Time(frame) <= cur_time {
+                idx = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        if idx < 1 {
+            // first frame or before the race start: no previous frame to
+            // compare against yet
+            return rates;
+        }
+
+        let Some(cur_frame) = frames.get(idx) else { return rates };
+        let Some(prev_frame) = frames.get(idx - 1) else { return rates };
+        if cur_frame.is_null() || prev_frame.is_null() {
+            return rates;
+        }
+        let dt = RaceSimulateFrameData::get_Time(cur_frame) - RaceSimulateFrameData::get_Time(prev_frame);
+        if dt <= 0.0 {
+            return rates;
+        }
+
+        let cur_arr_ptr = RaceSimulateFrameData::get_HorseDataArray(cur_frame);
+        let prev_arr_ptr = RaceSimulateFrameData::get_HorseDataArray(prev_frame);
+        if cur_arr_ptr.is_null() || prev_arr_ptr.is_null() {
+            return rates;
+        }
+        let cur_arr: Array<*mut Il2CppObject> = Array::from(cur_arr_ptr);
+        let prev_arr: Array<*mut Il2CppObject> = Array::from(prev_arr_ptr);
+        for i in 0..horse_count.min(cur_arr.len()).min(prev_arr.len()) {
+            let cur_horse = unsafe { cur_arr.as_slice()[i] };
+            let prev_horse = unsafe { prev_arr.as_slice()[i] };
+            if cur_horse.is_null() || prev_horse.is_null() {
+                continue;
+            }
+
+            rates[i] = SimRates {
+                accel: Some((RaceSimulateHorseFrameData::get_Speed(cur_horse) - RaceSimulateHorseFrameData::get_Speed(prev_horse)) / dt),
+                hp_drain: Some((RaceSimulateHorseFrameData::get_Hp(prev_horse) - RaceSimulateHorseFrameData::get_Hp(cur_horse)) / dt)
+            };
+        }
+
+        rates
+    }
+
+    fn collect_sim_events(horse_manager: *mut Il2CppObject, horse_count: usize) -> Vec<Vec<SimEvent>> {
+        use crate::il2cpp::{
+            hook::umamusume::{
+                RaceSimulateData,
+                RaceSimulateEventData,
+                RaceSimulateReader,
+                RaceHorseManagerReplay
+            },
+            symbols::{Array, IList}
+        };
+
+        let mut events: Vec<Vec<SimEvent>> = vec![Vec::new(); horse_count];
+
+        if !RaceHorseManagerReplay::is_replay_manager(horse_manager) {
+            return events;
+        }
+
+        let reader = RaceHorseManagerReplay::get__reader(horse_manager);
+        if reader.is_null() {
+            return events;
+        }
+
+        let sim_data = RaceSimulateReader::get__simData(reader);
+        if sim_data.is_null() {
+            return events;
+        }
+
+        let ev_list = RaceSimulateData::get__simEvDataList(sim_data);
+        let Some(ev_list) = IList::<*mut Il2CppObject>::new(ev_list) else {
+            return events;
+        };
+
+        for ev in ev_list.iter() {
+            if ev.is_null() {
+                continue;
+            }
+
+            let kind = RaceSimulateEventData::get_type(ev);
+
+            let param_ptr = RaceSimulateEventData::get_param(ev);
+            if param_ptr.is_null() {
+                continue;
+            }
+            let param: Array<i32> = Array::from(param_ptr);
+            let param_slice = unsafe { param.as_slice() };
+            if param_slice.is_empty() {
+                continue;
+            }
+            let horse_idx = param_slice[0];
+            if horse_idx < 0 || horse_idx as usize >= horse_count {
+                continue;
+            }
+
+            let distance_data = RaceSimulateEventData::get_distanceData(ev);
+            if distance_data.is_null() {
+                continue;
+            }
+
+            events[horse_idx as usize].push(SimEvent {
+                kind,
+                start_distance: RaceSimulateEventData::DistanceData::get_startDistance(distance_data),
+                finish_distance: RaceSimulateEventData::DistanceData::get_finishDistance(distance_data)
+            });
+        }
+
+        events
+    }
+
+    fn sim_event_active(event: &SimEvent, cur_distance: f32) -> bool {
+        if cur_distance < event.start_distance {
+            return false;
+        }
+        event.finish_distance <= 0.0 || cur_distance <= event.finish_distance
+    }
+
+    fn eval_sim_events(events: &[SimEvent], cur_distance: f32) -> SimEventStates {
+        let mut states = SimEventStates::default();
+        for event in events {
+            let active = Self::sim_event_active(event, cur_distance);
+            match event.kind {
+                SimulateEventType::ReleaseConservePower => states.release_conserve_power |= active,
+                SimulateEventType::StaminaLimitBreakBuff => states.stamina_limit_break |= active,
+                SimulateEventType::StaminaKeep => states.stamina_keep |= active,
+                SimulateEventType::RunAtFullSpeed => states.run_at_full_speed |= active,
+                SimulateEventType::CompeteBeforeSpurt => {
+                    // 2s bursts with a 1s cooldown: count every burst that
+                    // already fired, show the chip while one is running
+                    if event.start_distance <= cur_distance {
+                        states.compete_before_spurt_count += 1;
+                    }
+                    states.compete_before_spurt |= active;
+                }
+                SimulateEventType::SecureLead => {
+                    if event.start_distance <= cur_distance {
+                        states.secure_lead_count += 1;
+                    }
+                    states.secure_lead |= active;
+                }
+                _ => {}
+            }
+        }
+        states
+    }
+
+    fn collect_character_stats(race_info: *mut Il2CppObject, sim_rates: SimRates, sim_events: &[SimEvent]) -> Option<CharacterStats> {
+        use crate::il2cpp::{
+            ext::Il2CppStringExt,
+            hook::umamusume::{HorseData, HorseRaceInfo, HorseRaceInfoReplay, SkillBase, SkillManager},
+            symbols::{Array, IList}
+        };
+
+        if race_info.is_null() {
+            return None;
+        }
+
+        // name from HorseRaceInfo, fallback to HorseData
+        let name_ptr = HorseRaceInfo::get_CharaName(race_info);
+        let name = if !name_ptr.is_null() {
+            unsafe { (*name_ptr).as_utf16str().to_string() }
+        } else {
+            let horse_data = HorseRaceInfo::get_HorseData(race_info);
+            let hd_name = if !horse_data.is_null() { HorseData::get_charaName(horse_data) } else { 0 as _ };
+            if !hd_name.is_null() {
+                unsafe { (*hd_name).as_utf16str().to_string() }
+            } else {
+                "?".to_string()
+            }
+        };
+
+        let speed = HorseRaceInfo::get__lastSpeed(race_info);
+        let min_speed = HorseRaceInfo::get__minSpeed(race_info);
+        let max_speed_in_race = HorseRaceInfo::get__maxSpeedInRace(race_info);
+        let hp = HorseRaceInfo::get__hp(race_info);
+        let max_hp = HorseRaceInfo::get__maxHp(race_info);
+
+        let phase = HorseRaceInfo::get__phase(race_info);
+        let cur_order = HorseRaceInfo::get_CurOrder(race_info);
+        let distance = HorseRaceInfo::get__distance(race_info);
+
+        let sim_event_states = Self::eval_sim_events(sim_events, distance);
+        let lane = HorseRaceInfo::get_Lane(race_info);
+        let lane_distance = HorseRaceInfo::get__laneDistance(race_info);
+        let delay_time = HorseRaceInfo::get_DelayTime(race_info);
+        let is_good_start = HorseRaceInfo::get_IsGoodStart(race_info);
+        let is_bad_start = HorseRaceInfo::get_IsBadStart(race_info);
+        let is_start_dash = HorseRaceInfo::get_IsStartDash(race_info);
+        let is_clog = HorseRaceInfo::get_IsClog(race_info);
+        let is_compete_fight = HorseRaceInfo::get_IsCompeteFight(race_info);
+        let compete_fight_count = HorseRaceInfo::get_CompeteFightCount(race_info);
+        let is_compete_top = HorseRaceInfo::get_IsCompeteTop(race_info);
+        let compete_top_count = HorseRaceInfo::get_CompeteTopCount(race_info);
+        let compete_top_remain_time = HorseRaceInfo::get_CompeteTopRemainTime(race_info);
+
+        let temptation_mode = HorseRaceInfoReplay::get__temptationMode(race_info);
+        let temptation_count = HorseRaceInfoReplay::get__temptationCount(race_info);
+        let is_last_spurt = HorseRaceInfoReplay::get_IsLastSpurt(race_info);
+        let last_spurt_start_distance = HorseRaceInfoReplay::get__lastSpurtStartDistance(race_info);
+        let finish_order = HorseRaceInfoReplay::get_FinishOrder(race_info);
+        let finish_time_scaled = HorseRaceInfoReplay::get_FinishTimeScaled(race_info);
+        let finish_time_diff = HorseRaceInfoReplay::get_FinishTimeDiffFromPrevHorse(race_info);
+
+        let accel = sim_rates.accel;
+        let hp_drain = sim_rates.hp_drain;
+
+        let skill_manager = HorseRaceInfo::get__skillManager(race_info);
+        let mut used_skill_ids = Vec::new();
+        let mut all_skill_ids = Vec::new();
+
+        if !skill_manager.is_null() {
+            if let Some(list) = IList::<i32>::new(SkillManager::GetUsedSkillIdList(skill_manager)) {
+                for skill_id in list.iter() {
+                    used_skill_ids.push(skill_id);
+                }
+            }
+
+            let skills_array = SkillManager::GetSkills(skill_manager);
+            if !skills_array.is_null() {
+                let arr: Array<*mut Il2CppObject> = Array::from(skills_array);
+                for i in 0..arr.len() {
+                    let skill_obj = unsafe { arr.as_slice()[i] };
+                    if !skill_obj.is_null() {
+                        all_skill_ids.push(SkillBase::get_SkillMasterId(skill_obj));
+                    }
+                }
+            }
+        }
+
+        Some(CharacterStats {
+            name,
+            speed,
+            accel,
+            min_speed,
+            max_speed_in_race,
+            hp,
+            max_hp,
+            hp_drain,
+            phase,
+            cur_order,
+            distance,
+            lane,
+            lane_distance,
+            delay_time,
+            is_good_start,
+            is_bad_start,
+            is_start_dash,
+            is_clog,
+            is_compete_fight,
+            compete_fight_count,
+            is_compete_top,
+            compete_top_count,
+            compete_top_remain_time,
+            temptation_mode,
+            temptation_count,
+            is_last_spurt,
+            last_spurt_start_distance,
+            finish_order,
+            finish_time_scaled,
+            finish_time_diff,
+            sim_events: sim_event_states,
+            used_skill_ids,
+            all_skill_ids
+        })
+    }
+}
 
 static DISABLED_GAME_UIS: Lazy<Mutex<FnvHashSet<SendPtr>>> =
     Lazy::new(|| Mutex::new(FnvHashSet::default()));
@@ -439,15 +1742,15 @@ pub fn handle_android_keyboard<T: 'static>(res: &egui::Response, val: &mut T) {
     use egui::{text::{CCursor, CCursorRange}, widgets::text_edit::TextEditState};
 
     let val_any = val as &dyn std::any::Any;
-    PENDING_KB_TYPE.store(TouchScreenKeyboardType::KeyboardType::Default as i32, atomic::Ordering::Release);
+    PENDING_KB_TYPE.store(TouchScreenKeyboardType::Default as i32, atomic::Ordering::Release);
 
     let text = if let Some(s) = val_any.downcast_ref::<String>() {
         s.clone()
     } else if let Some(f) = val_any.downcast_ref::<f32>() {
-        PENDING_KB_TYPE.store(TouchScreenKeyboardType::KeyboardType::DecimalPad as i32, atomic::Ordering::Release);
+        PENDING_KB_TYPE.store(TouchScreenKeyboardType::DecimalPad as i32, atomic::Ordering::Release);
         if f.fract() == 0.0 { format!("{:.1}", f) } else { f.to_string() }
     } else if let Some(i) = val_any.downcast_ref::<i32>() {
-        PENDING_KB_TYPE.store(TouchScreenKeyboardType::KeyboardType::NumberPad as i32, atomic::Ordering::Release);
+        PENDING_KB_TYPE.store(TouchScreenKeyboardType::NumberPad as i32, atomic::Ordering::Release);
         i.to_string()
     } else {
         String::new()
@@ -482,7 +1785,7 @@ pub fn handle_android_keyboard<T: 'static>(res: &egui::Response, val: &mut T) {
 
         Thread::main_thread().schedule(|| {
             let ptr = PENDING_KEYBOARD_TEXT.swap(std::ptr::null_mut(), atomic::Ordering::AcqRel);
-            let typ: TouchScreenKeyboardType::KeyboardType = unsafe { *(&PENDING_KB_TYPE.load(atomic::Ordering::Acquire) as *const i32 as *const TouchScreenKeyboardType::KeyboardType) };
+            let typ: TouchScreenKeyboardType = unsafe { *(&PENDING_KB_TYPE.load(atomic::Ordering::Acquire) as *const i32 as *const TouchScreenKeyboardType) };
 
             if !ptr.is_null() {
                 let keyboard = TouchScreenKeyboard::Open(ptr, typ, false, false, false);
@@ -680,10 +1983,10 @@ impl Gui {
         let mut fonts = egui::FontDefinitions::default();
         let proportional_fonts = fonts.families.get_mut(&egui::FontFamily::Proportional).unwrap();
 
+        add_font!(fonts, proportional_fonts, "FontAwesome.otf");
         add_font!(fonts, proportional_fonts, "Inter_24pt-Regular.ttf");
         add_font!(fonts, proportional_fonts, "AlibabaPuHuiTi-3-45-Light.otf");
         add_font!(fonts, proportional_fonts, "Pretendard-Regular.ttf");
-        add_font!(fonts, proportional_fonts, "FontAwesome.otf");
 
         fonts
     }
@@ -1033,22 +2336,24 @@ impl Gui {
 
         let ctx = self.context.clone();
         self.run_live_slider(&ctx);
+        RaceStatHud::run(&ctx);
 
         let has_interactive_widgets = IS_LIVE_SCENE.load(atomic::Ordering::Relaxed);
+        let race_stat_hud_input = RaceStatHud::is_active();
         #[cfg(target_os = "windows")]
         let free_camera_input_capture = free_camera::wants_windows_input_capture();
 
         // Store these as atomic values so the input thread can check them without locking the gui
         #[cfg(target_os = "android")]
         IS_CONSUMING_INPUT.store(
-            self.is_consuming_input() || has_interactive_widgets,
+            self.is_consuming_input() || has_interactive_widgets || race_stat_hud_input,
             atomic::Ordering::Release
         );
         #[cfg(target_os = "windows")]
         {
             GUI_INPUT_ACTIVE.store(self.menu_visible || !self.windows.is_empty(), atomic::Ordering::Release);
             IS_CONSUMING_INPUT.store(
-                self.is_consuming_input() || has_interactive_widgets || free_camera_input_capture,
+                self.is_consuming_input() || has_interactive_widgets || race_stat_hud_input || free_camera_input_capture,
                 atomic::Ordering::Release
             );
         }
@@ -1525,6 +2830,26 @@ impl Gui {
         changed
     }
 
+    fn run_chip(
+        ui: &mut egui::Ui,
+        name: &str,
+        bg: egui::Color32,
+        border: egui::Color32,
+        text_color:
+        egui::Color32,
+        scale: f32
+    ) {
+        let font = egui::FontId::proportional(12.0 * scale);
+        let galley = ui.painter().layout_no_wrap(name.to_owned(), font, text_color);
+        let padding = egui::vec2(6.0 * scale, 3.0 * scale);
+        let size = galley.size() + padding * 2.0;
+        let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+        let radius = egui::CornerRadius::same((3.0 * scale) as u8);
+        ui.painter().rect_filled(rect, radius, bg);
+        ui.painter().rect_stroke(rect, radius, egui::Stroke::new(1.0 * scale, border), egui::StrokeKind::Inside);
+        ui.painter().galley(rect.min + padding, galley, text_color);
+    }
+
     fn run_combo_menu<T: PartialEq + Copy>(
         ui: &mut egui::Ui,
         id_salt: impl std::hash::Hash,
@@ -1734,13 +3059,15 @@ impl Gui {
             !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
             self.notifications.is_empty() && self.windows.is_empty() &&
             !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
-            !free_camera::has_overlay_message()
+            !free_camera::has_overlay_message() &&
+            !RaceStatHud::elements_showing() && !RaceStatHud::is_active()
         }
         #[cfg(target_os = "android")]
         {
             !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
             self.notifications.is_empty() && self.windows.is_empty() &&
-            !IS_LIVE_SCENE.load(atomic::Ordering::Acquire)
+            !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
+            !RaceStatHud::elements_showing() && !RaceStatHud::is_active()
         }
     }
 
@@ -3074,6 +4401,51 @@ impl ConfigEditor {
                                 { new_config.windows.hide_ingame_ui_hotkey_bind = raw; }
                                 #[cfg(target_os = "android")]
                                 { new_config.android.hide_ingame_ui_hotkey_bind = raw; }
+
+                                save_and_reload_config(new_config);
+                            })));
+                        });
+                    }
+                });
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud")) && Hachimi::instance().game.region == Region::Japan {
+                ui.label(t!("config_editor.race_stat_hud"));
+                ui.checkbox(&mut config.race_stat_hud, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_toggle_button")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_toggle_button"));
+                ui.checkbox(&mut config.race_stat_hud_toggle_button, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_toggle_key")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_toggle_key"));
+                ui.horizontal(|ui| {
+                    #[cfg(target_os = "windows")]
+                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.race_stat_hud_toggle_key));
+                    #[cfg(target_os = "android")]
+                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.race_stat_hud_toggle_key));
+
+                    if ui.button(t!("bind_key")).clicked() {
+                        std::thread::spawn(|| {
+                            let Some(gui_mutex) = Gui::instance() else { return };
+                            let mut gui = gui_mutex.lock().unwrap();
+                            gui.show_window(Box::new(SetKeybindWindow::new(|result| {
+                                let Some(raw) = result else { return };
+
+                                let hachimi = Hachimi::instance();
+                                let mut new_config = hachimi.config.load().as_ref().clone();
+
+                                #[cfg(target_os = "windows")]
+                                { new_config.windows.race_stat_hud_toggle_key = raw; }
+                                #[cfg(target_os = "android")]
+                                { new_config.android.race_stat_hud_toggle_key = raw; }
 
                                 save_and_reload_config(new_config);
                             })));

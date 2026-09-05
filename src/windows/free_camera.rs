@@ -152,30 +152,31 @@ pub struct FreeCameraKeybinds {
 
 impl Default for FreeCameraKeybinds {
     fn default() -> Self {
+        use windows::Win32::UI::Input::KeyboardAndMouse::*;
         Self {
-            move_forward: 0x57,      // W
-            move_back: 0x53,         // S
-            move_left: 0x41,         // A
-            move_right: 0x44,        // D
-            move_down: 0xa2,         // Left Ctrl
-            move_up: 0x20,           // Space
-            look_up: 0x26,           // Up
-            look_down: 0x28,         // Down
-            look_left: 0x25,         // Left
-            look_right: 0x27,        // Right
-            fov_increase: 0x51,      // Q
-            fov_decrease: 0x45,      // E
-            follow_offset_up: 0x49,  // I
-            follow_offset_down: 0x4b,// K
-            follow_offset_left: 0x4a,// J
-            follow_offset_right: 0x4c,// L
-            target_previous: 0xdb,   // [
-            target_next: 0xdd,       // ]
-            part_previous: 0xba,     // ;
-            part_next: 0xde,         // '
-            reset: 0x52,             // R
-            cycle_mode: 0x46,        // F
-            reverse: 0x56,           // V
+            move_forward: VK_W.0,      // W
+            move_back: VK_S.0,         // S
+            move_left: VK_A.0,         // A
+            move_right: VK_D.0,        // D
+            move_down: VK_LCONTROL.0,         // Left Ctrl
+            move_up: VK_SPACE.0,           // Space
+            look_up: VK_UP.0,           // Up
+            look_down: VK_DOWN.0,         // Down
+            look_left: VK_LEFT.0,         // Left
+            look_right: VK_RIGHT.0,        // Right
+            fov_increase: VK_Q.0,      // Q
+            fov_decrease: VK_E.0,      // E
+            follow_offset_up: VK_I.0,  // I
+            follow_offset_down: VK_K.0,// K
+            follow_offset_left: VK_J.0,// J
+            follow_offset_right: VK_L.0,// L
+            target_previous: VK_OEM_4.0,   // [
+            target_next: VK_OEM_6.0,       // ]
+            part_previous: VK_OEM_1.0,     // ;
+            part_next: VK_OEM_7.0,         // '
+            reset: VK_R.0,             // R
+            cycle_mode: VK_F.0,        // F
+            reverse: VK_V.0,           // V
         }
     }
 }
