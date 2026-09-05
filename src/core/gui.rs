@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::HashMap,
+    fmt::Write as _,
     ops::RangeInclusive,
     os::raw::c_void,
     panic::{self, AssertUnwindSafe},
@@ -56,7 +57,7 @@ use super::{
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
-    utils::{self, get_localized_string, umamusume_enum_options, SendPtr},
+    utils::{self, umamusume_enum_options, SendPtr},
     Hachimi
 };
 
@@ -146,6 +147,8 @@ pub struct Gui {
 
     pub update_progress_visible: bool,
 
+    live_slider_text: String,
+
     notifications: Vec<Notification>,
     next_notification_id: u32,
     windows: Vec<BoxedWindow>,
@@ -168,10 +171,29 @@ pub fn toggle_race_stat_hud() {
 }
 
 // portrait: full width, fixed at 38% of the screen height
+#[cfg(target_os = "android")]
 const RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO: f32 = 0.38;
 // landscape: fixed at 40% of the screen width and 55% of the screen height
+#[cfg(target_os = "android")]
 const RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO: f32 = 0.4;
+#[cfg(target_os = "android")]
 const RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO: f32 = 0.55;
+
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_SPLIT_LEFT_RATIO: f32 = 148.0 / 1920.0;
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_SPLIT_CENTER_RATIO: f32 = 810.0 / 1920.0;
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_FIXED_LANDSCAPE: (f32, f32) = (320.0, 198.0);
+#[cfg(target_os = "windows")]
+const RACE_STAT_HUD_FIXED_PORTRAIT: (f32, f32) = (360.0, 304.0);
+
+const RACE_STAT_HUD_WIDTH_SCALE_MIN: f32 = 0.5;
+const RACE_STAT_HUD_WIDTH_SCALE_MAX: f32 = 3.0;
+const RACE_STAT_HUD_HEIGHT_SCALE_MIN: f32 = 0.3;
+const RACE_STAT_HUD_HEIGHT_SCALE_MAX: f32 = 3.0;
+
+const RACE_STAT_HUD_DRAG_SAVE_THRESHOLD: f32 = 6.0;
 
 // evenly spaced hues for the skill chips, so adjacent ones always differ
 const SKILL_CHIP_HUES: [f32; 10] = [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95];
@@ -248,6 +270,46 @@ struct CharacterStats {
     all_skill_ids: Vec<i32>
 }
 
+impl Default for CharacterStats {
+    fn default() -> CharacterStats {
+        CharacterStats {
+            name: String::new(),
+            speed: 0.0,
+            accel: None,
+            min_speed: 0.0,
+            max_speed_in_race: 0.0,
+            hp: 0.0,
+            max_hp: 0.0,
+            hp_drain: None,
+            phase: HorsePhase::RunUp,
+            cur_order: 0,
+            distance: 0.0,
+            lane: LaneType::Uti,
+            lane_distance: 0.0,
+            delay_time: 0.0,
+            is_good_start: false,
+            is_bad_start: false,
+            is_start_dash: false,
+            is_clog: false,
+            is_compete_fight: false,
+            compete_fight_count: 0,
+            is_compete_top: false,
+            compete_top_count: 0,
+            compete_top_remain_time: 0.0,
+            temptation_mode: TemptationMode::Null,
+            temptation_count: 0,
+            is_last_spurt: false,
+            last_spurt_start_distance: 0.0,
+            finish_order: 0,
+            finish_time_scaled: 0.0,
+            finish_time_diff: 0.0,
+            sim_events: SimEventStates::default(),
+            used_skill_ids: Vec::new(),
+            all_skill_ids: Vec::new()
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 struct SimEvent {
     kind: SimulateEventType,
@@ -297,10 +359,17 @@ struct RaceStatHud {
     selected_character: usize,
     select_player_on_race_start: bool,
     current_tab: RaceStatHudTab,
+    drag_pos: Option<(f32, f32)>,
+    drag_travel: f32,
     config: hachimi::Config,
     last_used_skills: Vec<i32>,
     last_unused_skills: Vec<i32>,
-    skill_name_cache: HashMap<i32, String>
+    skill_name_cache: HashMap<i32, String>,
+    stats_buf: Vec<CharacterStats>,
+    sim_rates_buf: Vec<SimRates>,
+    sim_events_buf: Vec<Vec<SimEvent>>,
+    unused_skills_buf: Vec<i32>,
+    chip_text: String
 }
 
 impl RaceStatHud {
@@ -311,21 +380,41 @@ impl RaceStatHud {
             selected_character: 0,
             select_player_on_race_start: false,
             current_tab: RaceStatHudTab::Stats,
+            drag_pos: None,
+            drag_travel: 0.0,
             config: (**Hachimi::instance().config.load()).clone(),
             last_used_skills: Vec::new(),
             last_unused_skills: Vec::new(),
-            skill_name_cache: HashMap::new()
+            skill_name_cache: HashMap::new(),
+            stats_buf: Vec::new(),
+            sim_rates_buf: Vec::new(),
+            sim_events_buf: Vec::new(),
+            unused_skills_buf: Vec::new(),
+            chip_text: String::new()
         }
     }
 
     fn set_visible(&mut self, visible: bool) {
         if visible && !self.visible {
             self.config = (**Hachimi::instance().config.load()).clone();
+            self.drag_pos = Self::saved_drag_pos(&self.config);
+            self.drag_travel = 0.0;
         }
         if !visible && self.visible {
             self.save_autoscroll_config();
         }
         self.visible = visible;
+    }
+
+    // stored drag position from the config, ignored unless both axes are
+    // normalized within [0, 1] (negative = unset / reset)
+    fn saved_drag_pos(config: &hachimi::Config) -> Option<(f32, f32)> {
+        let (x, y) = (config.race_stat_hud_drag_x, config.race_stat_hud_drag_y);
+        if (0.0..=1.0).contains(&x) && (0.0..=1.0).contains(&y) {
+            Some((x, y))
+        } else {
+            None
+        }
     }
 
     fn save_autoscroll_config(&mut self) {
@@ -397,61 +486,315 @@ impl RaceStatHud {
         let toggle_button = Hachimi::instance().config.load().race_stat_hud_toggle_button;
         let scale = get_scale(ctx);
         let screen = ctx.viewport_rect();
+        let (game_view, split, source) = Self::game_view(ctx, screen);
+        let is_vertical = game_view.width() <= game_view.height();
+        let (width_scale, height_scale) = {
+            let config = Hachimi::instance().config.load();
+            (config.race_stat_hud_width_scale, config.race_stat_hud_height_scale)
+        };
+        let hud_scale = scale;
+        let panel = Self::panel_size(game_view, is_vertical, hud_scale, width_scale, height_scale);
+        Self::log_game_view(split, game_view, source, panel, hud_scale);
 
-        hud.run_hud(ctx, screen, scale, toggle_button);
+        hud.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button);
 
         if toggle_button && !hud.visible {
-            hud.run_button(ctx, screen, scale);
+            hud.run_button(ctx, game_view, hud_scale);
         }
     }
 
-    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, scale: f32, toggle_button: bool) {
+    #[cfg(target_os = "windows")]
+    fn game_view(ctx: &egui::Context, screen: egui::Rect) -> (egui::Rect, bool, &'static str) {
+        Self::game_view_windows(screen, ctx.pixels_per_point())
+    }
+
+    #[cfg(target_os = "android")]
+    fn game_view(_ctx: &egui::Context, screen: egui::Rect) -> (egui::Rect, bool, &'static str) {
+        (screen, false, "window")
+    }
+
+    fn clamp_size_scale(v: f32, min: f32, max: f32) -> f32 {
+        if v.is_finite() { v.clamp(min, max) } else { 1.0 }
+    }
+
+    fn panel_size(game_view: egui::Rect, vertical: bool, scale: f32, width_scale: f32, height_scale: f32) -> egui::Vec2 {
+        let ws = Self::clamp_size_scale(width_scale, RACE_STAT_HUD_WIDTH_SCALE_MIN, RACE_STAT_HUD_WIDTH_SCALE_MAX);
+        let hs = Self::clamp_size_scale(height_scale, RACE_STAT_HUD_HEIGHT_SCALE_MIN, RACE_STAT_HUD_HEIGHT_SCALE_MAX);
+
+        #[cfg(target_os = "windows")]
+        let base = if vertical {
+            let (w, h) = RACE_STAT_HUD_FIXED_PORTRAIT;
+            egui::vec2(w, h)
+        } else {
+            let (w, h) = RACE_STAT_HUD_FIXED_LANDSCAPE;
+            egui::vec2(w, h)
+        };
+        #[cfg(target_os = "android")]
+        let base = if vertical {
+            // portrait: full width at the bottom of the game view
+            egui::vec2(game_view.width(), game_view.height() * RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO)
+        } else {
+            // landscape: bottom right corner of the game view
+            egui::vec2(game_view.width() * RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO, game_view.height() * RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO)
+        };
+
+        let panel = egui::vec2(base.x * scale * ws, base.y * scale * hs);
+
+        egui::vec2(
+            panel.x.min(game_view.width().max(0.0)),
+            panel.y.min(game_view.height().max(0.0)),
+        )
+    }
+
+    #[cfg(target_os = "windows")]
+    fn game_view_windows(screen: egui::Rect, ppp: f32) -> (egui::Rect, bool, &'static str) {
+        use crate::il2cpp::hook::umamusume::{LandscapeUIManager, Screen as GallopScreen};
+
+        let window = egui::vec2(screen.width() * ppp, screen.height() * ppp);
+
+        let use_game_view = Hachimi::instance().config.load().windows.race_stat_hud_landscapeui_portrait;
+        if !use_game_view || !GallopScreen::get_IsSplitWindow() {
+            return (screen, false, "window");
+        }
+
+        let mut source = "constants";
+        let mut rect_px = Self::split_rect_constants(window);
+
+        if let Some((x, y, w, h)) = LandscapeUIManager::game_screen_info() {
+            let physical = (h - window.y).abs() <= window.y * 0.02;
+            let rate = LandscapeUIManager::get_WindowScaleRate();
+            let (r, src) = if physical {
+                (egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(w, h)), "gamescreeninfo")
+            } else {
+                (
+                    egui::Rect::from_min_size(egui::pos2(x * rate, y * rate), egui::vec2(w * rate, h * rate)),
+                    "gamescreeninfo+rate",
+                )
+            };
+
+            if Self::split_rect_sane(r, window) {
+                rect_px = r;
+                source = src;
+            }
+        }
+
+        let game_view = egui::Rect::from_min_size(
+            egui::pos2(rect_px.min.x / ppp, rect_px.min.y / ppp),
+            egui::vec2(rect_px.width() / ppp, rect_px.height() / ppp),
+        );
+        (game_view, true, source)
+    }
+
+    #[cfg(target_os = "windows")]
+    fn split_rect_constants(window: egui::Vec2) -> egui::Rect {
+        let x = window.x * RACE_STAT_HUD_SPLIT_LEFT_RATIO;
+        let w = window.x * RACE_STAT_HUD_SPLIT_CENTER_RATIO;
+        egui::Rect::from_min_size(egui::pos2(x, 0.0), egui::vec2(w, window.y))
+    }
+
+    #[cfg(target_os = "windows")]
+    fn split_rect_sane(rect: egui::Rect, window: egui::Vec2) -> bool {
+        rect.width() > 0.0
+            && rect.height() > 0.0
+            && rect.min.x >= -1.0
+            && rect.min.y >= -1.0
+            && rect.max.x <= window.x * 1.02
+            && rect.max.y <= window.y * 1.02
+            && rect.width() * rect.height() >= window.x * window.y * 0.15
+    }
+
+    fn log_game_view(split: bool, rect: egui::Rect, source: &'static str, panel: egui::Vec2, scale: f32) {
+        static LAST: Lazy<Mutex<Option<(bool, [i64; 4], &'static str, [i64; 2], i64)>>> =
+            Lazy::new(|| Mutex::new(None));
+
+        let key = (
+            split,
+            [
+                rect.min.x.round() as i64,
+                rect.min.y.round() as i64,
+                rect.width().round() as i64,
+                rect.height().round() as i64,
+            ],
+            source,
+            [panel.x.round() as i64, panel.y.round() as i64],
+            (scale * 100.0).round() as i64,
+        );
+        let mut last = LAST.lock().unwrap();
+        if *last != Some(key) {
+            *last = Some(key);
+            info!(
+                "race stat hud game view: {}x{} at ({}, {}) [{}] (split: {}, panel {}x{}, scale {:.2})",
+                key.1[2], key.1[3], key.1[0], key.1[1], source, split, key.3[0], key.3[1], scale
+            );
+        }
+    }
+
+    fn panel_base_min(game_view: egui::Rect, panel: egui::Vec2, vertical: bool) -> egui::Pos2 {
+        if vertical {
+            egui::pos2(game_view.left(), game_view.bottom() - panel.y)
+        } else {
+            egui::pos2(game_view.right() - panel.x, game_view.bottom() - panel.y)
+        }
+    }
+
+    // panel top-left clamped so the panel stays inside the game view
+    fn clamp_panel_min(game_view: egui::Rect, panel: egui::Vec2, min: egui::Pos2) -> egui::Pos2 {
+        let max_x = (game_view.right() - panel.x).max(game_view.left());
+        let max_y = (game_view.bottom() - panel.y).max(game_view.top());
+        egui::pos2(min.x.clamp(game_view.left(), max_x), min.y.clamp(game_view.top(), max_y))
+    }
+
+    // a drag offset clamped back inside the game view
+    fn clamped_drag_offset(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, offset: egui::Vec2) -> egui::Vec2 {
+        let base = Self::panel_base_min(game_view, panel, vertical);
+        Self::clamp_panel_min(game_view, panel, base + offset) - base
+    }
+
+    // offset for a stored normalized position (0..1 within the game view)
+    fn drag_offset_from_pos(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, pos: Option<(f32, f32)>) -> egui::Vec2 {
+        let Some((nx, ny)) = pos else {
+            return egui::Vec2::ZERO;
+        };
+        let base = Self::panel_base_min(game_view, panel, vertical);
+        let desired = egui::pos2(
+            game_view.left() + nx.clamp(0.0, 1.0) * game_view.width(),
+            game_view.top() + ny.clamp(0.0, 1.0) * game_view.height(),
+        );
+        Self::clamp_panel_min(game_view, panel, desired) - base
+    }
+
+    // normalized position for a drag offset (what gets stored in the config)
+    fn drag_pos_from_offset(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, offset: egui::Vec2) -> (f32, f32) {
+        let base = Self::panel_base_min(game_view, panel, vertical);
+        let min = Self::clamp_panel_min(game_view, panel, base + offset);
+        if game_view.width() <= 0.0 || game_view.height() <= 0.0 {
+            return (0.0, 0.0);
+        }
+        (
+            (min.x - game_view.left()) / game_view.width(),
+            (min.y - game_view.top()) / game_view.height(),
+        )
+    }
+
+    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, game_view: egui::Rect, panel: egui::Vec2, scale: f32, toggle_button: bool) {
         if !self.visible {
             return;
         }
 
         let (all_stats, course_info) = self.collect_stats();
         if all_stats.is_empty() {
+            // put the (empty) reusable buffer back before bailing
+            self.stats_buf = all_stats;
             return;
         }
 
-        let is_vertical = screen.width() <= screen.height();
+        let is_vertical = game_view.width() <= game_view.height();
 
-        let panel = if is_vertical {
-            // portrait: full width at the bottom
-            egui::vec2(screen.width(), screen.height() * RACE_STAT_HUD_PORTRAIT_HEIGHT_RATIO)
-        } else {
-            // landscape: bottom right corner
-            egui::vec2(screen.width() * RACE_STAT_HUD_LANDSCAPE_WIDTH_RATIO, screen.height() * RACE_STAT_HUD_LANDSCAPE_HEIGHT_RATIO)
-        };
         let anchor = if is_vertical { egui::Align2::LEFT_BOTTOM } else { egui::Align2::RIGHT_BOTTOM };
+        let offset = if is_vertical {
+            egui::vec2(game_view.left() - screen.left(), game_view.bottom() - screen.bottom())
+        } else {
+            egui::vec2(game_view.right() - screen.right(), game_view.bottom() - screen.bottom())
+        };
+
+        let config = Hachimi::instance().config.load();
+        let draggable = config.race_stat_hud_draggable;
+        let drag_save = config.race_stat_hud_draggable_save;
+        drop(config);
+
+        let mut drag_offset = if draggable {
+            Self::drag_offset_from_pos(game_view, panel, is_vertical, self.drag_pos)
+        } else {
+            egui::Vec2::ZERO
+        };
+        let mut drag_active = false;
+        let mut drag_travel = self.drag_travel;
 
         let area_id = egui::Id::new("race_stat_hud_overlay").with(is_vertical);
         egui::Area::new(area_id)
-            .anchor(anchor, egui::Vec2::ZERO)
+            .anchor(anchor, offset + drag_offset)
             .show(ctx, |ui| {
+                // the whole panel is also a drag handle, registered BELOW the contents so widgets and the scroll area keep their own
+                // input: drags that start on non-interactive panel space (header, margins, empty rows) move the HUD
+                let drag_response = if draggable {
+                    let handle = egui::Rect::from_min_size(
+                        Self::panel_base_min(game_view, panel, is_vertical) + drag_offset,
+                        panel,
+                    );
+                    Some(ui.interact(handle, area_id.with("drag"), egui::Sense::drag()))
+                } else {
+                    None
+                };
+
                 egui::Frame::NONE
                     .fill(egui::Color32::from_black_alpha(200))
                     .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 100)))
-                    .inner_margin(egui::Margin::same((8.0 * scale) as i8))
+                    .inner_margin(egui::Margin::same((8.0 * scale).min(120.0) as i8))
                     .show(ui, |ui| {
-                        ui.set_width(panel.x - 16.0 * scale);
-                        self.hud_contents(ui, &all_stats, course_info.as_ref(), scale, panel.y - 16.0 * scale, toggle_button);
+                        // let the fixed egui interaction minimums shrink with the HUD scale so small
+                        // layouts keep their ratios
+                        let style = ui.style_mut();
+                        style.spacing.interact_size.y = style.spacing.interact_size.y.min(20.0 * scale);
+                        // egui labels are drag-selectable by default, which
+                        // lets row text steal drags from the scroll area
+                        style.interaction.selectable_labels = false;
+                        // commit to the panel size so rows wrap inside it and short pages pad to it, 
+                        // so the size stays identical across tabs and content
+                        let inner = panel - egui::vec2(16.0 * scale, 16.0 * scale);
+                        ui.set_min_width(inner.x);
+                        ui.set_max_width(inner.x);
+                        ui.set_min_height(inner.y);
+
+                        self.hud_contents(ui, &all_stats, course_info.as_ref(), scale, inner.y, toggle_button, draggable);
                     });
+
+                // process the whole-panel drag handle registered above
+                if let Some(resp) = drag_response {
+                    if resp.dragged() {
+                        drag_active = true;
+                        if resp.drag_started() {
+                            drag_travel = 0.0;
+                        }
+                        drag_travel += resp.drag_delta().length();
+                        drag_offset += resp.drag_delta();
+                        drag_offset = Self::clamped_drag_offset(game_view, panel, is_vertical, drag_offset);
+                    }
+
+                    if resp.drag_stopped() {
+                        drag_active = true;
+                        // a click (press + release without movement) is not a drag:
+                        // egui marks drag-only widgets as dragged from the press on, so gate the save on real travel
+                        if drag_save && drag_travel >= RACE_STAT_HUD_DRAG_SAVE_THRESHOLD * scale {
+                            let pos = Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset);
+                            let mut new_config = (**Hachimi::instance().config.load()).clone();
+                            new_config.race_stat_hud_drag_x = pos.0;
+                            new_config.race_stat_hud_drag_y = pos.1;
+                            save_and_reload_config(new_config);
+                        }
+                        drag_travel = 0.0;
+                    }
+                }
             });
+
+        self.drag_travel = drag_travel;
+        if draggable && drag_active {
+            self.drag_pos = Some(Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset));
+        }
+
+        self.stats_buf = all_stats;
     }
 
-    fn run_button(&mut self, ctx: &egui::Context, screen: egui::Rect, scale: f32) {
+    fn run_button(&mut self, ctx: &egui::Context, game_view: egui::Rect, scale: f32) {
         let btn_size = 20.0 * scale;
         let margin = 4.0 * scale;
-        let is_vertical = screen.width() <= screen.height();
+        let is_vertical = game_view.width() <= game_view.height();
         let x = if is_vertical {
-            screen.right() - btn_size - margin
+            game_view.right() - btn_size - margin
         } else {
             // margin for Android navigation bars
-            screen.right() - btn_size - 48.0 * scale
+            game_view.right() - btn_size - 48.0 * scale
         };
-        let btn_pos = egui::Pos2::new(x, screen.center().y - btn_size / 2.0);
+        let btn_pos = egui::Pos2::new(x, game_view.center().y - btn_size / 2.0);
 
         let icon = "\u{f0d9}";
         egui::Area::new(egui::Id::new("race_stat_hud_toggle_btn"))
@@ -467,7 +810,7 @@ impl RaceStatHud {
             });
     }
 
-    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool) {
+    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool, draggable_page: bool) {
         let mut selected = self.selected_character;
         let mut visible = self.visible;
         let current_tab = self.current_tab;
@@ -486,8 +829,12 @@ impl RaceStatHud {
                     }
                 }
 
+                // cap the combo to half the row so long uma names ellipsize
+                // instead of growing the header past the fixed panel width
+                let combo_cap = (ui.available_width() * 0.5).max(60.0 * scale);
+                let combo_text = Self::ellipsized(ui, &all_stats[selected].name, combo_cap, 13.0 * scale);
                 egui::ComboBox::new(ui.id().with("character_select"), "")
-                    .selected_text(&all_stats[selected].name)
+                    .selected_text(combo_text)
                     .show_ui(ui, |combo_ui| {
                         for (i, stats) in all_stats.iter().enumerate() {
                             combo_ui.selectable_value(&mut selected, i, &stats.name);
@@ -561,33 +908,46 @@ impl RaceStatHud {
             RaceStatHudTab::UnusedSkills => "race_stat_hud_page_unused"
         };
         let stats = &all_stats[selected];
+
         let unused_ids = if tab == RaceStatHudTab::UnusedSkills {
-            let used: FnvHashSet<i32> = stats.used_skill_ids.iter().copied().collect();
-            Some(stats.all_skill_ids.iter().copied().filter(|id| !used.contains(id)).collect())
+            let mut unused = std::mem::take(&mut self.unused_skills_buf);
+            unused.clear();
+            for id in &stats.all_skill_ids {
+                if !stats.used_skill_ids.contains(id) {
+                    unused.push(*id);
+                }
+            }
+            unused
         } else {
-            None
+            Vec::new()
         };
 
+        let used_changed = tab == RaceStatHudTab::UsedSkills && self.last_used_skills != stats.used_skill_ids;
+        let unused_changed = tab == RaceStatHudTab::UnusedSkills && self.last_unused_skills != unused_ids;
+
         let mut scroll_to_bottom = false;
-        if tab == RaceStatHudTab::UsedSkills {
-            scroll_to_bottom = self.config.race_stat_had_autoscroll_0 && self.last_used_skills != stats.used_skill_ids;
-        } else if tab == RaceStatHudTab::UnusedSkills {
-            if let Some(unused) = unused_ids.as_ref() {
-                scroll_to_bottom = self.config.race_stat_had_autoscroll_1 && self.last_unused_skills != *unused;
-            }
+        if used_changed {
+            scroll_to_bottom = self.config.race_stat_had_autoscroll_0;
+        } else if unused_changed {
+            scroll_to_bottom = self.config.race_stat_had_autoscroll_1;
         }
 
         egui::ScrollArea::vertical()
             .id_salt(page_id)
             .auto_shrink([false, false])
             .max_height(page_h)
+            .min_scrolled_height(24.0 * scale)
+            .scroll_source(egui::containers::scroll_area::ScrollSource {
+                drag: if cfg!(target_os = "android") { true } else { !draggable_page },
+                ..Default::default()
+            })
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                 match tab {
-                    RaceStatHudTab::Stats => Self::stats_page(ui, stats, course, scale),
+                    RaceStatHudTab::Stats => self.stats_page(ui, stats, course, scale),
                     RaceStatHudTab::UsedSkills => self.skills_page(ui, &stats.used_skill_ids, scale),
                     RaceStatHudTab::UnusedSkills => {
-                        self.skills_page(ui, unused_ids.as_deref().unwrap_or(&[]), scale);
+                        self.skills_page(ui, &unused_ids, scale);
                     }
                 };
 
@@ -600,18 +960,28 @@ impl RaceStatHud {
             });
 
         if tab == RaceStatHudTab::UsedSkills {
-            self.last_used_skills = stats.used_skill_ids.clone();
+            if used_changed {
+                self.last_used_skills.clear();
+                self.last_used_skills.extend_from_slice(&stats.used_skill_ids);
+            }
         } else if tab == RaceStatHudTab::UnusedSkills {
-            self.last_unused_skills = unused_ids.unwrap_or_default();
+            if unused_changed {
+                self.last_unused_skills.clear();
+                self.last_unused_skills.extend_from_slice(&unused_ids);
+            }
+            self.unused_skills_buf = unused_ids;
         }
     }
 
-    fn stats_page(ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
-        // speed, with the min speed on the side 
-        ui.horizontal(|ui| {
+    fn stats_page(&mut self, ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.speed")).size(13.0 * scale));
-            Self::value_chip(ui, &format!("{:.1}", stats.speed), VALUE_CHIP_HUE_SPEED, scale);
-            ui.label(egui::RichText::new(format!("{} {:.1}", t!("race_stat_hud.min_speed"), stats.min_speed)).size(11.0 * scale).color(egui::Color32::from_gray(150)));
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{:.1}", stats.speed);
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_SPEED, scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{} {:.1}", t!("race_stat_hud.min_speed"), stats.min_speed);
+            ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(egui::Color32::from_gray(150)));
 
             // speed bar: 0..max scale, fill up to the current speed, min
             // speed marked with a tick on top of the fill
@@ -650,7 +1020,7 @@ impl RaceStatHud {
         });
 
         // acceleration
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.accel")).size(13.0 * scale));
 
             let gauge_w = 100.0 * scale;
@@ -679,21 +1049,28 @@ impl RaceStatHud {
                 ui.painter().rect_filled(fill_rect, 0.0, color);
             }
 
-            let (text, color) = match stats.accel {
-                Some(v) => (
-                    format!("{:+.1} m/s\u{00b2}", v),
+            let color = match stats.accel {
+                Some(v) => {
+                    self.chip_text.clear();
+                    let _ = write!(self.chip_text, "{:+.1} m/s\u{00b2}", v);
                     if v > 0.05 { DELTA_UP_COLOR } else if v < -0.05 { DELTA_DOWN_COLOR } else { egui::Color32::from_gray(140) }
-                ),
-                None => ("-".to_string(), egui::Color32::from_gray(140))
+                }
+                None => {
+                    self.chip_text.clear();
+                    self.chip_text.push('-');
+                    egui::Color32::from_gray(140)
+                }
             };
-            ui.label(egui::RichText::new(text).size(13.0 * scale).color(color));
+            ui.label(egui::RichText::new(self.chip_text.as_str()).size(13.0 * scale).color(color));
         });
 
         // stamina (hp bar), with the drain rate
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.stamina")).size(13.0 * scale));
             let hp_ratio = if stats.max_hp > 0.0 { stats.hp / stats.max_hp } else { 0.0 };
-            Self::value_chip(ui, &format!("{:.0}/{:.0}", stats.hp, stats.max_hp), Self::hp_chip_hue(hp_ratio), scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{:.0}/{:.0}", stats.hp, stats.max_hp);
+            Self::value_chip(ui, &self.chip_text, Self::hp_chip_hue(hp_ratio), scale);
             let bar_width = 100.0 * scale;
             let bar_height = 10.0 * scale;
             let (rect, _) = ui.allocate_exact_size(
@@ -717,71 +1094,84 @@ impl RaceStatHud {
                 Self::zenkai_glint(ui, rect, scale);
             }
 
-            let (text, color) = match stats.hp_drain {
+            let color = match stats.hp_drain {
                 // hp drain
-                Some(v) => (
-                    format!("{:+.1}/s", -v),
+                Some(v) => {
+                    self.chip_text.clear();
+                    let _ = write!(self.chip_text, "{:+.1}/s", -v);
                     if v > 0.05 { DELTA_DOWN_COLOR } else if v < -0.05 { DELTA_UP_COLOR } else { egui::Color32::from_gray(140) }
-                ),
-                None => ("-".to_string(), egui::Color32::from_gray(140))
+                }
+                None => {
+                    self.chip_text.clear();
+                    self.chip_text.push('-');
+                    egui::Color32::from_gray(140)
+                }
             };
-            ui.label(egui::RichText::new(text).size(11.0 * scale).color(color));
+            ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(color));
         });
 
         // phase
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.phase")).size(13.0 * scale));
             Self::value_chip(ui, &Self::phase_name(stats.phase), VALUE_CHIP_HUE_PHASE, scale);
         });
 
         // order
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.order")).size(13.0 * scale));
-            let text = if stats.cur_order >= 0 {
-                Self::ordinal(stats.cur_order + 1)
+            if stats.cur_order >= 0 {
+                Self::ordinal_into(stats.cur_order + 1, &mut self.chip_text);
             } else {
-                "-".to_string()
-            };
-            Self::value_chip(ui, &text, VALUE_CHIP_HUE_ORDER, scale);
+                self.chip_text.clear();
+                self.chip_text.push('-');
+            }
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_ORDER, scale);
         });
 
         // distance
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.distance")).size(13.0 * scale));
-            let text = match course {
-                Some(c) => format!("{:.0} / {:.0} m", stats.distance.clamp(0.0, c.course_distance), c.course_distance),
-                None => format!("{:.0} m", stats.distance)
-            };
-            Self::value_chip(ui, &text, VALUE_CHIP_HUE_DISTANCE, scale);
+            self.chip_text.clear();
+            match course {
+                Some(c) => { let _ = write!(self.chip_text, "{:.0} / {:.0} m", stats.distance.clamp(0.0, c.course_distance), c.course_distance); }
+                None => { let _ = write!(self.chip_text, "{:.0} m", stats.distance); }
+            }
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_DISTANCE, scale);
         });
         if let Some(course) = course {
             Self::distance_bar(ui, stats, course, scale);
         }
 
         // lane (11.25m per course width, same as the world transform)
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.lane")).size(13.0 * scale));
-            Self::value_chip(ui, &format!("{} ({:.1} m)", Self::lane_name(stats.lane), stats.lane_distance * 11.25), VALUE_CHIP_HUE_LANE, scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{} ({:.1} m)", Self::lane_name(stats.lane), stats.lane_distance * 11.25);
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_LANE, scale);
         });
 
         // start delay
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.start_delay")).size(13.0 * scale));
-            Self::value_chip(ui, &format!("{:+.2} s", stats.delay_time), VALUE_CHIP_HUE_START_DELAY, scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{:+.2} s", stats.delay_time);
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_START_DELAY, scale);
         });
 
         // live state chips
-        Self::state_chips(ui, stats, scale);
+        self.state_chips(ui, stats, scale);
 
         if stats.phase == HorsePhase::Finished {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(t!("race_stat_hud.finish")).size(13.0 * scale));
-                let text = if stats.finish_time_diff > 0.0 {
-                    format!("{} - {:.2} s (+{:.2})", Self::ordinal(stats.finish_order + 1), stats.finish_time_scaled, stats.finish_time_diff)
+                self.chip_text.clear();
+                Self::ordinal_into(stats.finish_order + 1, &mut self.chip_text);
+                if stats.finish_time_diff > 0.0 {
+                    let _ = write!(self.chip_text, " - {:.2} s (+{:.2})", stats.finish_time_scaled, stats.finish_time_diff);
                 } else {
-                    format!("{} - {:.2} s", Self::ordinal(stats.finish_order + 1), stats.finish_time_scaled)
-                };
-                Self::value_chip(ui, &text, VALUE_CHIP_HUE_FINISH, scale);
+                    let _ = write!(self.chip_text, " - {:.2} s", stats.finish_time_scaled);
+                }
+                Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_FINISH, scale);
             });
         }
     }
@@ -824,7 +1214,7 @@ impl RaceStatHud {
         }
     }
 
-    fn state_chips(ui: &mut egui::Ui, stats: &CharacterStats, scale: f32) {
+    fn state_chips(&mut self, ui: &mut egui::Ui, stats: &CharacterStats, scale: f32) {
         if stats.phase == HorsePhase::Finished {
             return;
         }
@@ -857,16 +1247,19 @@ impl RaceStatHud {
                 Self::state_chip(ui, &t!("race_stat_hud.clog"), STATE_CHIP_HUE_BAD, scale);
             }
             if stats.temptation_mode != 0 {
-                let text = format!("{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_BAD, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_BAD, scale);
             }
             if stats.is_compete_fight {
-                let text = format!("{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if stats.is_compete_top {
-                let text = format!("{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count, stats.compete_top_remain_time);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count, stats.compete_top_remain_time);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.run_at_full_speed {
                 Self::state_chip(ui, &t!("race_stat_hud.run_at_full_speed"), STATE_CHIP_HUE_ZENKAI, scale);
@@ -881,12 +1274,14 @@ impl RaceStatHud {
                 Self::state_chip(ui, &t!("race_stat_hud.stamina_keep"), STATE_CHIP_HUE_INFO, scale);
             }
             if se.compete_before_spurt {
-                let text = format!("{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.secure_lead {
-                let text = format!("{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
         });
     }
@@ -909,6 +1304,30 @@ impl RaceStatHud {
         } else {
             0.02
         }
+    }
+
+    fn ellipsized<'a>(ui: &egui::Ui, text: &'a str, cap: f32, font_size: f32) -> Cow<'a, str> {
+        let font = egui::FontId::proportional(font_size);
+        let width = |s: &str| {
+            ui.painter()
+                .layout_no_wrap(s.to_owned(), font.clone(), egui::Color32::PLACEHOLDER)
+                .size()
+                .x
+        };
+
+        if width(text) <= cap || text.is_empty() {
+            return Cow::Borrowed(text);
+        }
+
+        let est = ((text.chars().count() as f32) * (cap / width(text))).floor() as usize;
+        let mut truncated: String = text.chars().take(est.saturating_sub(1)).collect();
+        truncated.push('\u{2026}');
+        while truncated.chars().count() > 1 && width(&truncated) > cap {
+            truncated = truncated.chars().take(truncated.chars().count().saturating_sub(2)).collect();
+            truncated.push('\u{2026}');
+        }
+
+        Cow::Owned(truncated)
     }
 
     fn glint_active(stats: &CharacterStats) -> bool {
@@ -977,7 +1396,7 @@ impl RaceStatHud {
         }
     }
 
-    fn ordinal(n: i32) -> String {
+    fn ordinal_into(n: i32, out: &mut String) {
         let suffix = if n / 10 % 10 == 1 {
             "th"
         } else {
@@ -988,7 +1407,8 @@ impl RaceStatHud {
                 _ => "th"
             }
         };
-        format!("{}{}", n, suffix)
+        out.clear();
+        let _ = write!(out, "{}{}", n, suffix);
     }
 
     fn skills_page(&mut self, ui: &mut egui::Ui, skill_ids: &[i32], scale: f32) {
@@ -1030,29 +1450,24 @@ impl RaceStatHud {
         )
     }
 
-    fn skill_name(&mut self, skill_id: i32) -> String {
+    fn skill_name(&mut self, skill_id: i32) -> &str {
         use crate::il2cpp::{
             ext::Il2CppStringExt,
             hook::umamusume::MasterDataUtil,
             sql::TextDataQuery
         };
 
-        if let Some(name) = self.skill_name_cache.get(&skill_id) {
-            return name.clone();
-        }
-
-        let to_s = |ptr: *mut Il2CppString| unsafe {
-            ptr.as_ref().map(|s| s.as_utf16str().to_string())
-        };
-
-        // only cache resolved names, the fallback may resolve later in the race
-        if let Some(name) = to_s(TextDataQuery::get_skill_name(skill_id).unwrap_or(0 as _))
-            .or_else(|| to_s(MasterDataUtil::GetSkillName(skill_id))) {
-            self.skill_name_cache.insert(skill_id, name.clone());
-            return name;
-        }
-
-        format!("Skill {}", skill_id)
+        self.skill_name_cache
+            .entry(skill_id)
+            .or_insert_with(|| {
+                let to_s = |ptr: *mut Il2CppString| unsafe {
+                    ptr.as_ref().map(|s| s.as_utf16str().to_string())
+                };
+    
+                to_s(TextDataQuery::get_skill_name(skill_id).unwrap_or(0 as _))
+                    .or_else(|| to_s(MasterDataUtil::GetSkillName(skill_id)))
+                    .unwrap_or_else(|| format!("Skill {}", skill_id))
+            })
     }
 
     fn collect_stats(&mut self) -> (Vec<CharacterStats>, Option<RaceCourseInfo>) {
@@ -1061,40 +1476,54 @@ impl RaceStatHud {
             symbols::Array
         };
 
+        let mut all_stats = std::mem::take(&mut self.stats_buf);
+
         let race_manager = RaceManager::instance();
         if race_manager.is_null() {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
         let horse_manager = RaceManager::get__horseManager(race_manager);
         if horse_manager.is_null() {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
         let horse_infos = RaceHorseManagerBase::GetHorseRaceInfos(horse_manager);
         if horse_infos.is_null() {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
         let arr: Array<*mut Il2CppObject> = Array::from(horse_infos);
         let character_count = arr.len();
         if character_count == 0 {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
-        let sim_rates = Self::collect_sim_rates(horse_manager, character_count);
-        let sim_events = Self::collect_sim_events(horse_manager, character_count);
+        Self::collect_sim_rates(horse_manager, character_count, &mut self.sim_rates_buf);
+        Self::collect_sim_events(horse_manager, character_count, &mut self.sim_events_buf);
+        let sim_rates = self.sim_rates_buf.as_slice();
+        let sim_events = self.sim_events_buf.as_slice();
 
-        let all_stats: Vec<CharacterStats> = (0..character_count)
-            .filter_map(|i| {
-                let race_info = unsafe { arr.as_slice()[i] };
-                Self::collect_character_stats(
-                    race_info,
-                    sim_rates.get(i).copied().unwrap_or_default(),
-                    sim_events.get(i).map(Vec::as_slice).unwrap_or(&[])
-                )
-            })
-            .collect();
+        let mut valid_count = 0usize;
+        for i in 0..character_count {
+            let race_info = unsafe { arr.as_slice()[i] };
+            if valid_count == all_stats.len() {
+                all_stats.push(CharacterStats::default());
+            }
+            if Self::fill_character_stats(
+                race_info,
+                sim_rates.get(i).copied().unwrap_or_default(),
+                sim_events.get(i).map(Vec::as_slice).unwrap_or(&[]),
+                &mut all_stats[valid_count]
+            ) {
+                valid_count += 1;
+            }
+        }
+        all_stats.truncate(valid_count);
 
         if !all_stats.is_empty() {
             let player_idx = RaceHorseManagerBase::GetPlayerHorseIndex(horse_manager);
@@ -1132,7 +1561,7 @@ impl RaceStatHud {
         })
     }
 
-    fn collect_sim_rates(horse_manager: *mut Il2CppObject, horse_count: usize) -> Vec<SimRates> {
+    fn collect_sim_rates(horse_manager: *mut Il2CppObject, horse_count: usize, rates: &mut Vec<SimRates>) {
         use crate::il2cpp::{
             hook::umamusume::{
                 RaceSimulateData,
@@ -1144,30 +1573,31 @@ impl RaceStatHud {
             symbols::{Array, IList}
         };
 
-        let mut rates = vec![SimRates::default(); horse_count];
+        rates.clear();
+        rates.resize_with(horse_count, SimRates::default);
 
         if !RaceHorseManagerReplay::is_replay_manager(horse_manager) {
-            return rates;
+            return;
         }
 
         let reader = RaceHorseManagerReplay::get__reader(horse_manager);
         if reader.is_null() {
-            return rates;
+            return;
         }
 
         let sim_data = RaceSimulateReader::get__simData(reader);
         if sim_data.is_null() {
-            return rates;
+            return;
         }
 
         let frame_list = RaceSimulateData::get_FrameDataList(sim_data);
         let Some(frames) = IList::<*mut Il2CppObject>::new(frame_list) else {
-            return rates;
+            return;
         };
 
         let frame_count = frames.count();
         if frame_count < 2 {
-            return rates;
+            return;
         }
 
         // binary search for the newest frame whose time is <= the reader's
@@ -1189,23 +1619,23 @@ impl RaceStatHud {
         if idx < 1 {
             // first frame or before the race start: no previous frame to
             // compare against yet
-            return rates;
+            return;
         }
 
-        let Some(cur_frame) = frames.get(idx) else { return rates };
-        let Some(prev_frame) = frames.get(idx - 1) else { return rates };
+        let Some(cur_frame) = frames.get(idx) else { return };
+        let Some(prev_frame) = frames.get(idx - 1) else { return };
         if cur_frame.is_null() || prev_frame.is_null() {
-            return rates;
+            return;
         }
         let dt = RaceSimulateFrameData::get_Time(cur_frame) - RaceSimulateFrameData::get_Time(prev_frame);
         if dt <= 0.0 {
-            return rates;
+            return;
         }
 
         let cur_arr_ptr = RaceSimulateFrameData::get_HorseDataArray(cur_frame);
         let prev_arr_ptr = RaceSimulateFrameData::get_HorseDataArray(prev_frame);
         if cur_arr_ptr.is_null() || prev_arr_ptr.is_null() {
-            return rates;
+            return;
         }
         let cur_arr: Array<*mut Il2CppObject> = Array::from(cur_arr_ptr);
         let prev_arr: Array<*mut Il2CppObject> = Array::from(prev_arr_ptr);
@@ -1221,11 +1651,9 @@ impl RaceStatHud {
                 hp_drain: Some((RaceSimulateHorseFrameData::get_Hp(prev_horse) - RaceSimulateHorseFrameData::get_Hp(cur_horse)) / dt)
             };
         }
-
-        rates
     }
 
-    fn collect_sim_events(horse_manager: *mut Il2CppObject, horse_count: usize) -> Vec<Vec<SimEvent>> {
+    fn collect_sim_events(horse_manager: *mut Il2CppObject, horse_count: usize, events: &mut Vec<Vec<SimEvent>>) {
         use crate::il2cpp::{
             hook::umamusume::{
                 RaceSimulateData,
@@ -1236,25 +1664,32 @@ impl RaceStatHud {
             symbols::{Array, IList}
         };
 
-        let mut events: Vec<Vec<SimEvent>> = vec![Vec::new(); horse_count];
+        for ev in events.iter_mut() {
+            ev.clear();
+        }
+        if events.len() < horse_count {
+            events.resize_with(horse_count, Vec::new);
+        } else {
+            events.truncate(horse_count);
+        }
 
         if !RaceHorseManagerReplay::is_replay_manager(horse_manager) {
-            return events;
+            return;
         }
 
         let reader = RaceHorseManagerReplay::get__reader(horse_manager);
         if reader.is_null() {
-            return events;
+            return;
         }
 
         let sim_data = RaceSimulateReader::get__simData(reader);
         if sim_data.is_null() {
-            return events;
+            return;
         }
 
         let ev_list = RaceSimulateData::get__simEvDataList(sim_data);
         let Some(ev_list) = IList::<*mut Il2CppObject>::new(ev_list) else {
-            return events;
+            return;
         };
 
         for ev in ev_list.iter() {
@@ -1289,8 +1724,6 @@ impl RaceStatHud {
                 finish_distance: RaceSimulateEventData::DistanceData::get_finishDistance(distance_data)
             });
         }
-
-        events
     }
 
     fn sim_event_active(event: &SimEvent, cur_distance: f32) -> bool {
@@ -1329,7 +1762,7 @@ impl RaceStatHud {
         states
     }
 
-    fn collect_character_stats(race_info: *mut Il2CppObject, sim_rates: SimRates, sim_events: &[SimEvent]) -> Option<CharacterStats> {
+    fn fill_character_stats(race_info: *mut Il2CppObject, sim_rates: SimRates, sim_events: &[SimEvent], stats: &mut CharacterStats) -> bool {
         use crate::il2cpp::{
             ext::Il2CppStringExt,
             hook::umamusume::{HorseData, HorseRaceInfo, HorseRaceInfoReplay, SkillBase, SkillManager},
@@ -1337,66 +1770,71 @@ impl RaceStatHud {
         };
 
         if race_info.is_null() {
-            return None;
+            return false;
         }
 
         // name from HorseRaceInfo, fallback to HorseData
         let name_ptr = HorseRaceInfo::get_CharaName(race_info);
-        let name = if !name_ptr.is_null() {
-            unsafe { (*name_ptr).as_utf16str().to_string() }
+        if !name_ptr.is_null() {
+            let s = unsafe { (*name_ptr).as_utf16str() };
+            stats.name.clear();
+            stats.name.extend(s.chars());
         } else {
             let horse_data = HorseRaceInfo::get_HorseData(race_info);
             let hd_name = if !horse_data.is_null() { HorseData::get_charaName(horse_data) } else { 0 as _ };
             if !hd_name.is_null() {
-                unsafe { (*hd_name).as_utf16str().to_string() }
+                let s = unsafe { (*hd_name).as_utf16str() };
+                stats.name.clear();
+                stats.name.extend(s.chars());
             } else {
-                "?".to_string()
+                stats.name.clear();
+                stats.name.push('?');
             }
-        };
+        }
 
-        let speed = HorseRaceInfo::get__lastSpeed(race_info);
-        let min_speed = HorseRaceInfo::get__minSpeed(race_info);
-        let max_speed_in_race = HorseRaceInfo::get__maxSpeedInRace(race_info);
-        let hp = HorseRaceInfo::get__hp(race_info);
-        let max_hp = HorseRaceInfo::get__maxHp(race_info);
+        stats.speed = HorseRaceInfo::get__lastSpeed(race_info);
+        stats.min_speed = HorseRaceInfo::get__minSpeed(race_info);
+        stats.max_speed_in_race = HorseRaceInfo::get__maxSpeedInRace(race_info);
+        stats.hp = HorseRaceInfo::get__hp(race_info);
+        stats.max_hp = HorseRaceInfo::get__maxHp(race_info);
 
-        let phase = HorseRaceInfo::get__phase(race_info);
-        let cur_order = HorseRaceInfo::get_CurOrder(race_info);
-        let distance = HorseRaceInfo::get__distance(race_info);
+        stats.phase = HorseRaceInfo::get__phase(race_info);
+        stats.cur_order = HorseRaceInfo::get_CurOrder(race_info);
+        stats.distance = HorseRaceInfo::get__distance(race_info);
 
-        let sim_event_states = Self::eval_sim_events(sim_events, distance);
-        let lane = HorseRaceInfo::get_Lane(race_info);
-        let lane_distance = HorseRaceInfo::get__laneDistance(race_info);
-        let delay_time = HorseRaceInfo::get_DelayTime(race_info);
-        let is_good_start = HorseRaceInfo::get_IsGoodStart(race_info);
-        let is_bad_start = HorseRaceInfo::get_IsBadStart(race_info);
-        let is_start_dash = HorseRaceInfo::get_IsStartDash(race_info);
-        let is_clog = HorseRaceInfo::get_IsClog(race_info);
-        let is_compete_fight = HorseRaceInfo::get_IsCompeteFight(race_info);
-        let compete_fight_count = HorseRaceInfo::get_CompeteFightCount(race_info);
-        let is_compete_top = HorseRaceInfo::get_IsCompeteTop(race_info);
-        let compete_top_count = HorseRaceInfo::get_CompeteTopCount(race_info);
-        let compete_top_remain_time = HorseRaceInfo::get_CompeteTopRemainTime(race_info);
+        stats.sim_events = Self::eval_sim_events(sim_events, stats.distance);
+        stats.lane = HorseRaceInfo::get_Lane(race_info);
+        stats.lane_distance = HorseRaceInfo::get__laneDistance(race_info);
+        stats.delay_time = HorseRaceInfo::get_DelayTime(race_info);
+        stats.is_good_start = HorseRaceInfo::get_IsGoodStart(race_info);
+        stats.is_bad_start = HorseRaceInfo::get_IsBadStart(race_info);
+        stats.is_start_dash = HorseRaceInfo::get_IsStartDash(race_info);
+        stats.is_clog = HorseRaceInfo::get_IsClog(race_info);
+        stats.is_compete_fight = HorseRaceInfo::get_IsCompeteFight(race_info);
+        stats.compete_fight_count = HorseRaceInfo::get_CompeteFightCount(race_info);
+        stats.is_compete_top = HorseRaceInfo::get_IsCompeteTop(race_info);
+        stats.compete_top_count = HorseRaceInfo::get_CompeteTopCount(race_info);
+        stats.compete_top_remain_time = HorseRaceInfo::get_CompeteTopRemainTime(race_info);
 
-        let temptation_mode = HorseRaceInfoReplay::get__temptationMode(race_info);
-        let temptation_count = HorseRaceInfoReplay::get__temptationCount(race_info);
-        let is_last_spurt = HorseRaceInfoReplay::get_IsLastSpurt(race_info);
-        let last_spurt_start_distance = HorseRaceInfoReplay::get__lastSpurtStartDistance(race_info);
-        let finish_order = HorseRaceInfoReplay::get_FinishOrder(race_info);
-        let finish_time_scaled = HorseRaceInfoReplay::get_FinishTimeScaled(race_info);
-        let finish_time_diff = HorseRaceInfoReplay::get_FinishTimeDiffFromPrevHorse(race_info);
+        stats.temptation_mode = HorseRaceInfoReplay::get__temptationMode(race_info);
+        stats.temptation_count = HorseRaceInfoReplay::get__temptationCount(race_info);
+        stats.is_last_spurt = HorseRaceInfoReplay::get_IsLastSpurt(race_info);
+        stats.last_spurt_start_distance = HorseRaceInfoReplay::get__lastSpurtStartDistance(race_info);
+        stats.finish_order = HorseRaceInfoReplay::get_FinishOrder(race_info);
+        stats.finish_time_scaled = HorseRaceInfoReplay::get_FinishTimeScaled(race_info);
+        stats.finish_time_diff = HorseRaceInfoReplay::get_FinishTimeDiffFromPrevHorse(race_info);
 
-        let accel = sim_rates.accel;
-        let hp_drain = sim_rates.hp_drain;
+        stats.accel = sim_rates.accel;
+        stats.hp_drain = sim_rates.hp_drain;
 
         let skill_manager = HorseRaceInfo::get__skillManager(race_info);
-        let mut used_skill_ids = Vec::new();
-        let mut all_skill_ids = Vec::new();
+        stats.used_skill_ids.clear();
+        stats.all_skill_ids.clear();
 
         if !skill_manager.is_null() {
             if let Some(list) = IList::<i32>::new(SkillManager::GetUsedSkillIdList(skill_manager)) {
                 for skill_id in list.iter() {
-                    used_skill_ids.push(skill_id);
+                    stats.used_skill_ids.push(skill_id);
                 }
             }
 
@@ -1406,47 +1844,13 @@ impl RaceStatHud {
                 for i in 0..arr.len() {
                     let skill_obj = unsafe { arr.as_slice()[i] };
                     if !skill_obj.is_null() {
-                        all_skill_ids.push(SkillBase::get_SkillMasterId(skill_obj));
+                        stats.all_skill_ids.push(SkillBase::get_SkillMasterId(skill_obj));
                     }
                 }
             }
         }
 
-        Some(CharacterStats {
-            name,
-            speed,
-            accel,
-            min_speed,
-            max_speed_in_race,
-            hp,
-            max_hp,
-            hp_drain,
-            phase,
-            cur_order,
-            distance,
-            lane,
-            lane_distance,
-            delay_time,
-            is_good_start,
-            is_bad_start,
-            is_start_dash,
-            is_clog,
-            is_compete_fight,
-            compete_fight_count,
-            is_compete_top,
-            compete_top_count,
-            compete_top_remain_time,
-            temptation_mode,
-            temptation_count,
-            is_last_spurt,
-            last_spurt_start_distance,
-            finish_order,
-            finish_time_scaled,
-            finish_time_diff,
-            sim_events: sim_event_states,
-            used_skill_ids,
-            all_skill_ids
-        })
+        true
     }
 }
 
@@ -1960,6 +2364,8 @@ impl Gui {
 
             update_progress_visible: false,
 
+            live_slider_text: String::new(),
+
             notifications: Vec::new(),
             next_notification_id: 0,
             windows,
@@ -1986,6 +2392,7 @@ impl Gui {
         add_font!(fonts, proportional_fonts, "FontAwesome.otf");
         add_font!(fonts, proportional_fonts, "Inter_24pt-Regular.ttf");
         add_font!(fonts, proportional_fonts, "AlibabaPuHuiTi-3-45-Light.otf");
+        add_font!(fonts, proportional_fonts, "MPLUS1-Regular.ttf");
         add_font!(fonts, proportional_fonts, "Pretendard-Regular.ttf");
 
         fonts
@@ -2107,9 +2514,13 @@ impl Gui {
 
         let scene = SceneManager::GetActiveScene();
         let name_ptr = Scene::GetNameInternal(scene.handle);
-        let scene_name = if name_ptr.is_null() { String::new() } else { unsafe { (*name_ptr).as_utf16str().to_string() } };
+        let is_live_scene = if !name_ptr.is_null() {
+            unsafe { (*name_ptr).as_utf16str() == "Live" }
+        } else {
+            false
+        };
 
-        if scene_name != "Live" {
+        if !is_live_scene {
             if IS_LIVE_SLIDER_ACTIVE.load(atomic::Ordering::Acquire) {
                 ctx.input(|_i| {});
             }
@@ -2166,7 +2577,9 @@ impl Gui {
                             let curr_s = (current % 60.0).floor() as i32;
                             let tot_m = (total / 60.0).floor() as i32;
                             let tot_s = (total % 60.0).floor() as i32;
-                            ui.label(format!("{:02}:{:02} / {:02}:{:02}", curr_m, curr_s, tot_m, tot_s));
+                            self.live_slider_text.clear();
+                            let _ = write!(self.live_slider_text, "{:02}:{:02} / {:02}:{:02}", curr_m, curr_s, tot_m, tot_s);
+                            ui.label(&self.live_slider_text);
 
                             let available_w = ui.available_width();
 
@@ -2840,8 +3253,14 @@ impl Gui {
         scale: f32
     ) {
         let font = egui::FontId::proportional(12.0 * scale);
-        let galley = ui.painter().layout_no_wrap(name.to_owned(), font, text_color);
         let padding = egui::vec2(6.0 * scale, 3.0 * scale);
+        let wrap_w = (ui.max_rect().width() - padding.x * 2.0).max(24.0 * scale);
+        let natural = ui.painter().layout_no_wrap(name.to_owned(), font.clone(), text_color);
+        let galley = if natural.size().x <= wrap_w {
+            natural
+        } else {
+            ui.painter().layout(name.to_owned(), font, text_color, wrap_w)
+        };
         let size = galley.size() + padding * 2.0;
         let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
         let radius = egui::CornerRadius::same((3.0 * scale) as u8);
@@ -2940,8 +3359,9 @@ impl Gui {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
 
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+                    let search_lower = search_term.to_lowercase();
                     for (choice_val, label) in choices {
-                        if !search_term.is_empty() && !label.to_lowercase().contains(&search_term.to_lowercase()) {
+                        if !search_lower.is_empty() && !label.to_lowercase().contains(&search_lower) {
                             continue;
                         }
 
@@ -3641,7 +4061,6 @@ struct ConfigEditor {
     font_color_options: Vec<String>,
     outline_size_options: Vec<String>,
     outline_color_options: Vec<String>,
-    bgseason_options: Vec<(BgSeason, String)>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -3668,23 +4087,6 @@ fn should_show_option(search: &str, label: &str) -> bool {
 impl ConfigEditor {
     pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
-
-        // Gallop.Localize.Get must run on the Unity main thread on TW, otherwise the game crashes.
-        let bgseason_options = if Hachimi::instance().game.region != Region::Taiwan {
-            let default_label = t!("default").to_string();
-            // Season text ids from TextId enum
-            vec![
-                (BgSeason::None, default_label),
-                (BgSeason::Spring, get_localized_string("Common0108")),
-                (BgSeason::Summer, get_localized_string("Common0109")),
-                (BgSeason::Fall, get_localized_string("Common0110")),
-                (BgSeason::Winter, get_localized_string("Common0111")),
-                (BgSeason::CherryBlossom, get_localized_string("Common0112"))
-            ]
-        } else {
-            Vec::new()
-        };
-
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
             config: (**Hachimi::instance().config.load()).clone(),
@@ -3696,7 +4098,6 @@ impl ConfigEditor {
             font_color_options: umamusume_enum_options(c"FontColorType"),
             outline_size_options: umamusume_enum_options(c"OutlineSizeType"),
             outline_color_options: umamusume_enum_options(c"OutlineColorType"),
-            bgseason_options
         }
     }
 
@@ -4346,11 +4747,19 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
-            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) && Hachimi::instance().game.region != Region::Taiwan {
+            if should_show_option(search, &t!("config_editor.homescreen_bgseason")) {
                 ui.label(t!("config_editor.homescreen_bgseason"));
-                let season_opts: Vec<(BgSeason, &str)> = self.bgseason_options.iter()
-                    .map(|(s, l)| (*s, l.as_str())).collect();
-                Gui::run_combo(ui, "homescreen_bgseason", &mut config.homescreen_bgseason, &season_opts);
+                let localized_data = Hachimi::instance().localized_data.load();
+                let get = |k, default| localized_data.localize_dict.get(k).map_or(default, |s| s.as_str());
+
+                Gui::run_combo(ui, "homescreen_bgseason", &mut config.homescreen_bgseason, &[
+                    (BgSeason::None, t!("default").as_ref()),
+                    (BgSeason::Spring, get("Common0108", t!("spring").as_ref())),
+                    (BgSeason::Summer, get("Common0109", t!("summer").as_ref())),
+                    (BgSeason::Fall, get("Common0110", t!("fall").as_ref())),
+                    (BgSeason::Winter, get("Common0111", t!("winter").as_ref())),
+                    (BgSeason::CherryBlossom, get("Common0112", t!("cherry_blossom").as_ref())),
+                ]);
                 ui.end_row();
             }
 
@@ -4452,6 +4861,59 @@ impl ConfigEditor {
                         });
                     }
                 });
+                ui.end_row();
+            }
+
+            #[cfg(target_os = "windows")]
+            if should_show_option(search, &t!("config_editor.race_stat_hud_landscapeui_portrait")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_landscapeui_portrait"));
+                ui.checkbox(&mut config.windows.race_stat_hud_landscapeui_portrait, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_draggable")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_draggable"));
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut config.race_stat_hud_draggable, "");
+                    if ui.button(t!("reset")).clicked() {
+                        config.race_stat_hud_drag_x = -1.0;
+                        config.race_stat_hud_drag_y = -1.0;
+                        let mut new_config = Hachimi::instance().config.load().as_ref().clone();
+                        new_config.race_stat_hud_drag_x = -1.0;
+                        new_config.race_stat_hud_drag_y = -1.0;
+                        save_and_reload_config(new_config);
+                        if let Ok(mut hud) = RACE_STAT_HUD.lock() {
+                            hud.drag_pos = None;
+                        }
+                    }
+                });
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_draggable_save")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud && config.race_stat_hud_draggable {
+                ui.label(t!("config_editor.race_stat_hud_draggable_save"));
+                ui.checkbox(&mut config.race_stat_hud_draggable_save, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_width_scale")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_width_scale"));
+                ui.add(egui::Slider::new(&mut config.race_stat_hud_width_scale,
+                    RACE_STAT_HUD_WIDTH_SCALE_MIN..=RACE_STAT_HUD_WIDTH_SCALE_MAX
+                ).step_by(0.05).fixed_decimals(2));
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_height_scale")) && Hachimi::instance().game.region == Region::Japan
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_height_scale"));
+                ui.add(egui::Slider::new(&mut config.race_stat_hud_height_scale,
+                    RACE_STAT_HUD_HEIGHT_SCALE_MIN..=RACE_STAT_HUD_HEIGHT_SCALE_MAX
+                ).step_by(0.05).fixed_decimals(2));
                 ui.end_row();
             }
 
@@ -4591,7 +5053,7 @@ impl Window for ConfigEditor {
             self.config = (**global_handle).clone();
             self.last_ptr_config = global_ptr;
         }
-        let mut config = self.config.clone();
+        let mut config = std::mem::take(&mut self.config);
         #[cfg(target_os = "windows")]
         {
             config.windows.menu_open_key = global_handle.windows.menu_open_key;
@@ -5853,12 +6315,12 @@ impl Window for ExcludesEditorWindow {
                         let mut to_remove: Option<usize> = None;
                         let mut to_edit: Option<usize> = None;
 
+                        let search_lower = self.search_term.to_lowercase();
                         let display_items: Vec<(usize, String)> = self.excludes
                             .iter()
                             .enumerate()
                             .filter(|(_, exclude)| {
-                                self.search_term.is_empty()
-                                    || exclude.to_lowercase().contains(&self.search_term.to_lowercase())
+                                search_lower.is_empty() || exclude.to_lowercase().contains(&search_lower)
                             })
                             .map(|(i, exclude)| (i, exclude.clone()))
                             .collect();
@@ -6063,7 +6525,7 @@ impl Window for ChangeTranslationRepoWindow {
         let mut open2 = true;
 
         let hachimi = Hachimi::instance();
-        let manager = hachimi.tl_repo_manager.lock().unwrap().clone();
+        let manager = hachimi.tl_repo_manager.lock().unwrap();
         let current_repo_id = hachimi.config.load().selected_tl_repo_id;
         let has_repos = !manager.repos.is_empty();
 
@@ -6984,6 +7446,7 @@ impl Window for LicenseWindow {
                 ui.group(|ui| {
                     ui.label(t!("license.font_inter"));
                     ui.label(t!("license.font_font_awesome"));
+                    ui.label(t!("license.font_m_plus_1"));
                     ui.label(t!("license.font_pretendard"));
                 });
 
