@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::HashMap,
+    fmt::Write as _,
     ops::RangeInclusive,
     os::raw::c_void,
     panic::{self, AssertUnwindSafe},
@@ -146,6 +147,8 @@ pub struct Gui {
 
     pub update_progress_visible: bool,
 
+    live_slider_text: String,
+
     notifications: Vec<Notification>,
     next_notification_id: u32,
     windows: Vec<BoxedWindow>,
@@ -267,6 +270,46 @@ struct CharacterStats {
     all_skill_ids: Vec<i32>
 }
 
+impl Default for CharacterStats {
+    fn default() -> CharacterStats {
+        CharacterStats {
+            name: String::new(),
+            speed: 0.0,
+            accel: None,
+            min_speed: 0.0,
+            max_speed_in_race: 0.0,
+            hp: 0.0,
+            max_hp: 0.0,
+            hp_drain: None,
+            phase: HorsePhase::RunUp,
+            cur_order: 0,
+            distance: 0.0,
+            lane: LaneType::Uti,
+            lane_distance: 0.0,
+            delay_time: 0.0,
+            is_good_start: false,
+            is_bad_start: false,
+            is_start_dash: false,
+            is_clog: false,
+            is_compete_fight: false,
+            compete_fight_count: 0,
+            is_compete_top: false,
+            compete_top_count: 0,
+            compete_top_remain_time: 0.0,
+            temptation_mode: TemptationMode::Null,
+            temptation_count: 0,
+            is_last_spurt: false,
+            last_spurt_start_distance: 0.0,
+            finish_order: 0,
+            finish_time_scaled: 0.0,
+            finish_time_diff: 0.0,
+            sim_events: SimEventStates::default(),
+            used_skill_ids: Vec::new(),
+            all_skill_ids: Vec::new()
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 struct SimEvent {
     kind: SimulateEventType,
@@ -321,7 +364,12 @@ struct RaceStatHud {
     config: hachimi::Config,
     last_used_skills: Vec<i32>,
     last_unused_skills: Vec<i32>,
-    skill_name_cache: HashMap<i32, String>
+    skill_name_cache: HashMap<i32, String>,
+    stats_buf: Vec<CharacterStats>,
+    sim_rates_buf: Vec<SimRates>,
+    sim_events_buf: Vec<Vec<SimEvent>>,
+    unused_skills_buf: Vec<i32>,
+    chip_text: String
 }
 
 impl RaceStatHud {
@@ -337,7 +385,12 @@ impl RaceStatHud {
             config: (**Hachimi::instance().config.load()).clone(),
             last_used_skills: Vec::new(),
             last_unused_skills: Vec::new(),
-            skill_name_cache: HashMap::new()
+            skill_name_cache: HashMap::new(),
+            stats_buf: Vec::new(),
+            sim_rates_buf: Vec::new(),
+            sim_events_buf: Vec::new(),
+            unused_skills_buf: Vec::new(),
+            chip_text: String::new()
         }
     }
 
@@ -630,6 +683,8 @@ impl RaceStatHud {
 
         let (all_stats, course_info) = self.collect_stats();
         if all_stats.is_empty() {
+            // put the (empty) reusable buffer back before bailing
+            self.stats_buf = all_stats;
             return;
         }
 
@@ -725,6 +780,8 @@ impl RaceStatHud {
         if draggable && drag_active {
             self.drag_pos = Some(Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset));
         }
+
+        self.stats_buf = all_stats;
     }
 
     fn run_button(&mut self, ctx: &egui::Context, game_view: egui::Rect, scale: f32) {
@@ -851,20 +908,28 @@ impl RaceStatHud {
             RaceStatHudTab::UnusedSkills => "race_stat_hud_page_unused"
         };
         let stats = &all_stats[selected];
+
         let unused_ids = if tab == RaceStatHudTab::UnusedSkills {
-            let used: FnvHashSet<i32> = stats.used_skill_ids.iter().copied().collect();
-            Some(stats.all_skill_ids.iter().copied().filter(|id| !used.contains(id)).collect())
+            let mut unused = std::mem::take(&mut self.unused_skills_buf);
+            unused.clear();
+            for id in &stats.all_skill_ids {
+                if !stats.used_skill_ids.contains(id) {
+                    unused.push(*id);
+                }
+            }
+            unused
         } else {
-            None
+            Vec::new()
         };
 
+        let used_changed = tab == RaceStatHudTab::UsedSkills && self.last_used_skills != stats.used_skill_ids;
+        let unused_changed = tab == RaceStatHudTab::UnusedSkills && self.last_unused_skills != unused_ids;
+
         let mut scroll_to_bottom = false;
-        if tab == RaceStatHudTab::UsedSkills {
-            scroll_to_bottom = self.config.race_stat_had_autoscroll_0 && self.last_used_skills != stats.used_skill_ids;
-        } else if tab == RaceStatHudTab::UnusedSkills {
-            if let Some(unused) = unused_ids.as_ref() {
-                scroll_to_bottom = self.config.race_stat_had_autoscroll_1 && self.last_unused_skills != *unused;
-            }
+        if used_changed {
+            scroll_to_bottom = self.config.race_stat_had_autoscroll_0;
+        } else if unused_changed {
+            scroll_to_bottom = self.config.race_stat_had_autoscroll_1;
         }
 
         egui::ScrollArea::vertical()
@@ -879,10 +944,10 @@ impl RaceStatHud {
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                 match tab {
-                    RaceStatHudTab::Stats => Self::stats_page(ui, stats, course, scale),
+                    RaceStatHudTab::Stats => self.stats_page(ui, stats, course, scale),
                     RaceStatHudTab::UsedSkills => self.skills_page(ui, &stats.used_skill_ids, scale),
                     RaceStatHudTab::UnusedSkills => {
-                        self.skills_page(ui, unused_ids.as_deref().unwrap_or(&[]), scale);
+                        self.skills_page(ui, &unused_ids, scale);
                     }
                 };
 
@@ -895,18 +960,28 @@ impl RaceStatHud {
             });
 
         if tab == RaceStatHudTab::UsedSkills {
-            self.last_used_skills = stats.used_skill_ids.clone();
+            if used_changed {
+                self.last_used_skills.clear();
+                self.last_used_skills.extend_from_slice(&stats.used_skill_ids);
+            }
         } else if tab == RaceStatHudTab::UnusedSkills {
-            self.last_unused_skills = unused_ids.unwrap_or_default();
+            if unused_changed {
+                self.last_unused_skills.clear();
+                self.last_unused_skills.extend_from_slice(&unused_ids);
+            }
+            self.unused_skills_buf = unused_ids;
         }
     }
 
-    fn stats_page(ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
-        // speed, with the min speed on the side 
+    fn stats_page(&mut self, ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.speed")).size(13.0 * scale));
-            Self::value_chip(ui, &format!("{:.1}", stats.speed), VALUE_CHIP_HUE_SPEED, scale);
-            ui.label(egui::RichText::new(format!("{} {:.1}", t!("race_stat_hud.min_speed"), stats.min_speed)).size(11.0 * scale).color(egui::Color32::from_gray(150)));
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{:.1}", stats.speed);
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_SPEED, scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{} {:.1}", t!("race_stat_hud.min_speed"), stats.min_speed);
+            ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(egui::Color32::from_gray(150)));
 
             // speed bar: 0..max scale, fill up to the current speed, min
             // speed marked with a tick on top of the fill
@@ -974,21 +1049,28 @@ impl RaceStatHud {
                 ui.painter().rect_filled(fill_rect, 0.0, color);
             }
 
-            let (text, color) = match stats.accel {
-                Some(v) => (
-                    format!("{:+.1} m/s\u{00b2}", v),
+            let color = match stats.accel {
+                Some(v) => {
+                    self.chip_text.clear();
+                    let _ = write!(self.chip_text, "{:+.1} m/s\u{00b2}", v);
                     if v > 0.05 { DELTA_UP_COLOR } else if v < -0.05 { DELTA_DOWN_COLOR } else { egui::Color32::from_gray(140) }
-                ),
-                None => ("-".to_string(), egui::Color32::from_gray(140))
+                }
+                None => {
+                    self.chip_text.clear();
+                    self.chip_text.push('-');
+                    egui::Color32::from_gray(140)
+                }
             };
-            ui.label(egui::RichText::new(text).size(13.0 * scale).color(color));
+            ui.label(egui::RichText::new(self.chip_text.as_str()).size(13.0 * scale).color(color));
         });
 
         // stamina (hp bar), with the drain rate
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.stamina")).size(13.0 * scale));
             let hp_ratio = if stats.max_hp > 0.0 { stats.hp / stats.max_hp } else { 0.0 };
-            Self::value_chip(ui, &format!("{:.0}/{:.0}", stats.hp, stats.max_hp), Self::hp_chip_hue(hp_ratio), scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{:.0}/{:.0}", stats.hp, stats.max_hp);
+            Self::value_chip(ui, &self.chip_text, Self::hp_chip_hue(hp_ratio), scale);
             let bar_width = 100.0 * scale;
             let bar_height = 10.0 * scale;
             let (rect, _) = ui.allocate_exact_size(
@@ -1012,15 +1094,20 @@ impl RaceStatHud {
                 Self::zenkai_glint(ui, rect, scale);
             }
 
-            let (text, color) = match stats.hp_drain {
+            let color = match stats.hp_drain {
                 // hp drain
-                Some(v) => (
-                    format!("{:+.1}/s", -v),
+                Some(v) => {
+                    self.chip_text.clear();
+                    let _ = write!(self.chip_text, "{:+.1}/s", -v);
                     if v > 0.05 { DELTA_DOWN_COLOR } else if v < -0.05 { DELTA_UP_COLOR } else { egui::Color32::from_gray(140) }
-                ),
-                None => ("-".to_string(), egui::Color32::from_gray(140))
+                }
+                None => {
+                    self.chip_text.clear();
+                    self.chip_text.push('-');
+                    egui::Color32::from_gray(140)
+                }
             };
-            ui.label(egui::RichText::new(text).size(11.0 * scale).color(color));
+            ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(color));
         });
 
         // phase
@@ -1032,22 +1119,24 @@ impl RaceStatHud {
         // order
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.order")).size(13.0 * scale));
-            let text = if stats.cur_order >= 0 {
-                Self::ordinal(stats.cur_order + 1)
+            if stats.cur_order >= 0 {
+                Self::ordinal_into(stats.cur_order + 1, &mut self.chip_text);
             } else {
-                "-".to_string()
-            };
-            Self::value_chip(ui, &text, VALUE_CHIP_HUE_ORDER, scale);
+                self.chip_text.clear();
+                self.chip_text.push('-');
+            }
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_ORDER, scale);
         });
 
         // distance
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.distance")).size(13.0 * scale));
-            let text = match course {
-                Some(c) => format!("{:.0} / {:.0} m", stats.distance.clamp(0.0, c.course_distance), c.course_distance),
-                None => format!("{:.0} m", stats.distance)
-            };
-            Self::value_chip(ui, &text, VALUE_CHIP_HUE_DISTANCE, scale);
+            self.chip_text.clear();
+            match course {
+                Some(c) => { let _ = write!(self.chip_text, "{:.0} / {:.0} m", stats.distance.clamp(0.0, c.course_distance), c.course_distance); }
+                None => { let _ = write!(self.chip_text, "{:.0} m", stats.distance); }
+            }
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_DISTANCE, scale);
         });
         if let Some(course) = course {
             Self::distance_bar(ui, stats, course, scale);
@@ -1056,27 +1145,33 @@ impl RaceStatHud {
         // lane (11.25m per course width, same as the world transform)
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.lane")).size(13.0 * scale));
-            Self::value_chip(ui, &format!("{} ({:.1} m)", Self::lane_name(stats.lane), stats.lane_distance * 11.25), VALUE_CHIP_HUE_LANE, scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{} ({:.1} m)", Self::lane_name(stats.lane), stats.lane_distance * 11.25);
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_LANE, scale);
         });
 
         // start delay
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.start_delay")).size(13.0 * scale));
-            Self::value_chip(ui, &format!("{:+.2} s", stats.delay_time), VALUE_CHIP_HUE_START_DELAY, scale);
+            self.chip_text.clear();
+            let _ = write!(self.chip_text, "{:+.2} s", stats.delay_time);
+            Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_START_DELAY, scale);
         });
 
         // live state chips
-        Self::state_chips(ui, stats, scale);
+        self.state_chips(ui, stats, scale);
 
         if stats.phase == HorsePhase::Finished {
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(t!("race_stat_hud.finish")).size(13.0 * scale));
-                let text = if stats.finish_time_diff > 0.0 {
-                    format!("{} - {:.2} s (+{:.2})", Self::ordinal(stats.finish_order + 1), stats.finish_time_scaled, stats.finish_time_diff)
+                self.chip_text.clear();
+                Self::ordinal_into(stats.finish_order + 1, &mut self.chip_text);
+                if stats.finish_time_diff > 0.0 {
+                    let _ = write!(self.chip_text, " - {:.2} s (+{:.2})", stats.finish_time_scaled, stats.finish_time_diff);
                 } else {
-                    format!("{} - {:.2} s", Self::ordinal(stats.finish_order + 1), stats.finish_time_scaled)
-                };
-                Self::value_chip(ui, &text, VALUE_CHIP_HUE_FINISH, scale);
+                    let _ = write!(self.chip_text, " - {:.2} s", stats.finish_time_scaled);
+                }
+                Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_FINISH, scale);
             });
         }
     }
@@ -1119,7 +1214,7 @@ impl RaceStatHud {
         }
     }
 
-    fn state_chips(ui: &mut egui::Ui, stats: &CharacterStats, scale: f32) {
+    fn state_chips(&mut self, ui: &mut egui::Ui, stats: &CharacterStats, scale: f32) {
         if stats.phase == HorsePhase::Finished {
             return;
         }
@@ -1152,16 +1247,19 @@ impl RaceStatHud {
                 Self::state_chip(ui, &t!("race_stat_hud.clog"), STATE_CHIP_HUE_BAD, scale);
             }
             if stats.temptation_mode != 0 {
-                let text = format!("{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_BAD, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_BAD, scale);
             }
             if stats.is_compete_fight {
-                let text = format!("{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if stats.is_compete_top {
-                let text = format!("{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count, stats.compete_top_remain_time);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count, stats.compete_top_remain_time);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.run_at_full_speed {
                 Self::state_chip(ui, &t!("race_stat_hud.run_at_full_speed"), STATE_CHIP_HUE_ZENKAI, scale);
@@ -1176,12 +1274,14 @@ impl RaceStatHud {
                 Self::state_chip(ui, &t!("race_stat_hud.stamina_keep"), STATE_CHIP_HUE_INFO, scale);
             }
             if se.compete_before_spurt {
-                let text = format!("{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.secure_lead {
-                let text = format!("{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count);
-                Self::state_chip(ui, &text, STATE_CHIP_HUE_CONTEST, scale);
+                self.chip_text.clear();
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count);
+                Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
         });
     }
@@ -1296,7 +1396,7 @@ impl RaceStatHud {
         }
     }
 
-    fn ordinal(n: i32) -> String {
+    fn ordinal_into(n: i32, out: &mut String) {
         let suffix = if n / 10 % 10 == 1 {
             "th"
         } else {
@@ -1307,7 +1407,8 @@ impl RaceStatHud {
                 _ => "th"
             }
         };
-        format!("{}{}", n, suffix)
+        out.clear();
+        let _ = write!(out, "{}{}", n, suffix);
     }
 
     fn skills_page(&mut self, ui: &mut egui::Ui, skill_ids: &[i32], scale: f32) {
@@ -1375,40 +1476,54 @@ impl RaceStatHud {
             symbols::Array
         };
 
+        let mut all_stats = std::mem::take(&mut self.stats_buf);
+
         let race_manager = RaceManager::instance();
         if race_manager.is_null() {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
         let horse_manager = RaceManager::get__horseManager(race_manager);
         if horse_manager.is_null() {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
         let horse_infos = RaceHorseManagerBase::GetHorseRaceInfos(horse_manager);
         if horse_infos.is_null() {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
         let arr: Array<*mut Il2CppObject> = Array::from(horse_infos);
         let character_count = arr.len();
         if character_count == 0 {
-            return (Vec::new(), None);
+            all_stats.clear();
+            return (all_stats, None);
         }
 
-        let sim_rates = Self::collect_sim_rates(horse_manager, character_count);
-        let sim_events = Self::collect_sim_events(horse_manager, character_count);
+        Self::collect_sim_rates(horse_manager, character_count, &mut self.sim_rates_buf);
+        Self::collect_sim_events(horse_manager, character_count, &mut self.sim_events_buf);
+        let sim_rates = self.sim_rates_buf.as_slice();
+        let sim_events = self.sim_events_buf.as_slice();
 
-        let all_stats: Vec<CharacterStats> = (0..character_count)
-            .filter_map(|i| {
-                let race_info = unsafe { arr.as_slice()[i] };
-                Self::collect_character_stats(
-                    race_info,
-                    sim_rates.get(i).copied().unwrap_or_default(),
-                    sim_events.get(i).map(Vec::as_slice).unwrap_or(&[])
-                )
-            })
-            .collect();
+        let mut valid_count = 0usize;
+        for i in 0..character_count {
+            let race_info = unsafe { arr.as_slice()[i] };
+            if valid_count == all_stats.len() {
+                all_stats.push(CharacterStats::default());
+            }
+            if Self::fill_character_stats(
+                race_info,
+                sim_rates.get(i).copied().unwrap_or_default(),
+                sim_events.get(i).map(Vec::as_slice).unwrap_or(&[]),
+                &mut all_stats[valid_count]
+            ) {
+                valid_count += 1;
+            }
+        }
+        all_stats.truncate(valid_count);
 
         if !all_stats.is_empty() {
             let player_idx = RaceHorseManagerBase::GetPlayerHorseIndex(horse_manager);
@@ -1446,7 +1561,7 @@ impl RaceStatHud {
         })
     }
 
-    fn collect_sim_rates(horse_manager: *mut Il2CppObject, horse_count: usize) -> Vec<SimRates> {
+    fn collect_sim_rates(horse_manager: *mut Il2CppObject, horse_count: usize, rates: &mut Vec<SimRates>) {
         use crate::il2cpp::{
             hook::umamusume::{
                 RaceSimulateData,
@@ -1458,30 +1573,31 @@ impl RaceStatHud {
             symbols::{Array, IList}
         };
 
-        let mut rates = vec![SimRates::default(); horse_count];
+        rates.clear();
+        rates.resize_with(horse_count, SimRates::default);
 
         if !RaceHorseManagerReplay::is_replay_manager(horse_manager) {
-            return rates;
+            return;
         }
 
         let reader = RaceHorseManagerReplay::get__reader(horse_manager);
         if reader.is_null() {
-            return rates;
+            return;
         }
 
         let sim_data = RaceSimulateReader::get__simData(reader);
         if sim_data.is_null() {
-            return rates;
+            return;
         }
 
         let frame_list = RaceSimulateData::get_FrameDataList(sim_data);
         let Some(frames) = IList::<*mut Il2CppObject>::new(frame_list) else {
-            return rates;
+            return;
         };
 
         let frame_count = frames.count();
         if frame_count < 2 {
-            return rates;
+            return;
         }
 
         // binary search for the newest frame whose time is <= the reader's
@@ -1503,23 +1619,23 @@ impl RaceStatHud {
         if idx < 1 {
             // first frame or before the race start: no previous frame to
             // compare against yet
-            return rates;
+            return;
         }
 
-        let Some(cur_frame) = frames.get(idx) else { return rates };
-        let Some(prev_frame) = frames.get(idx - 1) else { return rates };
+        let Some(cur_frame) = frames.get(idx) else { return };
+        let Some(prev_frame) = frames.get(idx - 1) else { return };
         if cur_frame.is_null() || prev_frame.is_null() {
-            return rates;
+            return;
         }
         let dt = RaceSimulateFrameData::get_Time(cur_frame) - RaceSimulateFrameData::get_Time(prev_frame);
         if dt <= 0.0 {
-            return rates;
+            return;
         }
 
         let cur_arr_ptr = RaceSimulateFrameData::get_HorseDataArray(cur_frame);
         let prev_arr_ptr = RaceSimulateFrameData::get_HorseDataArray(prev_frame);
         if cur_arr_ptr.is_null() || prev_arr_ptr.is_null() {
-            return rates;
+            return;
         }
         let cur_arr: Array<*mut Il2CppObject> = Array::from(cur_arr_ptr);
         let prev_arr: Array<*mut Il2CppObject> = Array::from(prev_arr_ptr);
@@ -1535,11 +1651,9 @@ impl RaceStatHud {
                 hp_drain: Some((RaceSimulateHorseFrameData::get_Hp(prev_horse) - RaceSimulateHorseFrameData::get_Hp(cur_horse)) / dt)
             };
         }
-
-        rates
     }
 
-    fn collect_sim_events(horse_manager: *mut Il2CppObject, horse_count: usize) -> Vec<Vec<SimEvent>> {
+    fn collect_sim_events(horse_manager: *mut Il2CppObject, horse_count: usize, events: &mut Vec<Vec<SimEvent>>) {
         use crate::il2cpp::{
             hook::umamusume::{
                 RaceSimulateData,
@@ -1550,25 +1664,32 @@ impl RaceStatHud {
             symbols::{Array, IList}
         };
 
-        let mut events: Vec<Vec<SimEvent>> = vec![Vec::new(); horse_count];
+        for ev in events.iter_mut() {
+            ev.clear();
+        }
+        if events.len() < horse_count {
+            events.resize_with(horse_count, Vec::new);
+        } else {
+            events.truncate(horse_count);
+        }
 
         if !RaceHorseManagerReplay::is_replay_manager(horse_manager) {
-            return events;
+            return;
         }
 
         let reader = RaceHorseManagerReplay::get__reader(horse_manager);
         if reader.is_null() {
-            return events;
+            return;
         }
 
         let sim_data = RaceSimulateReader::get__simData(reader);
         if sim_data.is_null() {
-            return events;
+            return;
         }
 
         let ev_list = RaceSimulateData::get__simEvDataList(sim_data);
         let Some(ev_list) = IList::<*mut Il2CppObject>::new(ev_list) else {
-            return events;
+            return;
         };
 
         for ev in ev_list.iter() {
@@ -1603,8 +1724,6 @@ impl RaceStatHud {
                 finish_distance: RaceSimulateEventData::DistanceData::get_finishDistance(distance_data)
             });
         }
-
-        events
     }
 
     fn sim_event_active(event: &SimEvent, cur_distance: f32) -> bool {
@@ -1643,7 +1762,7 @@ impl RaceStatHud {
         states
     }
 
-    fn collect_character_stats(race_info: *mut Il2CppObject, sim_rates: SimRates, sim_events: &[SimEvent]) -> Option<CharacterStats> {
+    fn fill_character_stats(race_info: *mut Il2CppObject, sim_rates: SimRates, sim_events: &[SimEvent], stats: &mut CharacterStats) -> bool {
         use crate::il2cpp::{
             ext::Il2CppStringExt,
             hook::umamusume::{HorseData, HorseRaceInfo, HorseRaceInfoReplay, SkillBase, SkillManager},
@@ -1651,66 +1770,71 @@ impl RaceStatHud {
         };
 
         if race_info.is_null() {
-            return None;
+            return false;
         }
 
         // name from HorseRaceInfo, fallback to HorseData
         let name_ptr = HorseRaceInfo::get_CharaName(race_info);
-        let name = if !name_ptr.is_null() {
-            unsafe { (*name_ptr).as_utf16str().to_string() }
+        if !name_ptr.is_null() {
+            let s = unsafe { (*name_ptr).as_utf16str() };
+            stats.name.clear();
+            stats.name.extend(s.chars());
         } else {
             let horse_data = HorseRaceInfo::get_HorseData(race_info);
             let hd_name = if !horse_data.is_null() { HorseData::get_charaName(horse_data) } else { 0 as _ };
             if !hd_name.is_null() {
-                unsafe { (*hd_name).as_utf16str().to_string() }
+                let s = unsafe { (*hd_name).as_utf16str() };
+                stats.name.clear();
+                stats.name.extend(s.chars());
             } else {
-                "?".to_string()
+                stats.name.clear();
+                stats.name.push('?');
             }
-        };
+        }
 
-        let speed = HorseRaceInfo::get__lastSpeed(race_info);
-        let min_speed = HorseRaceInfo::get__minSpeed(race_info);
-        let max_speed_in_race = HorseRaceInfo::get__maxSpeedInRace(race_info);
-        let hp = HorseRaceInfo::get__hp(race_info);
-        let max_hp = HorseRaceInfo::get__maxHp(race_info);
+        stats.speed = HorseRaceInfo::get__lastSpeed(race_info);
+        stats.min_speed = HorseRaceInfo::get__minSpeed(race_info);
+        stats.max_speed_in_race = HorseRaceInfo::get__maxSpeedInRace(race_info);
+        stats.hp = HorseRaceInfo::get__hp(race_info);
+        stats.max_hp = HorseRaceInfo::get__maxHp(race_info);
 
-        let phase = HorseRaceInfo::get__phase(race_info);
-        let cur_order = HorseRaceInfo::get_CurOrder(race_info);
-        let distance = HorseRaceInfo::get__distance(race_info);
+        stats.phase = HorseRaceInfo::get__phase(race_info);
+        stats.cur_order = HorseRaceInfo::get_CurOrder(race_info);
+        stats.distance = HorseRaceInfo::get__distance(race_info);
 
-        let sim_event_states = Self::eval_sim_events(sim_events, distance);
-        let lane = HorseRaceInfo::get_Lane(race_info);
-        let lane_distance = HorseRaceInfo::get__laneDistance(race_info);
-        let delay_time = HorseRaceInfo::get_DelayTime(race_info);
-        let is_good_start = HorseRaceInfo::get_IsGoodStart(race_info);
-        let is_bad_start = HorseRaceInfo::get_IsBadStart(race_info);
-        let is_start_dash = HorseRaceInfo::get_IsStartDash(race_info);
-        let is_clog = HorseRaceInfo::get_IsClog(race_info);
-        let is_compete_fight = HorseRaceInfo::get_IsCompeteFight(race_info);
-        let compete_fight_count = HorseRaceInfo::get_CompeteFightCount(race_info);
-        let is_compete_top = HorseRaceInfo::get_IsCompeteTop(race_info);
-        let compete_top_count = HorseRaceInfo::get_CompeteTopCount(race_info);
-        let compete_top_remain_time = HorseRaceInfo::get_CompeteTopRemainTime(race_info);
+        stats.sim_events = Self::eval_sim_events(sim_events, stats.distance);
+        stats.lane = HorseRaceInfo::get_Lane(race_info);
+        stats.lane_distance = HorseRaceInfo::get__laneDistance(race_info);
+        stats.delay_time = HorseRaceInfo::get_DelayTime(race_info);
+        stats.is_good_start = HorseRaceInfo::get_IsGoodStart(race_info);
+        stats.is_bad_start = HorseRaceInfo::get_IsBadStart(race_info);
+        stats.is_start_dash = HorseRaceInfo::get_IsStartDash(race_info);
+        stats.is_clog = HorseRaceInfo::get_IsClog(race_info);
+        stats.is_compete_fight = HorseRaceInfo::get_IsCompeteFight(race_info);
+        stats.compete_fight_count = HorseRaceInfo::get_CompeteFightCount(race_info);
+        stats.is_compete_top = HorseRaceInfo::get_IsCompeteTop(race_info);
+        stats.compete_top_count = HorseRaceInfo::get_CompeteTopCount(race_info);
+        stats.compete_top_remain_time = HorseRaceInfo::get_CompeteTopRemainTime(race_info);
 
-        let temptation_mode = HorseRaceInfoReplay::get__temptationMode(race_info);
-        let temptation_count = HorseRaceInfoReplay::get__temptationCount(race_info);
-        let is_last_spurt = HorseRaceInfoReplay::get_IsLastSpurt(race_info);
-        let last_spurt_start_distance = HorseRaceInfoReplay::get__lastSpurtStartDistance(race_info);
-        let finish_order = HorseRaceInfoReplay::get_FinishOrder(race_info);
-        let finish_time_scaled = HorseRaceInfoReplay::get_FinishTimeScaled(race_info);
-        let finish_time_diff = HorseRaceInfoReplay::get_FinishTimeDiffFromPrevHorse(race_info);
+        stats.temptation_mode = HorseRaceInfoReplay::get__temptationMode(race_info);
+        stats.temptation_count = HorseRaceInfoReplay::get__temptationCount(race_info);
+        stats.is_last_spurt = HorseRaceInfoReplay::get_IsLastSpurt(race_info);
+        stats.last_spurt_start_distance = HorseRaceInfoReplay::get__lastSpurtStartDistance(race_info);
+        stats.finish_order = HorseRaceInfoReplay::get_FinishOrder(race_info);
+        stats.finish_time_scaled = HorseRaceInfoReplay::get_FinishTimeScaled(race_info);
+        stats.finish_time_diff = HorseRaceInfoReplay::get_FinishTimeDiffFromPrevHorse(race_info);
 
-        let accel = sim_rates.accel;
-        let hp_drain = sim_rates.hp_drain;
+        stats.accel = sim_rates.accel;
+        stats.hp_drain = sim_rates.hp_drain;
 
         let skill_manager = HorseRaceInfo::get__skillManager(race_info);
-        let mut used_skill_ids = Vec::new();
-        let mut all_skill_ids = Vec::new();
+        stats.used_skill_ids.clear();
+        stats.all_skill_ids.clear();
 
         if !skill_manager.is_null() {
             if let Some(list) = IList::<i32>::new(SkillManager::GetUsedSkillIdList(skill_manager)) {
                 for skill_id in list.iter() {
-                    used_skill_ids.push(skill_id);
+                    stats.used_skill_ids.push(skill_id);
                 }
             }
 
@@ -1720,47 +1844,13 @@ impl RaceStatHud {
                 for i in 0..arr.len() {
                     let skill_obj = unsafe { arr.as_slice()[i] };
                     if !skill_obj.is_null() {
-                        all_skill_ids.push(SkillBase::get_SkillMasterId(skill_obj));
+                        stats.all_skill_ids.push(SkillBase::get_SkillMasterId(skill_obj));
                     }
                 }
             }
         }
 
-        Some(CharacterStats {
-            name,
-            speed,
-            accel,
-            min_speed,
-            max_speed_in_race,
-            hp,
-            max_hp,
-            hp_drain,
-            phase,
-            cur_order,
-            distance,
-            lane,
-            lane_distance,
-            delay_time,
-            is_good_start,
-            is_bad_start,
-            is_start_dash,
-            is_clog,
-            is_compete_fight,
-            compete_fight_count,
-            is_compete_top,
-            compete_top_count,
-            compete_top_remain_time,
-            temptation_mode,
-            temptation_count,
-            is_last_spurt,
-            last_spurt_start_distance,
-            finish_order,
-            finish_time_scaled,
-            finish_time_diff,
-            sim_events: sim_event_states,
-            used_skill_ids,
-            all_skill_ids
-        })
+        true
     }
 }
 
@@ -2274,6 +2364,8 @@ impl Gui {
 
             update_progress_visible: false,
 
+            live_slider_text: String::new(),
+
             notifications: Vec::new(),
             next_notification_id: 0,
             windows,
@@ -2422,9 +2514,13 @@ impl Gui {
 
         let scene = SceneManager::GetActiveScene();
         let name_ptr = Scene::GetNameInternal(scene.handle);
-        let scene_name = if name_ptr.is_null() { String::new() } else { unsafe { (*name_ptr).as_utf16str().to_string() } };
+        let is_live_scene = if !name_ptr.is_null() {
+            unsafe { (*name_ptr).as_utf16str() == "Live" }
+        } else {
+            false
+        };
 
-        if scene_name != "Live" {
+        if !is_live_scene {
             if IS_LIVE_SLIDER_ACTIVE.load(atomic::Ordering::Acquire) {
                 ctx.input(|_i| {});
             }
@@ -2481,7 +2577,9 @@ impl Gui {
                             let curr_s = (current % 60.0).floor() as i32;
                             let tot_m = (total / 60.0).floor() as i32;
                             let tot_s = (total % 60.0).floor() as i32;
-                            ui.label(format!("{:02}:{:02} / {:02}:{:02}", curr_m, curr_s, tot_m, tot_s));
+                            self.live_slider_text.clear();
+                            let _ = write!(self.live_slider_text, "{:02}:{:02} / {:02}:{:02}", curr_m, curr_s, tot_m, tot_s);
+                            ui.label(&self.live_slider_text);
 
                             let available_w = ui.available_width();
 
