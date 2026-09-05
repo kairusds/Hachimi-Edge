@@ -39,6 +39,12 @@ save_changes: "Salvar mudanças?"
 back: "Voltar"
 portrait: "Retrato"
 landscape: "Paisagem"
+reset: "Reiniciar"
+spring: "Primavera"
+summer: "Verão"
+fall: "Outono"
+winter: "Inverno"
+cherry_blossom: "Cerejeiras"
 
 menu:
   check_for_updates: "\uf0aa Buscar atualizações"
@@ -62,7 +68,7 @@ menu:
   dump_localize_dict: "Exportar localize dict"
   danger_zone_heading: "\uf071 Zona de Perigo"
   danger_zone_warning: "Estas opções podem acabar tendo efeitos indesejados no seu jogo. Use com cuidado!"
-  soft_restart: "\uf021 Soft-Restart"
+  soft_restart: "\uf021 Soft-restart"
   open_in_game_browser: "\uf0ac Abrir navegador do jogo"
   toggle_game_ui: "\uf06e Alternar UI do jogo"
   discord_rpc: "Discord RPC"
@@ -144,7 +150,7 @@ config_editor:
   graphics_tab: "\uf03e Gráficos"
   gameplay_tab: "\uf11b Jogabilidade"
   language: "Idioma"
-  restore_defaults: "Restaurar Padrão"
+  restore_defaults: "Restaurar padrão"
   disable_overlay: "Desabilitar sobreposição (GUI)"
   disable_overlay_warning: >-
     Esta opção irá desabilitar a sobreposição do Hachimi após você reiniciar o jogo,
@@ -215,10 +221,15 @@ config_editor:
     Esta opção permite que um atalho seja utilizado para alternar a visualização da UI do jogo.
     No Android, você pode tocar três vezes rapidamente no canto superior direito da tela.
     No PC/Android com um teclado conectado, você pode pressionar a tecla Insert ou definir outra tecla nas configurações.
-  hide_ingame_ui_hotkey_bind: "Atalho para esconder a UI do jogo"
+  hide_ingame_ui_hotkey_bind: "Tecla para esconder a UI do jogo"
   race_stat_hud: "Interface de estatísticas da corrida"
-  race_stat_hud_toggle_button: "Botão para alternar estatísticas da corrida"
-  race_stat_hud_toggle_key: "Atalho para alternar estatísticas da corrida"
+  race_stat_hud_toggle_button: "Botão para alternar a interface de estatísticas da corrida"
+  race_stat_hud_toggle_key: "Atalho para alternar a interface de estatísticas da corrida"
+  race_stat_hud_landscapeui_portrait: "Visualização da interface de estatísticas da corrida em paisagem"
+  race_stat_hud_draggable: "Arrastar interface de estatísticas da corrida"
+  race_stat_hud_draggable_save: "Salvar posição ao mover interface de estatísticas da corrida"
+  race_stat_hud_width_scale: "Escala horizontal da interface de estatísticas da corrida"
+  race_stat_hud_height_scale: "Escala vertical da interface de estatísticas da corrida"
   live_slider_always_show: "Sempre mostrar barra de progresso nos shows"
   live_playback_loop: "Reproduzir shows em loop"
   champions_live_show_text: "Substituir textos do show da Champions Meeting"
