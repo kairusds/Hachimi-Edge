@@ -28,6 +28,8 @@ mod StoryViewTextControllerSingleMode;
 mod JikkyoDisplay;
 pub mod Screen;
 #[cfg(target_os = "windows")]
+pub mod LandscapeUIManager;
+#[cfg(target_os = "windows")]
 pub mod StandaloneWindowResize;
 #[cfg(target_os = "windows")]
 mod GallopInput;
@@ -251,6 +253,7 @@ pub fn init() {
 
     #[cfg(target_os = "windows")]
     {
+        LandscapeUIManager::init(image);
         StandaloneWindowResize::init(image);
         GallopInput::init(image);
         InputSystemManager::init(image);
