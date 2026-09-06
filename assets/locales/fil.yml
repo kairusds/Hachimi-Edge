@@ -150,7 +150,7 @@ config_editor:
   ui_scale: "Laki ng UI"
   gui_scale: "Laki ng Overlay"
   gui_landscape_ratio: "Overlay scale ratio sa landscape"
-  ui_animation_scale: "Biliis ng UI animation"
+  ui_animation_scale: "Bilis ng UI animation"
   graphics_quality: "Kalidad ng graphics"
   full_screen_mode_exclusive: "Eksklusibo"
   block_minimize_in_full_screen: "I-block ang pag-minimize sa full screen"
@@ -194,7 +194,7 @@ config_editor:
   caption_outline_size: "Laki ng outline"
   enable_smtc: "Paganahin ang Windows Media Controls"
   hide_now_loading: "Itago ang \"Now Loading\" na screen"
-  ui_loading_show_orientation_guide: "Itago ang oryentasyon sa loading screen"
+  ui_loading_show_orientation_guide: "Itago ang tagubilin ng oryentasyon sa loading screen"
   replace_to_builtin_font: "Gamitin ang default na font ng laro"
   custom_title_name: "Pasadyang Window Title"
   recommended_ui_scale: "Ilapat ang recommended na UI scale"
@@ -208,6 +208,10 @@ config_editor:
   race_stat_hud_draggable: "Gawing draggable ang Race Stat HUD"
   race_stat_hud_draggable_save: "I-save ang posisyon ng na-drag na Race Stat HUD"
   disable_tap_effect: "I-disable ang particle effect sa pag-tap"
+  race_playback_slider: "Ipakita ang slider sa Playback ng Karera"
+  race_playback_button: "Playback ng karera - Ipakita ang pause/resume button"
+  race_playback_key_enable: "I-enable ang keybind sa pag-pause/resume ng playback sa karera"
+  race_playback_key: "Key sa pag-pause/resume ng playback sa karera"
 
 
 free_camera:
