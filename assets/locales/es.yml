@@ -4,7 +4,7 @@ windows:
   menu_open_key: "Flecha Derecha"
 
 android:
-  menu_open_key: "Subir volumen y Bajar volumen\n\uf25a o Triple toque arriba a la izquierda"
+  menu_open_key: "Subir y bajar volumen\n\uf25a o triple toque en esquina superior izq."
 
 splash_sub: "\uf015 Pulsa %{open_key_str} para abrir el menú."
 loading_label: "Cargando..."
@@ -36,6 +36,15 @@ edit: "Editar"
 remove: "Quitar"
 add: "Añadir"
 save_changes: "¿Guardar los cambios?"
+back: "Atrás"
+portrait: "Retrato"
+landscape: "Apaisado"
+reset: "Reiniciar"
+spring: "Primavera"
+summer: "Verano"
+fall: "Otoño"
+winter: "Invierno"
+cherry_blossom: "Sakura"
 
 menu:
   check_for_updates: "\uf0aa Buscar actualizaciones"
@@ -78,11 +87,15 @@ notification:
   update_completed: "Actualización completada."
   errors_during_update: "Se produjeron errores al actualizar (%{count}). Comprueba los registros para más detalles."
   checking_for_updates: "Buscando actualizaciones..."
+  github_update_unreachable: "No es posible conectar con GitHub, probando con Codeberg..."
   no_updates: "No hay actualizaciones."
   ipc_softreset_exec: "Reinicio suave remoto (IPC) ejecutado con éxito."
   atlas_workaround_reset: "Archivos de Atlas modificados: arreglo temporal desactivado."
   tl_repo_changed: "Repositorio cambiado. Se han recargado los datos de localización."
   tl_repo_folder_missing: "No existe la carpeta de traducción. Busca actualizaciones para restaurarla."
+  freeform_window_disabled_landscape: "La ventana de forma libre se ha desactivado porque el modo horizontal está activo."
+  free_camera_unavailable_live: "Debido a un problema conocido, la Cámara Libre se ha desactivado porque no está disponible en este concierto."
+  recommended_ui_scale_applied: "Se ha aplicado el escalado de interfaz recomendado"
 
 first_time_setup:
   title: "Instalación Inicial"
@@ -100,6 +113,10 @@ first_time_setup:
   select_translation_repo: "Selecciona un repositorio de traducción:"
   no_compatible_repo: "No se han encontrado repositorios compatibles con esta versión del juego."
   skip_translation: "Omitir traducciones."
+  common_settings_heading: "Ajustes comunes"
+  common_settings_content: >-
+    Esta sección alberga algunos de los ajustes de uso más frecuente.
+    Puedes modificar los ajustes en cualquier momento desde el Editor de Configuración.
   complete_heading: "¡Todo listo!"
   complete_content: >-
     Se ha ajustado el repositorio de traducción. Cuando pulses en Listo, se guardará
@@ -120,13 +137,18 @@ license:
   ofl_fonts_header: "This software bundles the following fonts under the SIL Open Font License 1.1:"
   font_inter: "Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
   font_font_awesome: "Font Awesome Version 4.7.0: Copyright Dave Gandy (https://fontawesome.com) 2016. All rights reserved."
+  font_m_plus_1: "M PLUS 1: Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS)"
+  font_pretendard: |
+    Pretendard: Copyright (c) 2021, Kil Hyung-jin (https://github.com/orioncactus/pretendard), with Reserved Font Name 'Pretendard'.
+    - Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. Source is a trademark of Adobe in the United States and/or other countries.
+    - Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS), with Reserved Font Name 'M PLUS 1'.
   ofl_notice: "SIL OFL 1.1 License Text"
   font_alibaba_header: "Alibaba PuHuiTi 3.0"
   font_alibaba_body: "Copyright (c) 2020-2023 Alibaba (China) Co., Ltd. All rights reserved."
 
 tl_updater:
   title: "Actualizando..."
-  warning: "Las traducciones dejarán de funcionar mientras se actualizan"
+  warning: "Las traducciones no funcionarán mientras se actualizan"
 
 config_editor:
   title: "Editor de Configuración"
@@ -166,17 +188,22 @@ config_editor:
     traducciones adicionales y el rendimiento del juego podría verse afectado.
     Por favor, déjala desactivada si no dispone de un servidor de traducción.
   auto_translate_ui: "Auto-traducir la UI (PUEDE ROMPER LA UI)"
-  taskbar_show_progress_on_download: "Ver progreso de la descarga en la barra de tareas"
-  taskbar_show_progress_on_connecting: "Ver progreso de la conexión en la barra de tareas"
+  taskbar_show_progress_on_download: "Progreso de la descarga en la barra de tareas"
+  taskbar_show_progress_on_connecting: "Progreso de la conexión en la barra de tareas"
+  taskbar_show_progress_on_schedule_book: "Progreso de la Agenda del Entrenador en la barra de tareas"
   target_fps: "FPS objetivo"
   virtual_resolution_multiplier: "Multiplicador de resolución virtual"
   ui_scale: "Escala de la UI"
+  recommended_ui_scale: "Aplicar escala del UI recomendada"
   gui_scale: "Escala del overlay"
   gui_landscape_ratio: "Relación de escala del overlay (apaisado)"
   ui_animation_scale: "Escala de animación de la UI"
   graphics_quality: "Calidad gráfica"
   vsync: "VSync"
   auto_full_screen: "Pantalla completa automática"
+  freeform_window: "Ventana de forma libre"
+  freeform_ui_scale_auto: "Ajustar automáticamente la escala de la UI en ventana de forma libre"
+  freeform_ui_scale_auto_ratio: "Relación de escala automática de la UI"
   full_screen_mode: "Modo de pantalla completa"
   full_screen_mode_exclusive: "Exclusiva"
   full_screen_mode_borderless: "Sin bordes"
@@ -189,7 +216,8 @@ config_editor:
   story_choice_auto_select_delay: "Retraso de selección automática (historia)"
   story_text_speed_multiplier: "Velocidad del texto (historia)"
   force_allow_dynamic_camera: "Permitir siempre la cámara dinámica"
-  live_theater_allow_same_chara: "Permitir personajes iguales en Live Theater"
+  free_camera: "Cámara Libre"
+  live_theater_allow_same_chara: "Permitir personajes duplicados en el Live Theater"
   physics_update_mode: "Modo de actualización de físicas"
   cyspring_mono_uncap_frame_scale: "Desbloquear escala de frames del CySpring Mono"
   disable_skill_name_translation: "No traducir habilidades"
@@ -199,8 +227,16 @@ config_editor:
     En Android, puedes tocar tres veces la parte superior derecha de la pantalla.
     En PC/Android con teclado será la tecla Insertar y podrá ser cambiada desde el GUI o en la configuración.
   hide_ingame_ui_hotkey_bind: "Atajo para ocultar la interfaz del juego"
-  live_slider_always_show: "Mostrar siempre la barra de progreso en conciertos"
-  live_playback_loop: "Reproducir en bucle los conciertos"
+  race_stat_hud: "Interfaz de estadísticas de carrera"
+  race_stat_hud_toggle_button: "Botón para alternar la interfaz de estadísticas de carrera"
+  race_stat_hud_toggle_key: "Atajo para alternar la interfaz de estadísticas de carrera"
+  race_stat_hud_landscapeui_portrait: "Interfaz de estadísticas de carrera (apaisado)"
+  race_stat_hud_draggable: "Interfaz de estadísticas de carrera arrastrable"
+  race_stat_hud_draggable_save: "Guardar posición de la interfaz de estadísticas de carrera"
+  race_stat_hud_width_scale: "Escala de anchura de la interfaz de estadísticas de carrera"
+  race_stat_hud_height_scale: "Escala de altura de la interfaz de estadísticas de carrera"
+  live_slider_always_show: "Mostrar siempre la barra de reproducción en conciertos"
+  live_playback_loop: "Reproducir conciertos en bucle"
   champions_live_show_text: "Reemplazar textos del concierto (Champions Meeting)"
   champions_live_resource_id: "Título del Champions Meeting"
   champions_live_year: "Año del Champions Meeting"
@@ -213,6 +249,7 @@ config_editor:
   caption_color: "Color del texto de los subtítulos"
   caption_outline_color: "Color del borde de los subtítulos"
   caption_outline_size: "Tamaño del borde de los subtítulos"
+  disable_tap_effect: "Desactivar efectos de toque en el juego"
   discord_rpc: "Discord RPC"
   enable_smtc: "Habilitar controles multimedia de Windows"
   menu_open_key: "Tecla para abrir menú"
@@ -228,6 +265,9 @@ config_editor:
   ui_loading_show_orientation_guide: "Ocultar guía para cambiar la orientación en la pantalla de carga"
   replace_to_builtin_font: "Usar la fuente original del juego"
   custom_title_name: "Título personalizado para la ventana"
+  ingame_webview: "Abrir enlaces de Umamusume (noticias, ayuda, gacha, ...) en el navegador integrado"
+  trainer_live_landscape: "Modo apaisado en el concierto Meni Shuki"
+  force_orientation_mode: "Forzar orientación"
 
 theme_editor:
   title: "Editor de temas (GUI)"
@@ -240,8 +280,161 @@ theme_editor:
 
 set_keybind:
   title: "Asignar tecla"
-  press_any_key: "Pulsa cualquier tecla…"
+  press_any_key: "Pulsa cualquier tecla..."
   bound_key: "Tecla asignada: %{key}"
+
+race_stat_hud:
+  open_race_mechanics_confirm: "¿Quieres abrir el navegador para consultar el documento sobre las mecánicas de carrera? (Solo disponible en inglés)"
+  stats: "Estadísticas"
+  speed: "Velocidad"
+  accel: "Aceleración"
+  min_speed: "Vel. Mínima"
+  stamina: "Resistencia (PV)"
+  phase: "Fase"
+  order: "Posición"
+  distance: "Distancia"
+  lane: "Carril"
+  start_delay: "Retraso en salida"
+  finish: "Terminar"
+  used_skills: "Habilidades usadas"
+  unused_skills: "Habilidades no usadas"
+  autoscroll: "Desplazamiento automático"
+  phase_runup: "Salida"
+  phase_start: "Tramo inicial"
+  phase_middle: "Tramo medio"
+  phase_end: "Tramo final"
+  phase_last: "Esprint final"
+  phase_finished: "Meta"
+  lane_inner: "Interior"
+  lane_middle: "Medio"
+  lane_outer: "Exterior"
+  lane_outermost: "Exterior extremo"
+  temptation_sashi: "Acechador"
+  temptation_senko: "Líder"
+  temptation_nige: "Corredor"
+  temptation_boost: "Impulso"
+  good_start: "Buena salida"
+  bad_start: "Mala salida"
+  start_dash: "Aceleración inicial"
+  clog: "Bloqueada"
+  rushed: "Precipitada"
+  compete_fight: "Duelo por la posición"
+  compete_top: "Duelo por el liderato"
+  last_spurt: "Esprint final"
+  run_at_full_speed: "Esprint a fondo"
+  conserve_release: "Liberación"
+  stamina_limit_break: "Liberación de resistencia"
+  stamina_keep: "Conservación de resistencia"
+  compete_before_spurt: "Duelo de resistencia"
+  secure_lead: "Asegurar el liderato"
+
+free_camera:
+  settings_title: "Ajustes de cámara libre"
+  section_general: "General"
+  section_live: "Live Theater"
+  section_race: "Carreras"
+  section_keybinds: "Atajos de teclado"
+  remove_camera_effects: "Eliminar efectos de cámara"
+  live_remove_screen_effects: "Eliminar efectos de pantalla"
+  live_disable_character_teleport: "Desactivar teletransporte de personajes"
+  live_force_all_characters_visible: "Mostrar siempre todos los personajes"
+  show_overlay: "Mostrar superposición de cambio"
+  selfie_use_head_transform: "Usar palo selfie (Seguir personaje)"
+  mode: "Modo"
+  mode_free: "Movimiento libre"
+  mode_first_person: "Primera persona"
+  mode_selfie_stick: "Seguir personaje"
+  live_move_step: "Sensibilidad de movimiento (concierto)"
+  race_move_step: "Sensibilidad de movimiento (carrera)"
+  look_step: "Sensibilidad de orientación"
+  mouse_speed: "Velocidad del ratón"
+  live_fov: "Campo de visión (concierto)"
+  race_fov: "Campo de visión (carrera)"
+  gamepad_deadzone: "Zona muerta (mando)"
+  gamepad_move_speed: "Velocidad movimiento (mando)"
+  gamepad_look_speed: "Velocidad rotación (mando)"
+  live_target_position: "Posición objetivo (concierto)"
+  live_target_part: "Parte objetivo (concierto)"
+  live_selfie_horizontal_stabilization: "Zona muerta horizontal de cámara orbital (concierto)"
+  live_selfie_vertical_stabilization: "Zona muerta vertical de cámara orbital (concierto)"
+  live_follow_offset: "Desplazamiento de cámara orbital (concierto)"
+  live_follow_lookat_offset: "Desplazamiento del enfoque de cámara orbital (concierto)"
+  live_follow_smooth: "Suavizado de cámara orbital (concierto)"
+  live_follow_smooth_lookat_step: "Suavizado del enfoque de cámara orbital (concierto)"
+  live_follow_smooth_pos_step: "Suavizado de posición de cámara orbital (concierto)"
+  live_first_person_offset: "Desplazamiento en primera persona (concierto)"
+  race_target_index: "Índice objetivo en carrera (-1 = auto)"
+  race_follow_offset: "Desplazamiento de cámara orbital (carrera)"
+  race_follow_distance: "Distancia de cámara orbital (carrera)"
+  race_first_person_lookat_offset: "Desplazamiento del enfoque de cámara en primera persona (carrera)"
+  overlay_mode: "Modo: %{mode}"
+  overlay_target: "Objetivo: %{target}"
+  overlay_part: "Parte: %{part}"
+  target_auto: "Auto"
+  target_gate: "Puerta %{index}"
+  key_move_forward: "Moverse hacia delante"
+  key_move_back: "Moverse hacia atrás"
+  key_move_left: "Moverse a la izquierda"
+  key_move_right: "Moverse a la derecha"
+  key_move_down: "Moverse hacia abajo"
+  key_move_up: "Moverse hacia arriba"
+  key_look_up: "Mirar arriba"
+  key_look_down: "Mirar abajo"
+  key_look_left: "Mirar a la izquierda"
+  key_look_right: "Mirar a la derecha"
+  key_fov_increase: "Aumentar campo de visión"
+  key_fov_decrease: "Reducir campo de visión"
+  key_follow_offset_up: "Desplazar cámara hacia arriba"
+  key_follow_offset_down: "Desplazar cámara hacia abajo"
+  key_follow_offset_left: "Desplazar cámara a la izquierda"
+  key_follow_offset_right: "Desplazar cámara a la derecha"
+  key_target_previous: "Objetivo anterior"
+  key_target_next: "Siguiente objetivo"
+  key_part_previous: "Parte anterior"
+  key_part_next: "Siguiente parte"
+  key_reset: "Restablecer posición de la cámara"
+  key_cycle_mode: "Cambiar modo"
+  key_reverse: "Invertir perspectiva de cámara (frontal <-> trasera)"
+  cheatsheet_title: "Guía de la cámara libre"
+  cheatsheet_contents: |
+    # Guía rápida de la Cámara Libre
+    Esta función solo está disponible en **Carreras** o **Conciertos**.
+    
+    La parte del cuerpo por defecto es **Face**.
+    
+    El objetivo por defecto es **Place01**.
+    
+    ## Controles de ratón
+    * **Mantener clic derecho + arrastrar:** Mirar alrededor
+    * **Rueda del ratón arriba / abajo:** Aumentar campo de visión / Reducir campo de visión
+    
+    ---
+    
+    ## Controles de mando (Xbox / PlayStation)
+    
+    ### **Movimiento y ángulo de cámara**
+    * **Joystick izquierdo:** Mover a la izquierda / derecha / avanzar / retroceder
+    * **Joystick derecho:** Mirar a la izquierda / derecha / arriba / abajo
+    * **Gatillo derecho (RT / R2):** Mover hacia arriba
+    * **Gatillo izquierdo (LT / L2):** Mover hacia abajo
+    * **Botón de hombro derecho (RB / R1):** Reducir campo de visión
+    * **Botón de hombro izquierdo (LB / L1):** Aumentar campo de visión
+    
+    ---
+    
+    ### Botones de acción
+    * **Y** (Triángulo): Restablecer posición de la cámara
+    * **X** (Cuadrado): Cambiar modo de cámara
+    * **B** (Círculo): Invertir perspectiva orbital *(frontal <-> trasera, solo en cámara orbital)*
+    * **A** (Cruz): Pausar / reanudar concierto
+    
+    ---
+    
+    ### Controles de la cruceta (No disponible en movimiento libre)
+    * **Cruceta derecha:** Siguiente objetivo *(Cámara orbital y primera persona)*
+    * **Cruceta izquierda:** Objetivo anterior *(Cámara orbital y primera persona)*
+    * **Cruceta arriba:** Siguiente parte *(Solo en cámara orbital)*
+    * **Cruceta abajo:** Parte anterior *(Solo en cámara orbital)*
 
 excludes_editor:
   title: "Editor de exclusiones"
@@ -306,6 +499,14 @@ steam_overlay_conflict_dialog:
     temporalmente el overlay de Hachimi. Esto cerrará el juego y, al iniciarlo nuevamente, el overlay de
     Hachimi estará desactivado para que puedas realizar compras. Después de realizarlas, podrás
     volver a usar el overlay de Hachimi tras reiniciar el juego.
+
+ingame_webview_dialog:
+  open_browser: "Abrir en navegador"
+  title:
+    notice: "Aviso"
+    general: "Navegador del juego"
+    gacha: "Gacha"
+    help: "Ayuda"
 
 key_names:
   left: "Flecha Izq."
