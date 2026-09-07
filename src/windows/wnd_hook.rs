@@ -21,7 +21,18 @@ use windows::{core::{w, BOOL, HSTRING}, Win32::{
     }
 }};
 
-use crate::{core::{game::Region, gui, Gui, Hachimi}, il2cpp::{hook::{umamusume, UnityEngine_CoreModule}, symbols::{create_delegate, get_assembly_image, get_class, get_method_addr, Thread}, types::{Il2CppDelegate, RefreshRate}}, windows::utils};
+use crate::{
+    core::{game::Region, gui, Gui, Hachimi},
+    il2cpp::{
+        hook::{
+            umamusume::{GameSystem, Screen as GallopScreen, StandaloneWindowResize, UIManager, RaceManagerReplayBase},
+            UnityEngine_CoreModule::{FullScreenMode_Windowed, FullScreenMode_FullScreenWindow, Screen as UnityScreen, UnityAction::UNITYACTION_CLASS}
+        },
+        symbols::{create_delegate, get_assembly_image, get_class, get_method_addr, Thread},
+        types::{Il2CppDelegate, RefreshRate}
+    },
+    windows::utils
+};
 
 use super::{free_camera, gui_impl::input, discord, smtc, taskbar, webview};
 
@@ -142,11 +153,11 @@ pub fn apply_freeform_window_style() {
 
 fn restore_freeform_window_defaults() {
     Thread::main_thread().schedule(|| {
-        umamusume::StandaloneWindowResize::set_is_prevent_reshape(false);
-        umamusume::StandaloneWindowResize::set_is_window_dragging(false);
-        umamusume::StandaloneWindowResize::set_is_window_size_changing(false);
-        umamusume::StandaloneWindowResize::finish_window_update();
-        umamusume::UIManager::apply_ui_scale();
+        StandaloneWindowResize::set_is_prevent_reshape(false);
+        StandaloneWindowResize::set_is_window_dragging(false);
+        StandaloneWindowResize::set_is_window_size_changing(false);
+        StandaloneWindowResize::finish_window_update();
+        UIManager::apply_ui_scale();
 
         let hwnd = get_target_hwnd();
         unsafe {
@@ -183,10 +194,8 @@ fn disable_freeform_window() -> bool {
 
 fn wait_for_resize_end_frame(callback: fn()) -> bool {
     let addr = RESIZE_WAIT_FOR_END_FRAME_ADDR.load(atomic::Ordering::Acquire);
-    let game_system = umamusume::GameSystem::instance();
-    let delegate_class = unsafe {
-        UnityEngine_CoreModule::UnityAction::UNITYACTION_CLASS
-    };
+    let game_system = GameSystem::instance();
+    let delegate_class = unsafe { UNITYACTION_CLASS };
     if addr == 0 || game_system.is_null() || delegate_class.is_null() {
         return false;
     }
@@ -194,8 +203,7 @@ fn wait_for_resize_end_frame(callback: fn()) -> bool {
     let Some(delegate) = create_delegate(delegate_class, 0, callback) else {
         return false;
     };
-    let wait_for_end_frame: extern "C" fn(*mut crate::il2cpp::types::Il2CppObject, *mut Il2CppDelegate) =
-        unsafe { std::mem::transmute(addr) };
+    let wait_for_end_frame: extern "C" fn(*mut crate::il2cpp::types::Il2CppObject, *mut Il2CppDelegate) = unsafe { std::mem::transmute(addr) };
     wait_for_end_frame(game_system, delegate);
     true
 }
@@ -223,9 +231,9 @@ fn resize_end_frame_tick() {
                 (width, height)
             };
 
-            umamusume::StandaloneWindowResize::update_window_state(width, height, ww, wh);
-            umamusume::UIManager::refresh_after_window_resize(width, height);
-            umamusume::StandaloneWindowResize::finish_window_update();
+            StandaloneWindowResize::update_window_state(width, height, ww, wh);
+            UIManager::refresh_after_window_resize(width, height);
+            StandaloneWindowResize::finish_window_update();
             apply_freeform_window_style();
             unsafe {
                 let _ = RedrawWindow(
@@ -285,7 +293,7 @@ pub fn close_freeform_window_for_landscape() -> bool {
     }
 
     // 2. Safe to call IL2CPP methods.
-    if !umamusume::Screen::get_IsLandscapeMode() {
+    if !GallopScreen::get_IsLandscapeMode() {
         return false;
     }
 
@@ -319,19 +327,14 @@ pub fn apply_freeform_window_config() {
 }
 
 fn toggle_freeform_full_screen() {
-    use crate::il2cpp::hook::UnityEngine_CoreModule::{
-        FullScreenMode_FullScreenWindow, FullScreenMode_Windowed, Screen
-    };
-
-    let resolution = Screen::get_currentResolution();
-    let mode = if Screen::get_fullScreen() {
+    let resolution = UnityScreen::get_currentResolution();
+    let mode = if UnityScreen::get_fullScreen() {
         FullScreenMode_Windowed
-    }
-    else {
+    } else {
         FullScreenMode_FullScreenWindow
     };
     let refresh_rate = RefreshRate { numerator: 0, denominator: 1 };
-    Screen::set_resolution_direct(
+    UnityScreen::set_resolution_direct(
         resolution.width,
         resolution.height,
         mode,
@@ -454,13 +457,13 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 // rewrites it here to enforce its portrait/landscape aspect ratio.
                 return LRESULT(1);
             } else if umsg == WM_ENTERSIZEMOVE {
-                umamusume::StandaloneWindowResize::set_is_window_size_changing(true);
+                StandaloneWindowResize::set_is_window_size_changing(true);
             } else if umsg == WM_MOVING {
-                umamusume::StandaloneWindowResize::set_is_window_dragging(true);
+                StandaloneWindowResize::set_is_window_dragging(true);
             } else if umsg == WM_EXITSIZEMOVE {
                 let res = unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
-                umamusume::StandaloneWindowResize::set_is_window_dragging(false);
-                umamusume::StandaloneWindowResize::set_is_window_size_changing(false);
+                StandaloneWindowResize::set_is_window_dragging(false);
+                StandaloneWindowResize::set_is_window_size_changing(false);
                 queue_current_client_resize(hwnd);
                 return res;
             } else if umsg == WM_SIZE {
@@ -522,6 +525,11 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
             if Hachimi::instance().game.region == Region::Japan && current_key == Hachimi::instance().config.load().windows.race_stat_hud_toggle_key
                 && Hachimi::instance().config.load().race_stat_hud {
                 Thread::main_thread().schedule(gui::toggle_race_stat_hud);
+            }
+
+            if current_key == Hachimi::instance().config.load().windows.race_playback_key
+                && Hachimi::instance().config.load().race_playback_key_enable {
+                Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
             }
 
             if !Gui::is_gui_input_active_atomic() {
@@ -668,7 +676,7 @@ extern "system" fn cbt_proc(ncode: i32, wparam: WPARAM, lparam: LPARAM) -> LRESU
     if ncode == HCBT_MINMAX as i32 &&
         lparam.0 as i32 != SW_RESTORE.0 &&
         Hachimi::instance().config.load().windows.block_minimize_in_full_screen &&
-        UnityEngine_CoreModule::Screen::get_fullScreen()
+        UnityScreen::get_fullScreen()
     {
         return LRESULT(1);
     }
