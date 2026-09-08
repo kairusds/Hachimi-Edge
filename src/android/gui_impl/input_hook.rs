@@ -10,7 +10,10 @@ use jni::{
 use crate::{
     android::utils::{BACK_BUTTON_PRESSED, IS_IME_VISIBLE, get_activity, get_screen_dimensions},
     core::{gui, Error, Gui, Hachimi},
-    il2cpp::symbols::Thread
+    il2cpp::{
+        hook::umamusume::RaceManagerReplayBase,
+        symbols::Thread
+    }
 };
 
 use super::keymap;
@@ -164,6 +167,11 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
                 if pressed && key_code == Hachimi::instance().config.load().android.race_stat_hud_toggle_key
                     && Hachimi::instance().config.load().race_stat_hud {
                     Thread::main_thread().schedule(gui::toggle_race_stat_hud);
+                }
+
+                if pressed && key_code == Hachimi::instance().config.load().android.race_playback_key
+                    && Hachimi::instance().config.load().race_playback_key_enable {
+                    Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
                 }
 
                 if pressed && key_code == keymap::KEYCODE_BACK {

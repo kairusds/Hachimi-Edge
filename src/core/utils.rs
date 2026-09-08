@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fs::File, io::Write, path::Path, time::SystemTime};
+use std::{borrow::Cow, fs::File, io::Write, path::Path, sync::atomic::{AtomicUsize, Ordering}, time::SystemTime};
 
 use serde::Serialize;
 use textwrap::{core::Word, wrap_algorithms, WordSeparator::UnicodeBreakProperties};
@@ -8,7 +8,7 @@ use crate::{
     core::Gui,
     il2cpp::{
         api::*,
-        ext::{Il2CppStringExt, StringExt},
+        ext::{Il2CppObjectExt, Il2CppStringExt, StringExt},
         hook::umamusume::{Localize, TextId},
         symbols::{get_assembly_image, get_class},
         types::{Il2CppObject, Il2CppString}
@@ -727,4 +727,48 @@ pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
         }
     }
     options
+}
+
+static RACE_SEEK_STAGE: AtomicUsize = AtomicUsize::new(0);
+
+pub fn race_seek_stage(stage: usize) {
+    RACE_SEEK_STAGE.store(stage, Ordering::Release);
+}
+
+#[cfg(target_os = "windows")]
+pub fn race_seek_seh<F: FnMut()>(mut f: F) -> bool {
+    if let Err(e) = microseh::try_seh(|| f()) {
+        let stage = RACE_SEEK_STAGE.load(Ordering::Acquire);
+        error!(
+            "[race slider] seek faulted at stage {}: {} at {:#x} (rip {:#x}), state reset, race left paused",
+            stage,
+            e.code(),
+            e.address() as usize,
+            e.registers().rip()
+        );
+        false
+    } else {
+        true
+    }
+}
+
+#[cfg(target_os = "android")]
+pub fn race_seek_seh<F: FnOnce()>(f: F) -> bool {
+    f();
+    true
+}
+
+pub fn clear_il2cpp_list(list: *mut Il2CppObject) {
+    use crate::il2cpp::symbols::get_method_addr_cached;
+
+    if list.is_null() { return; }
+
+    let list_class = unsafe { (*list).klass() };
+    if list_class.is_null() { return; }
+
+    let clear_addr = get_method_addr_cached(list_class, c"Clear", 0);
+    if clear_addr == 0 { return; }
+
+    let clear: extern "C" fn(*mut Il2CppObject) = unsafe { std::mem::transmute(clear_addr) };
+    clear(list);
 }

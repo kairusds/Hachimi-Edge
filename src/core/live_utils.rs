@@ -4,7 +4,7 @@ use crate::{
         ext::Il2CppObjectExt,
         hook::{
             umamusume::{AudioManager, Director, LiveTimeController, LiveViewController, SceneManager},
-            Cute_Cri_Assembly::{AtomSourceEx, CuteAudioSource, CuteAudioSourcePool},
+            Cute_Cri_Assembly::{AtomSourceEx, AudioPlayback::AudioPlayback_t, CuteAudioSource, CuteAudioSourcePool},
             CriMw_CriWare_Runtime::CriAtomExPlayer,
         },
         symbols::{Array, IList, get_field_from_name, get_field_object_value, get_method_cached}, types::*
@@ -12,25 +12,6 @@ use crate::{
 };
 
 use std::{ffi::c_void, ptr::null_mut, sync::atomic::{AtomicBool, AtomicU64, Ordering}, time::{SystemTime, UNIX_EPOCH}};
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct CriAtomExPlayback {
-    pub id: u32,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct AudioPlayback {
-    pub criAtomExPlayback: CriAtomExPlayback,
-    pub isError: bool,
-    pub soundGroup: i32,
-    pub is3dSound: bool,
-    pub atomSourceListIndex: i32,
-    pub cueSheetName: *mut Il2CppString,
-    pub cueName: *mut Il2CppString,
-    pub cueId: i32,
-}
 
 static DRAG_WAS_PAUSED: AtomicBool = AtomicBool::new(false);
 static DRAG_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
@@ -133,7 +114,7 @@ pub fn reset_live_drag_state() {
 }
 
 unsafe fn process_playback(
-    playback: &mut AudioPlayback,
+    playback: &mut AudioPlayback_t,
     audio_ctrl_dict: *mut Il2CppObject,
     target_time: f32
 ) {
@@ -253,7 +234,7 @@ pub fn move_live_playback(target_time: f32) {
 
                     let song_chara_playbacks = AudioManager::get__songCharaPlaybacks(audio_manager);
                     if !song_chara_playbacks.is_null() {
-                        let chara_playbacks = Array::<AudioPlayback>::from(song_chara_playbacks);
+                        let chara_playbacks = Array::<AudioPlayback_t>::from(song_chara_playbacks);
                         unsafe {
                             let slice = chara_playbacks.as_slice();
                             for i in 0..slice.len() {

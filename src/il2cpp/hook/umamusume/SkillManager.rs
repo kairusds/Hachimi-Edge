@@ -12,6 +12,8 @@ impl_addr_wrapper_fn!(GetUsedSkillIdList, GET_USED_SKILL_ID_LIST_ADDR, *mut Il2C
 static mut GET_SKILLS_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetSkills, GET_SKILLS_ADDR, *mut Il2CppArray, this: *mut Il2CppObject);
 
+def_method_wrapper_fn!(AddUsedSkillId, ADD_USED_SKILL_ID_ADDR, (), this: *mut Il2CppObject, skill_id: i32);
+
 pub fn init(umamusume: *const Il2CppImage) {
     if Hachimi::instance().game.region != Region::Japan {
         return;
@@ -22,5 +24,6 @@ pub fn init(umamusume: *const Il2CppImage) {
     unsafe {
         GET_USED_SKILL_ID_LIST_ADDR = get_method_addr(SkillManager, c"GetUsedSkillIdList", 0);
         GET_SKILLS_ADDR = get_method_addr(SkillManager, c"GetSkills", 0);
+        ADD_USED_SKILL_ID_ADDR = get_method_addr(SkillManager, c"AddUsedSkillId", 1);
     }
 }

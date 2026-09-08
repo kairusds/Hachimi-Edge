@@ -773,6 +773,12 @@ pub struct Config {
     pub race_stat_hud_width_scale: f32,
     #[serde(default = "Config::default_race_stat_hud_height_scale")]
     pub race_stat_hud_height_scale: f32,
+    #[serde(default)]
+    pub race_playback_slider: bool,
+    #[serde(default)]
+    pub race_playback_button: bool,
+    #[serde(default)]
+    pub race_playback_key_enable: bool,
     #[serde(flatten)]
     pub caption: CaptionConfig,
     #[serde(default)]
