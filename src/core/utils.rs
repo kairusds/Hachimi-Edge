@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fs::File, io::Write, path::Path, time::SystemTime};
+use std::{borrow::Cow, fs::File, io::Write, path::Path, sync::atomic::{AtomicUsize, Ordering}, time::SystemTime};
 
 use serde::Serialize;
 use textwrap::{core::Word, wrap_algorithms, WordSeparator::UnicodeBreakProperties};
@@ -729,10 +729,23 @@ pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
     options
 }
 
+static RACE_SEEK_STAGE: AtomicUsize = AtomicUsize::new(0);
+
+pub fn race_seek_stage(stage: usize) {
+    RACE_SEEK_STAGE.store(stage, Ordering::Release);
+}
+
 #[cfg(target_os = "windows")]
-pub fn seek_seh_guard<F: FnMut()>(mut f: F) -> bool {
-    if microseh::try_seh(|| f()).is_err() {
-        error!("[race slider] seek faulted, state reset, race left paused");
+pub fn race_seek_seh<F: FnMut()>(mut f: F) -> bool {
+    if let Err(e) = microseh::try_seh(|| f()) {
+        let stage = RACE_SEEK_STAGE.load(Ordering::Acquire);
+        error!(
+            "[race slider] seek faulted at stage {}: {} at {:#x} (rip {:#x}), state reset, race left paused",
+            stage,
+            e.code(),
+            e.address() as usize,
+            e.registers().rip()
+        );
         false
     } else {
         true
@@ -740,7 +753,7 @@ pub fn seek_seh_guard<F: FnMut()>(mut f: F) -> bool {
 }
 
 #[cfg(target_os = "android")]
-pub fn seek_seh_guard<F: FnOnce()>(f: F) -> bool {
+pub fn race_seek_seh<F: FnOnce()>(f: F) -> bool {
     f();
     true
 }

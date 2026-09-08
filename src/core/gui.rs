@@ -211,6 +211,8 @@ pub fn race_slider_drain() {
             RACE_SLIDER_LAST_APPLIED.store(target_time.to_bits(), atomic::Ordering::Release);
             RACE_SLIDER_SEEK_FAULTED.store(false, atomic::Ordering::Release);
             settle_target = Some(target_time);
+        } else {
+            RACE_SLIDER_SEEK_FAULTED.store(true, atomic::Ordering::Release);
         }
     } else if !RACE_SLIDER_SEEK_FAULTED.load(atomic::Ordering::Acquire) {
         settle_target = Some(f32::from_bits(RACE_SLIDER_LAST_APPLIED.load(atomic::Ordering::Acquire)));

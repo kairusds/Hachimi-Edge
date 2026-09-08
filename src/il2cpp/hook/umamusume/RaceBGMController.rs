@@ -1,8 +1,11 @@
-use crate::il2cpp::{
-    api::il2cpp_class_is_assignable_from,
-    ext::Il2CppObjectExt,
-    symbols::get_field_from_name,
-    types::*
+use crate::{
+    core::{Hachimi, game::Region},
+    il2cpp::{
+        api::il2cpp_class_is_assignable_from,
+        ext::Il2CppObjectExt,
+        symbols::get_field_from_name,
+        types::*
+    }
 };
 
 static mut CLASS: *mut Il2CppClass = 0 as _;
@@ -43,7 +46,9 @@ pub fn init(umamusume: *const Il2CppImage) {
         SECOND_BGM_START_TIME_FIELD = get_field_from_name(RaceBGMController, c"_secondBgmStartTime");
         FIRST_BGM_CUE_NAME_FIELD = get_field_from_name(RaceBGMController, c"_firstBgmCueName");
         SECOND_BGM_CUE_NAME_FIELD = get_field_from_name(RaceBGMController, c"_secondBgmCueName");
-        FIRST_TRIGGER_BGM_PLAY_START_TIME_FIELD = get_field_from_name(RaceBGMController, c"_firstTriggerBgmPlayStartTime");
-        IS_PLAYED_FIRST_TRIGGER_BGM_FIELD = get_field_from_name(RaceBGMController, c"_isPlayedFirstTriggerBgm");
+        if Hachimi::instance().game.region == Region::Japan || Hachimi::instance().game.region == Region::Taiwan {
+            FIRST_TRIGGER_BGM_PLAY_START_TIME_FIELD = get_field_from_name(RaceBGMController, c"_firstTriggerBgmPlayStartTime");
+            IS_PLAYED_FIRST_TRIGGER_BGM_FIELD = get_field_from_name(RaceBGMController, c"_isPlayedFirstTriggerBgm");
+        }
     }
 }

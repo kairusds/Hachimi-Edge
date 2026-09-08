@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 use crate::{
-    core::{Hachimi, game::Region, gui, utils::{seek_seh_guard, clear_il2cpp_list}},
+    core::{Hachimi, game::Region, gui, utils::{clear_il2cpp_list, race_seek_seh, race_seek_stage}},
     il2cpp::{
         symbols::{get_field_from_name, get_method_addr, Array, IList},
         types::*
@@ -50,19 +50,28 @@ pub fn seek_sync(target_time: f32) -> bool {
         .unwrap_or(f32::from_bits(gui::RACE_SLIDER_LAST_APPLIED.load(Ordering::Acquire)));
     let backward = target_time < prev_time - 0.5;
 
-    let ok = seek_seh_guard(|| {
+    let ok = race_seek_seh(|| {
         if RaceEventPlayer::is_event_player(event_player) {
+            race_seek_stage(1); // event_cursor
             RaceEventPlayer::ChangeLastEventIndexByTime(event_player, target_time);
         }
 
+        race_seek_stage(2); // race_time
         ForceSetRaceTime(race_manager, target_time, true);
+        race_seek_stage(3); // horses
         UpdateHorses(race_manager, target_time);
+        race_seek_stage(4); // horse_datas
         UpdateHorseDatas(race_manager, target_time);
+        race_seek_stage(5); // models
         UpdateHorseModels(race_manager);
+        race_seek_stage(6); // camera_events
         UpdateCameraEventAll(race_manager, true);
+        race_seek_stage(7); // late_camera_events
         LateUpdateCameraEventAll(race_manager, true);
+        race_seek_stage(8); // used_skills
         resync_used_skills(race_manager, target_time);
 
+        race_seek_stage(9); // jikkyo_sync
         let jikkyo = get_Jikkyo(race_manager);
         if jikkyo.is_null() { return; }
 
@@ -74,11 +83,13 @@ pub fn seek_sync(target_time: f32) -> bool {
             JikkyoControllerBase::ClearReserve(jikkyo);
         }
 
+        race_seek_stage(10); // view_rearm
         let view = RaceManager::get_RaceView(race_manager);
         if view.is_null() { return; }
         RaceViewReplay::set_lastSpurtProcessed(view, false);
 
         if backward {
+            race_seek_stage(11); // minimap_rearm
             let race_main_view = RaceManager::get_RaceMainView(race_manager);
             if race_main_view.is_null() { return; }
 
@@ -91,6 +102,8 @@ pub fn seek_sync(target_time: f32) -> bool {
             RaceUIMiniMap::set_hasMiniMapShown(minimap, false);
             RaceUIMiniMap::set_hasMiniMapHidden(minimap, false);
         }
+
+        race_seek_stage(0); // idle
     });
 
     ok

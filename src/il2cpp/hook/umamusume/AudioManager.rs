@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 use crate::{
-    core::{Hachimi, captions, gui, utils::seek_seh_guard},
+    core::{Hachimi, captions, game::Region, gui, utils::{race_seek_seh, race_seek_stage}},
     il2cpp::{
         hook::Cute_Cri_Assembly::{
             AudioPlayback::{self, AudioPlayback_t},
@@ -99,7 +99,8 @@ pub fn resync_race_music(race_manager: *mut Il2CppObject, target_time: f32) -> b
     let bgm_controller = RaceSoundReplay::get_BGMController(race_sound);
     if !RaceBGMController::is_bgm_controller(bgm_controller) { return true; }
 
-    seek_seh_guard(|| {
+    race_seek_seh(|| {
+        race_seek_stage(12); // music_volume
         let bgm_volume = RaceSoundReplay::GetBGMVolume(race_sound);
         let second_start = RaceBGMController::get_secondBgmStartTime(bgm_controller);
         let race_base = f32::from_bits(gui::RACE_SLIDER_DRAG_START_TIME.load(Ordering::Acquire));
@@ -113,12 +114,14 @@ pub fn resync_race_music(race_manager: *mut Il2CppObject, target_time: f32) -> b
         if sources_ptr.is_null() { return; }
         let sources: Array<*mut Il2CppObject> = Array::from(sources_ptr);
 
+        race_seek_stage(13); // music_sweep
         for source in unsafe { sources.as_slice() }.iter() {
             if source.is_null() { continue; }
             if !AtomSourceEx::get_IsInUse(*source) { continue; }
             AtomSourceEx::Stop(*source, 0.0, 0);
         }
 
+        race_seek_stage(14); // music_play_cue
         if second_start.is_finite() && second_start > 0.0 && target_time >= second_start {
             let position = if race_base >= second_start && music_valid {
                 music_base + (target_time - race_base)
@@ -149,8 +152,12 @@ pub fn resync_race_music(race_manager: *mut Il2CppObject, target_time: f32) -> b
             RaceBGMController::set_isPlayedSecondBGM(bgm_controller, false);
         }
 
-        let trigger_start = RaceBGMController::get_firstTriggerBgmPlayStartTime(bgm_controller);
-        RaceBGMController::set_isPlayedFirstTriggerBgm(bgm_controller, target_time >= trigger_start);
+        if Hachimi::instance().game.region == Region::Japan || Hachimi::instance().game.region == Region::Taiwan {
+            let trigger_start = RaceBGMController::get_firstTriggerBgmPlayStartTime(bgm_controller);
+            RaceBGMController::set_isPlayedFirstTriggerBgm(bgm_controller, target_time >= trigger_start);
+        }
+
+        race_seek_stage(0); // idle
     })
 }
 
