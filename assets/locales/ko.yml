@@ -242,6 +242,571 @@ config_editor:
   trainer_live_landscape: "Meni Shuki live에서 landscape 모드로 보기"
   force_orientation_mode: "Force orientation mode"
   race_playback_slider_always: "경기중 항상 하단에 슬라이더바 표시"
+skill_data_desc:
+  group:
+    duration: "for %{v} s"
+    immediate: "즉시"
+    long_negative: "for 500 s"
+    indefinite: "indefinitely"
+    cd: " (CD %{v}s)"
+    when: " 만약: "
+    after: " <color=#29b39e>after</color>: "
+  sep:
+    or: " 또는 "
+    and: " 그리고 "
+    star: " * "
+    to: " to "
+  effect:
+    name:
+      speed_stat: "스피드"
+      stamina_stat: "스테미나"
+      power_stat: "파워"
+      guts_stat: "근성"
+      wit_stat: "지능"
+      field_of_view: "Field of View"
+      current_hp: "Current HP"
+      rushed_time: "Rushed Time"
+      delay_start: "늦은 출발/컨센트레이션 불발"
+      current_speed: "속도"
+      current_speed_natural_decel: "Current Speed (natural decel)"
+      target_speed: "목표 속도"
+      lane_movement_speed: "Lane Movement Speed"
+      rushed_chance: "흥분 상태/자제심 불발"
+      acceleration: "Acceleration"
+      all_stats: "모든 stats"
+      target_lane: "Target Lane"
+      activate_rare_skill: "금색 스킬"
+      special: "Special"
+      event_specific: "이벤트 한정"
+    unit:
+      stat: ""
+      deg: " 도"
+      percent: "%"
+      second: " 초"
+      mps: " m/초"
+      mps2: " m/초²"
+    fixed:
+      aggressive_strategy: "Change to a very aggressive runner strategy"
+      debuff_immunity: "Debuff Immunity"
+      sympathy_all: "심퍼시 스킬이 전원에게 영향을 미침"
+      loh_stat: "Stat Increase {0}%, Peak Motivation Chance {1}%"
+    start_reaction:
+      "4000": "Start Reaction Time -60%"
+      "9000": "Start Reaction Time -10%"
+      "15000": "Start Reaction Time +50%"
+    usage19_suffix: " +0.1 if ≥20m from lead"
+  star:
+    activate:
+      "1": "Overtakes during"
+      "2": "Skills during (max 3)"
+      "3": "Skills during (max 2)"
+    usage:
+      "2": "# Skills"
+      "3": "Team Speed"
+      "4": "Team Stamina"
+      "5": "Team Power"
+      "6": "Team Guts"
+      "7": "Team Wit"
+      "8": "Random"
+      "10": "Races Won"
+      "11": "Overtakes in final leg corners"
+      "12": "팬수"
+      "13": "Max Stat"
+      "14": "# 녹색(페시브) 스킬"
+      "20": "Max Blocked Time (side, mid leg)"
+      "22": "Final Speed Stat (high)"
+      "23": "Final Speed Stat"
+      "24": "Total Overseas Apt Lv"
+      "25": "Max Lead Gap"
+      "26": "H.A.F Wins"
+      "27": "Cooking Pt"
+      "28": "Total Research Lv"
+      "30": "Fan Love"
+      "31": "Development Pt"
+      "32": "Hot Spring Rank"
+      "34": "Distance to lead (no details)"
+      "35": "Race distance type"
+      "36": "Race distance type"
+      "37": "DREAMS team rank"
+      "40": "Total Excitement Pt"
+  target:
+    all_in_fov: "All in FOV"
+    leading: "%{v} leading"
+    all_ahead: "All ahead"
+    closest_ahead: "%{v} closest ahead"
+    all_behind: "All behind"
+    closest_behind: "%{v} closest behind"
+    team: "team"
+    style:
+      "1": "도주/대도주"
+      "2": "선행"
+      "3": "선입"
+      "4": "추입"
+    random_rushed_ahead: "%{v} random rushed ahead"
+    random_rushed_behind: "%{v} random rushed behind"
+    style_rushed:
+      "1": "도주/대도주 (흥분 상태/자제심 불발)"
+      "2": "선행 (흥분 상태/자제심 불발)"
+      "3": "선입 (흥분 상태/자제심 불발)"
+      "4": "추입 (흥분 상태/자제심 불발)"
+    suzuka: "사일런즈 스즈카"
+    random_recovery_users: "%{v} random recovery users"
+    unknown: "Unknown"
+  cond:
+    negate: "Not %{v}"
+    order_rate:
+      gt: "In trailing ﹤%{v}%"
+      ge: "In trailing %{v}%"
+      le: "In leading %{v}%"
+      lt: "In leading ﹤%{v}%"
+    corner:
+      straight: "On straight"
+      corner: "코너에서 %{v}"
+      any: "코너에서"
+      not: "코너가 아니라면 %{v}"
+    phase:
+      name:
+        "0": "초반"
+        "1": "중반"
+        "2": "종반"
+        "3": "폴스 스트레이트/최종 직선"
+      le: "%{v} 보다 앞이면"
+      ge: "%{v} 보다 뒤면"
+    ground_condition:
+      name:
+        "1": "건조"
+        "2": "양호"
+        "3": "포화"
+        "4": "중마장"
+      eq: " %{v}상태라면"
+      ne: " %{v}상태가 아니라면"
+      le: " %{v} 보다 가벼우면"
+      ge: " %{v} 보다 가벼우면"
+    track_id:
+      jra: "URA 소속 경기장에서"
+      any: "어느 곳에서나"
+      at: " %{v}에서"
+      not_at: " %{v}이외의 경기장에서"
+    track_name:
+      "10001": "샷포로"
+      "10002": "하코다테"
+      "10003": "니가타(니이가타/니가와)"
+      "10004": "후나바시"
+      "10005": "나카야마"
+      "10006": "도쿄 국립(도쿄)"
+      "10007": "추쿄"
+      "10008": "교토"
+      "10009": "한신(니가와)"
+      "10010": "코쿠라"
+      "10101": "도쿄 시립(오이)"
+      "10103": "가와사키"
+      "10104": "후나바시"
+      "10105": "모리오카"
+      "10201": "롱샹"
+      "10202": "산타 아니타 경마공원(산타 아니타 파크)"
+      "10203": "델마"
+    same_skill_horse_count:
+      unique: "아무도 가지고 있지 한다면"
+      count: "%{v} 주자가 스킬을 가지고 있다면"
+    near_infront_count:
+      none: "앞에 아무 주자도 없다면"
+      count: "%{v} 주자가 선두에 있다면"
+    furlong: "Furlong %{v}"
+    used_skill:
+      "203781": "Used skill Impulse"
+      "203061": "Used skill No Second Thoughts"
+      "203071": "Used skill No Third Chances"
+      "202051": "Used skill Great Escape"
+      "120221": "Used skill Graceful Dash: The Way of Ramen"
+      template: "Used skill %{v}"
+    used_skill_detail_one:
+      "204452": "Used skill Saintess's Trial (effect 1)"
+      template: "Used skill %{v} (effect 1)"
+    popularity_top:
+      any: "Most popular girl activated a skill"
+      count: "Most popular girl activated skill %{v}"
+    enum:
+      distance_type:
+        eq:
+          "1": "단거리"
+          "2": "펄롱"
+          "3": "중거리"
+          "4": "장거리"
+      ground_type:
+        eq:
+          "1": "잔디"
+          "2": "더트/모래"
+      is_abroad:
+        eq:
+          "0": "국내라면"
+          "1": "해외 원정중이라면"
+      is_activate_other_skill_detail:
+        eq:
+          "1": "발동 조건 1"
+          "2": "발동 조건 2"
+      is_badstart:
+        eq:
+          "0": "늦출이 아니라면"
+          "1": "늦출이거나 컨센트레이션이 불발됐다면"
+      is_basis_distance:
+        eq:
+          "0": "일반 거리"
+          "1": "주요 거리"
+      is_finalcorner:
+        eq:
+          "0": "초반,중반이라면"
+          "1": "제 4코너,폴스 스트레치,제 5코너(폴스 스트레치가 있는 경우),최종직선 이라면"
+      is_goodstart:
+        eq:
+          "0": "Not a good start"
+          "1": "Good start"
+      is_move_lane:
+        eq:
+          "1": "Moved closer to fence"
+          "2": "Moved further from fence"
+      is_other_character_activate_advantage_skill:
+        eq:
+          "9": "Opponent used +Current HP skill"
+          "22": "Opponent used +Current Speed (natural decel) skill"
+          "27": "Opponent used +Target Speed skill"
+          "31": "Opponent used +Acceleration skill"
+      is_temptation:
+        eq:
+          "0": "흥분상태가 아니거나 자제심이 터졌다면"
+          "1": "흥분상태이거나 자제심이 불발이라면"
+      motivation:
+        eq:
+          "4": "Motivation High"
+          "5": "Motivation Peak"
+        ge:
+          "4": "Motivation ≥High"
+          "5": "Motivation ≥Peak"
+        le:
+          "4": "Motivation ≤High"
+          "5": "Motivation ≤Peak"
+      phase_corner_random:
+        eq:
+          "1": "Middle leg corner (random)"
+          "2": "Final leg corner (random)"
+      phase_first_half_straight_random:
+        eq:
+          "1": "Middle leg first half straight (random)"
+          "2": "Final leg first half straight (random)"
+      phase_firsthalf:
+        eq:
+          "1": "Middle leg first half"
+          "3": "Last Spurt (phase) first half"
+      phase_firsthalf_random:
+        eq:
+          "0": "Opening leg first half (random)"
+          "1": "Middle leg first half (random)"
+          "2": "Final leg first half (random)"
+          "3": "Last Spurt (phase) first half (random)"
+      phase_laterhalf:
+        eq:
+          "0": "Opening leg latter half"
+          "1": "Middle leg latter half"
+          "2": "Final leg latter half"
+      phase_laterhalf_random:
+        eq:
+          "0": "Opening leg latter half (random)"
+          "1": "Middle leg latter half (random)"
+          "2": "Final leg latter half (random)"
+      phase_latter_half_straight_random:
+        eq:
+          "1": "Middle leg latter half straight (random)"
+          "2": "Final leg latter half straight (random)"
+      phase_random:
+        eq:
+          "0": "Opening leg (random)"
+          "1": "Middle leg (random)"
+          "2": "Final leg (random)"
+          "3": "Last Spurt (phase) (random)"
+      phase_straight_random:
+        eq:
+          "1": "Middle leg straight (random)"
+          "2": "Final leg straight (random)"
+      rotation:
+        eq:
+          "1": "CW track"
+          "2": "CCW track"
+      running_style:
+        eq:
+          "1": "도주/대도주"
+          "2": "선행"
+          "3": "선입"
+          "4": "추입"
+      season:
+        eq:
+          "1": "봄"
+          "2": "여름"
+          "3": "가을"
+          "4": "겨울"
+          "5": "벛꽃철 (3/20~4/20)"
+      slope:
+        eq:
+          "0": "Flat"
+          "1": "Uphill"
+          "2": "Downhill"
+      weather:
+        eq:
+          "1": "맑음"
+          "2": "흐림"
+          "3": "비"
+          "4": "눈"
+    fixed:
+      all_corner_random:
+        eq: "Any corner"
+      always:
+        eq: "Always"
+      blocked_front:
+        eq: "Blocked (front)"
+      change_order_onetime:
+        gt: "Overtaken"
+        lt: "Overtook"
+      down_slope_random:
+        eq: "Downhill"
+      grade:
+        eq: "국제 중상 1급"
+      is_activate_any_skill:
+        eq: "Used any skill"
+      is_activate_heal_skill:
+        eq: "Recover energy"
+      is_behind_in:
+        eq: "Opponent behind closer to fence"
+      is_dirtgrade:
+        eq: "Exchange race"
+        ne: "Not an exchange race"
+      is_exist_chara_id:
+        eq: "Silence Suzuka present"
+      is_exist_skill_id:
+        eq: "Skill Sympathy present"
+      is_finalcorner_laterhalf:
+        eq: "Final corner/straight (2nd half)"
+      is_finalcorner_random:
+        eq: "Final corner (random)"
+      is_hp_empty_onetime:
+        eq: "Ran out of energy"
+      is_last_straight:
+        eq: "On final straight"
+      is_last_straight_onetime:
+        eq: "Arrived at final straight"
+      is_lastspurt:
+        eq: "Last spurt (mode)"
+      is_overtake:
+        eq: "Overtaking"
+      is_surrounded:
+        eq: "Boxed in"
+      is_tight_track:
+        eq: "Tight track"
+      lane_type:
+        eq: "Inner lane"
+      last_straight_random:
+        eq: "Final straight (random)"
+      lastspurt:
+        eq: "Last spurt endurance good"
+      order_rate_in20_continue:
+        eq: "Stayed in leading 20%"
+      order_rate_in40_continue:
+        eq: "Stayed in leading 40%"
+      order_rate_in50_continue:
+        eq: "Stayed in leading 50%"
+      order_rate_in80_continue:
+        eq: "Stayed in leading 80%"
+      order_rate_out20_continue:
+        eq: "Stayed in trailing 80%"
+      order_rate_out40_continue:
+        eq: "Stayed in trailing 60%"
+      order_rate_out50_continue:
+        eq: "Stayed in trailing 50%"
+      order_rate_out70_continue:
+        eq: "Stayed in trailing 30%"
+      phase_firstquarter:
+        eq: "Final leg first quarter"
+      phase_firstquarter_random:
+        eq: "Final leg first quarter (random)"
+      phase_laterhalf:
+        le: "Middle leg latter half or earlier"
+      run_at_full_speed_random:
+        eq: "At max speed (random)"
+      running_style_equal_popularity_one:
+        eq: "Same strat as fav"
+      straight_front_type:
+        eq: "On back straight"
+      straight_random:
+        eq: "Straight (random)"
+      time:
+        eq: "Night"
+      up_slope_random:
+        eq: "Uphill"
+      up_slope_random_later_half:
+        eq: "Uphill (latter half)"
+    template:
+      accumulatetime:
+        ge: "%{v}s passed"
+      activate_count_all:
+        ge: "Use ≥%{v} skills"
+        le: "Use ≤%{v} skills"
+      activate_count_all_team:
+        ge: "Team used ≥%{v} skills"
+      activate_count_end_after:
+        ge: "Use ≥%{v} skills (from final leg)"
+      activate_count_heal:
+        ge: "Recover energy %{v}+ times"
+      activate_count_later_half:
+        ge: "Use ≥%{v} skills (latter half)"
+      activate_count_middle:
+        eq: "Use %{v} skills (mid leg)"
+        ge: "Use ≥%{v} skills (mid leg)"
+      activate_count_start:
+        ge: "Use ≥%{v} skills (opening leg)"
+      base_guts:
+        ge: "Base guts ≥%{v}"
+        lt: "Base guts ﹤%{v}"
+      base_power:
+        ge: "Base power ≥%{v}"
+        lt: "Base power ﹤%{v}"
+      base_speed:
+        ge: "Base speed ≥%{v}"
+      base_stamina:
+        ge: "Base stamina ≥%{v}"
+        lt: "Base stamina ﹤%{v}"
+      base_wiz:
+        ge: "Base wit ≥%{v}"
+        lt: "Base wit ﹤%{v}"
+      bashin_diff_behind:
+        ge: "≥%{v} lengths ahead"
+        le: "≤%{v} lengths ahead"
+      bashin_diff_infront:
+        le: "≤%{v} lengths behind"
+      behind_near_lane_time:
+        ge: "Opponent close behind for %{v}s"
+      behind_near_lane_time_set1:
+        ge: "Opponent behind for %{v}s"
+      blocked_all_continuetime:
+        ge: "Blocked (front and side) for ≥%{v}s"
+      blocked_front_continuetime:
+        ge: "Blocked (front) for ≥%{v}s"
+      blocked_side_continuetime:
+        ge: "Blocked (side) for ≥%{v}s"
+      change_order_up_end_after:
+        ge: "%{v} overtakes in final leg"
+      change_order_up_finalcorner_after:
+        ge: "%{v} overtakes after final corner"
+      change_order_up_middle:
+        ge: "%{v} overtakes in middle leg"
+      compete_fight_count:
+        gt: "﹥%{v} Showdowns"
+      corner_count:
+        eq: "%{v} corners"
+      corner_random:
+        eq: "Corner %{v} (random)"
+      course_distance:
+        eq: "Race distance %{v} m"
+        ge: "Race distance ≥%{v} m"
+        gt: "Race distance ﹥%{v} m"
+        le: "Race distance ≤%{v} m"
+        lt: "Race distance ﹤%{v} m"
+        ne: "Race distance ≠%{v} m"
+      distance_diff_rate:
+        ge: "≥%{v}% from leader"
+        le: "≤%{v}% from leader"
+      distance_diff_top:
+        ge: "Distance to first ≥%{v}m"
+        gt: "Distance to first ﹥%{v}m"
+        le: "Distance to first ≤%{v}m"
+      distance_rate:
+        ge: "After %{v}% distance"
+        le: "Before %{v}% distance"
+      distance_rate_after_random:
+        eq: "After %{v}% distance (random)"
+      fan_count:
+        ge: "Fan count ≥%{v}"
+      hp_per:
+        ge: "Energy% ≥%{v}"
+        le: "Energy% ≤%{v}"
+      infront_near_lane_time:
+        ge: "Opponent close in front for %{v}s"
+      near_count:
+        eq: "Exactly %{v} nearby opponents"
+        ge: "%{v}+ nearby opponents"
+      near_infront_count:
+        ge: "%{v}+ nearby opponents ahead"
+      order:
+        eq: "Position %{v}"
+        ge: "Position ≥%{v}"
+        le: "Position ≤%{v}"
+      overtake_target_no_order_up_time:
+        ge: "Have overtake target for ≥%{v}s"
+      overtake_target_time:
+        ge: "Is overtake target for ≥%{v}s"
+      popularity:
+        eq: "Popularity %{v}"
+        ge: "Popularity ≥%{v}"
+        le: "Popularity ≤%{v}"
+        lt: "Popularity ﹤%{v}"
+      post_number:
+        eq: "Post %{v}"
+        ge: "Post ≥%{v}"
+        le: "Post ≤%{v}"
+      random_lot:
+        eq: "Random chance %{v}%"
+      remain_distance:
+        eq: "Remaining distance %{v}m"
+        ge: "Remaining distance ≥%{v}m"
+        le: "Remaining distance ≤%{v}m"
+      remain_distance_viewer_id:
+        ge: "≥%{v}m remaining (player char)"
+        le: "≤%{v}m remaining (player char)"
+      running_style_count_nige_otherself:
+        ge: "%{v}+ other front runners"
+      running_style_count_oikomi_otherself:
+        ge: "%{v}+ other end closers"
+      running_style_count_same:
+        le: "≤%{v} same strat"
+      running_style_count_same_rate:
+        ge: "≥%{v}% same strat"
+      running_style_count_sashi_otherself:
+        ge: "%{v}+ other late surgers"
+      running_style_count_senko_otherself:
+        ge: "%{v}+ other pace chasers"
+      running_style_temptation_count_nige:
+        ge: "%{v}+ rushing front runners (incl. you)"
+      running_style_temptation_count_oikomi:
+        ge: "%{v}+ rushing end closers (incl. you)"
+      running_style_temptation_count_sashi:
+        ge: "%{v}+ rushing late surgers (incl. you)"
+      running_style_temptation_count_senko:
+        ge: "%{v}+ rushing pace chasers (incl. you)"
+      running_style_temptation_opponent_count_nige:
+        ge: "≥%{v} rushing front runners"
+      running_style_temptation_opponent_count_oikomi:
+        ge: "≥%{v} rushing end closers"
+      running_style_temptation_opponent_count_sashi:
+        ge: "≥%{v} rushing late surgers"
+      running_style_temptation_opponent_count_senko:
+        ge: "≥%{v} rushing pace chasers"
+      same_skill_horse_count:
+        ge: "≥%{v} runners have this skill"
+      succession_skill_count:
+        eq: "Have %{v} inherited skills"
+        ge: "Have ≥%{v} inherited skills"
+        le: "Have ≤%{v} inherited skills"
+      temptation_count:
+        eq: "Rushed %{v} times"
+      temptation_count_behind:
+        ge: "≥%{v} rushing (behind)"
+      temptation_count_infront:
+        ge: "≥%{v} rushing (in front)"
+      temptation_opponent_count_behind:
+        ge: "≥%{v} rushing (behind)"
+      temptation_opponent_count_infront:
+        ge: "≥%{v} rushing (in front)"
+      visiblehorse:
+        ge: "≥%{v} opponents in FOV"
+        le: "Visible runners ≤%{v}"
+      distance_diff_top_float:
+        le: "Distance to first ≤%{v}m"
 
 theme_editor:
   title: "GUI Theme Editor"
