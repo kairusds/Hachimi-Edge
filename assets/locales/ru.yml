@@ -222,6 +222,7 @@ config_editor:
   race_stat_hud_width_scale: "Данные забега: масштаб ширины оверлея"
   race_stat_hud_height_scale: "Данные забега: масштаб высоты оверлея"
   race_playback_slider: "Ползунок воспроизведения забега"
+  race_playback_slider_always: "Всегда показывать ползунок воспроизведения забега"
   race_playback_button: "Кнопка паузы забега"
   race_playback_key_enable: "Включить клавишу паузы забега"
   race_playback_key: "Клавиша паузы забега"
