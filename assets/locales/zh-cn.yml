@@ -259,6 +259,7 @@ config_editor:
   race_playback_button: "比赛回放暂停/继续按钮"
   race_playback_key_enable: "启用比赛回放暂停/继续快捷键"
   race_playback_key: "比赛回放暂停/继续快捷键"
+  skill_data_desc: "技能详细数据"
 
 theme_editor:
   title: "覆盖层主题编辑器"
@@ -564,3 +565,569 @@ key_names:
   numpad_divide: "小键盘/"
   numpad_decimal: "小键盘."
   unknown: "%{code} 键"
+
+skill_data_desc:
+  group:
+    duration: "持续 %{v} 秒"
+    immediate: "立即"
+    long_negative: "持续 500 秒"
+    indefinite: "无限持续"
+    cd: "（冷却 %{v} 秒）"
+    when: " 当："
+    after: " <color=#29b39e>之后</color>："
+  sep:
+    or: " 或 "
+    and: " 且 "
+    star: " * "
+    to: " 至 "
+  effect:
+    name:
+      speed_stat: "速度属性"
+      stamina_stat: "耐力属性"
+      power_stat: "力量属性"
+      guts_stat: "毅力属性"
+      wit_stat: "智力属性"
+      field_of_view: "视野"
+      current_hp: "当前体力"
+      rushed_time: "焦躁时间"
+      delay_start: "延迟起步"
+      current_speed: "当前速度"
+      current_speed_natural_decel: "当前速度（自然减速）"
+      target_speed: "目标速度"
+      lane_movement_speed: "变道速度"
+      rushed_chance: "焦躁概率"
+      acceleration: "加速度"
+      all_stats: "全属性"
+      target_lane: "目标赛道"
+      activate_rare_skill: "发动稀有技能"
+      special: "特殊"
+      event_specific: "事件专用"
+    unit:
+      stat: ""
+      deg: " °"
+      percent: "%"
+      second: " 秒"
+      mps: " 米/秒"
+      mps2: " 米/秒²"
+    fixed:
+      aggressive_strategy: "切换为极具攻击性的跑法"
+      debuff_immunity: "免疫减益"
+      sympathy_all: "对所有人发动共鸣"
+      loh_stat: "属性提升 {0}%，巅峰状态概率 {1}%"
+    start_reaction:
+      "4000": "起跑反应时间 -60%"
+      "9000": "起跑反应时间 -10%"
+      "15000": "起跑反应时间 +50%"
+    usage19_suffix: " 若距领头马≥20米则 +0.1"
+  star:
+    activate:
+      "1": "在以下期间超越"
+      "2": "在以下期间发动技能（最多3个）"
+      "3": "在以下期间发动技能（最多2个）"
+    usage:
+      "2": "技能数量"
+      "3": "队伍速度"
+      "4": "队伍耐力"
+      "5": "队伍力量"
+      "6": "队伍毅力"
+      "7": "队伍智力"
+      "8": "随机"
+      "10": "获胜场数"
+      "11": "最终弯道超越次数"
+      "12": "粉丝数"
+      "13": "最高属性"
+      "14": "绿色技能数量"
+      "20": "最长被堵时间（侧面、中段）"
+      "22": "最终速度属性（高）"
+      "23": "最终速度属性"
+      "24": "海外适性总等级"
+      "25": "最大领先差距"
+      "26": "H.A.F 获胜数"
+      "27": "料理点数"
+      "28": "研究总等级"
+      "30": "粉丝喜爱度"
+      "31": "培养点数"
+      "32": "温泉等级"
+      "34": "与领头马的距离（无详情）"
+      "35": "比赛距离类型"
+      "36": "比赛距离类型"
+      "37": "DREAMS 队伍排名"
+      "40": "总兴奋点数"
+  target:
+    all_in_fov: "视野内所有人"
+    leading: "%{v} 领头"
+    all_ahead: "所有前方"
+    closest_ahead: "%{v} 最近的前方"
+    all_behind: "所有后方"
+    closest_behind: "%{v} 最近的后方"
+    team: "队伍"
+    style:
+      "1": "逃马"
+      "2": "先行"
+      "3": "差马"
+      "4": "追马"
+    random_rushed_ahead: "%{v} 随机前方焦躁"
+    random_rushed_behind: "%{v} 随机后方焦躁"
+    style_rushed:
+      "1": "逃马（焦躁）"
+      "2": "先行（焦躁）"
+      "3": "差马（焦躁）"
+      "4": "追马（焦躁）"
+    suzuka: "无声铃鹿"
+    random_recovery_users: "%{v} 随机回复技能使用者"
+    unknown: "未知"
+  cond:
+    negate: "非 %{v}"
+    order_rate:
+      gt: "在后方 ﹤%{v}%"
+      ge: "在后方 %{v}%"
+      le: "在前方 %{v}%"
+      lt: "在前方 ﹤%{v}%"
+    corner:
+      straight: "在直道上"
+      corner: "在弯道 %{v}"
+      any: "在弯道上"
+      not: "不在弯道 %{v}"
+    phase:
+      name:
+        "0": "序盘"
+        "1": "中盘"
+        "2": "终盘"
+        "3": "冲刺阶段（阶段）"
+      le: "%{v} 或更早"
+      ge: "%{v} 或更晚"
+    ground_condition:
+      name:
+        "1": "良"
+        "2": "稍重"
+        "3": "重"
+        "4": "不良"
+      eq: "场地状态 %{v}"
+      ne: "场地状态非 %{v}"
+      le: "场地状态 %{v} 或更好"
+      ge: "场地状态 %{v} 或更差"
+    track_id:
+      jra: "在 JRA 赛场"
+      any: "在任意赛场"
+      at: "在 %{v}"
+      not_at: "不在 %{v}"
+    track_name:
+      "10001": "札幌赛场"
+      "10002": "函馆赛场"
+      "10003": "新潟赛场"
+      "10004": "福岛赛场"
+      "10005": "中山赛场"
+      "10006": "东京赛场"
+      "10007": "中京赛场"
+      "10008": "京都赛场"
+      "10009": "阪神赛场"
+      "10010": "小仓赛场"
+      "10101": "大井赛场"
+      "10103": "川崎赛场"
+      "10104": "船桥赛场"
+      "10105": "盛冈赛场"
+      "10201": "隆尚赛场"
+      "10202": "圣塔安妮塔公园赛场"
+      "10203": "德尔玛赛场"
+    same_skill_horse_count:
+      unique: "只有你拥有此技能"
+      count: "%{v} 名赛马娘拥有此技能"
+    near_infront_count:
+      none: "正前方无人"
+      count: "%{v} 名对手在正前方"
+    furlong: "%{v} 浪"
+    used_skill:
+      "203781": "使用了技能 冲动"
+      "203061": "使用了技能 无二"
+      "203071": "使用了技能 无三"
+      "202051": "使用了技能 爆领"
+      "120221": "使用了技能 丽影飞驰！拉面道"
+      template: "使用了技能 %{v}"
+    used_skill_detail_one:
+      "204452": "使用了技能 圣女试炼（Lv1）"
+      template: "使用了技能 %{v}（Lv1）"
+    popularity_top:
+      any: "人气第一的赛马娘发动了技能"
+      count: "人气第一的赛马娘发动了技能 %{v}"
+    enum:
+      distance_type:
+        eq:
+          "1": "短距离"
+          "2": "英里"
+          "3": "中距离"
+          "4": "长距离"
+      ground_type:
+        eq:
+          "1": "草地"
+          "2": "泥地"
+      is_abroad:
+        eq:
+          "0": "非海外"
+          "1": "海外"
+      is_activate_other_skill_detail:
+        eq:
+          "1": "发动了触发条件1"
+          "2": "发动了触发条件2"
+      is_badstart:
+        eq:
+          "0": "起步尚佳"
+          "1": "出迟"
+      is_basis_distance:
+        eq:
+          "0": "非根干距离"
+          "1": "根干距离"
+      is_finalcorner:
+        eq:
+          "0": "非最终弯道/直道"
+          "1": "最终弯道/直道"
+      is_goodstart:
+        eq:
+          "0": "起步不佳"
+          "1": "起步良好"
+      is_move_lane:
+        eq:
+          "1": "向内侧栏移动"
+          "2": "向外侧栏移动"
+      is_other_character_activate_advantage_skill:
+        eq:
+          "9": "对手使用了 +当前体力 技能"
+          "22": "对手使用了 +当前速度（自然减速）技能"
+          "27": "对手使用了 +目标速度 技能"
+          "31": "对手使用了 +加速度 技能"
+      is_temptation:
+        eq:
+          "0": "未焦躁"
+          "1": "焦躁中"
+      motivation:
+        eq:
+          "4": "好调"
+          "5": "绝好调"
+        ge:
+          "4": "好调以上"
+          "5": "绝好调以上"
+        le:
+          "4": "好调以下"
+          "5": "绝好调以下"
+      phase_corner_random:
+        eq:
+          "1": "中盘弯道（随机）"
+          "2": "终盘弯道（随机）"
+      phase_first_half_straight_random:
+        eq:
+          "1": "中盘前半直道（随机）"
+          "2": "终盘前半直道（随机）"
+      phase_firsthalf:
+        eq:
+          "1": "中盘前半"
+          "3": "冲刺阶段（阶段）前半"
+      phase_firsthalf_random:
+        eq:
+          "0": "序盘前半（随机）"
+          "1": "中盘前半（随机）"
+          "2": "终盘前半（随机）"
+          "3": "冲刺阶段（阶段）前半（随机）"
+      phase_laterhalf:
+        eq:
+          "0": "序盘后半"
+          "1": "中盘后半"
+          "2": "终盘后半"
+      phase_laterhalf_random:
+        eq:
+          "0": "序盘后半（随机）"
+          "1": "中盘后半（随机）"
+          "2": "终盘后半（随机）"
+      phase_latter_half_straight_random:
+        eq:
+          "1": "中盘后半直道（随机）"
+          "2": "终盘后半直道（随机）"
+      phase_random:
+        eq:
+          "0": "序盘（随机）"
+          "1": "中盘（随机）"
+          "2": "终盘（随机）"
+          "3": "冲刺阶段（阶段）（随机）"
+      phase_straight_random:
+        eq:
+          "1": "中盘直道（随机）"
+          "2": "终盘直道（随机）"
+      rotation:
+        eq:
+          "1": "顺时针赛道"
+          "2": "逆时针赛道"
+      running_style:
+        eq:
+          "1": "逃马"
+          "2": "先行"
+          "3": "差马"
+          "4": "追马"
+      season:
+        eq:
+          "1": "春"
+          "2": "夏"
+          "3": "秋"
+          "4": "冬"
+          "5": "樱花季（3月20日至4月20日）"
+      slope:
+        eq:
+          "0": "平地"
+          "1": "上坡"
+          "2": "下坡"
+      weather:
+        eq:
+          "1": "晴"
+          "2": "阴"
+          "3": "雨"
+          "4": "雪"
+    fixed:
+      all_corner_random:
+        eq: "任意弯道"
+      always:
+        eq: "始终"
+      blocked_front:
+        eq: "被堵（前方）"
+      change_order_onetime:
+        gt: "被超越"
+        lt: "超越"
+      down_slope_random:
+        eq: "下坡"
+      grade:
+        eq: "G1 比赛"
+      is_activate_any_skill:
+        eq: "使用了任意技能"
+      is_activate_heal_skill:
+        eq: "回复体力"
+      is_behind_in:
+        eq: "后方对手更靠近内侧栏"
+      is_dirtgrade:
+        eq: "交流赛"
+        ne: "非交流赛"
+      is_exist_chara_id:
+        eq: "无声铃鹿在场"
+      is_exist_skill_id:
+        eq: "技能 共鸣 在场"
+      is_finalcorner_laterhalf:
+        eq: "最终弯道/直道（后半）"
+      is_finalcorner_random:
+        eq: "最终弯道（随机）"
+      is_hp_empty_onetime:
+        eq: "体力耗尽"
+      is_last_straight:
+        eq: "在最终直道上"
+      is_last_straight_onetime:
+        eq: "到达最终直道"
+      is_lastspurt:
+        eq: "冲刺阶段（模式）"
+      is_overtake:
+        eq: "超越中"
+      is_surrounded:
+        eq: "被包围"
+      is_tight_track:
+        eq: "赛道狭窄"
+      lane_type:
+        eq: "内道"
+      last_straight_random:
+        eq: "最终直道（随机）"
+      lastspurt:
+        eq: "冲刺阶段耐力良好"
+      order_rate_in20_continue:
+        eq: "保持在前方 20%"
+      order_rate_in40_continue:
+        eq: "保持在前方 40%"
+      order_rate_in50_continue:
+        eq: "保持在前方 50%"
+      order_rate_in80_continue:
+        eq: "保持在前方 80%"
+      order_rate_out20_continue:
+        eq: "保持在后方 80%"
+      order_rate_out40_continue:
+        eq: "保持在后方 60%"
+      order_rate_out50_continue:
+        eq: "保持在后方 50%"
+      order_rate_out70_continue:
+        eq: "保持在后方 30%"
+      phase_firstquarter:
+        eq: "终盘前四分之一"
+      phase_firstquarter_random:
+        eq: "终盘前四分之一（随机）"
+      phase_laterhalf:
+        le: "中盘后半或更早"
+      run_at_full_speed_random:
+        eq: "达到最高速度（随机）"
+      running_style_equal_popularity_one:
+        eq: "与人气第一相同跑法"
+      straight_front_type:
+        eq: "在背面直道上"
+      straight_random:
+        eq: "直道（随机）"
+      time:
+        eq: "夜晚"
+      up_slope_random:
+        eq: "上坡"
+      up_slope_random_later_half:
+        eq: "上坡（后半）"
+    template:
+      accumulatetime:
+        ge: "经过 %{v} 秒"
+      activate_count_all:
+        ge: "使用 ≥%{v} 个技能"
+        le: "使用 ≤%{v} 个技能"
+      activate_count_all_team:
+        ge: "队伍使用 ≥%{v} 个技能"
+      activate_count_end_after:
+        ge: "使用 ≥%{v} 个技能（从终盘起）"
+      activate_count_heal:
+        ge: "回复体力 %{v}+ 次"
+      activate_count_later_half:
+        ge: "使用 ≥%{v} 个技能（后半）"
+      activate_count_middle:
+        eq: "使用 %{v} 个技能（中盘）"
+        ge: "使用 ≥%{v} 个技能（中盘）"
+      activate_count_start:
+        ge: "使用 ≥%{v} 个技能（序盘）"
+      base_guts:
+        ge: "基础毅力 ≥%{v}"
+        lt: "基础毅力 ﹤%{v}"
+      base_power:
+        ge: "基础力量 ≥%{v}"
+        lt: "基础力量 ﹤%{v}"
+      base_speed:
+        ge: "基础速度 ≥%{v}"
+      base_stamina:
+        ge: "基础耐力 ≥%{v}"
+        lt: "基础耐力 ﹤%{v}"
+      base_wiz:
+        ge: "基础智力 ≥%{v}"
+        lt: "基础智力 ﹤%{v}"
+      bashin_diff_behind:
+        ge: "领先 ≥%{v} 马身"
+        le: "领先 ≤%{v} 马身"
+      bashin_diff_infront:
+        le: "落后 ≤%{v} 马身"
+      behind_near_lane_time:
+        ge: "对手近距离在后 %{v} 秒"
+      behind_near_lane_time_set1:
+        ge: "对手在后 %{v} 秒"
+      blocked_all_continuetime:
+        ge: "被堵（前方和侧面）≥%{v} 秒"
+      blocked_front_continuetime:
+        ge: "被堵（前方）≥%{v} 秒"
+      blocked_side_continuetime:
+        ge: "被堵（侧面）≥%{v} 秒"
+      change_order_up_end_after:
+        ge: "终盘超越 %{v} 次"
+      change_order_up_finalcorner_after:
+        ge: "最终弯道后超越 %{v} 次"
+      change_order_up_middle:
+        ge: "中盘超越 %{v} 次"
+      compete_fight_count:
+        gt: "﹥%{v} 次较量"
+      corner_count:
+        eq: "%{v} 个弯道"
+      corner_random:
+        eq: "弯道 %{v}（随机）"
+      course_distance:
+        eq: "比赛距离 %{v} 米"
+        ge: "比赛距离 ≥%{v} 米"
+        gt: "比赛距离 ﹥%{v} 米"
+        le: "比赛距离 ≤%{v} 米"
+        lt: "比赛距离 ﹤%{v} 米"
+        ne: "比赛距离 ≠%{v} 米"
+      distance_diff_rate:
+        ge: "距领头马 ≥%{v}%"
+        le: "距领头马 ≤%{v}%"
+      distance_diff_top:
+        ge: "距第一名 ≥%{v}米"
+        gt: "距第一名 ﹥%{v}米"
+        le: "距第一名 ≤%{v}米"
+      distance_rate:
+        ge: "比赛距离 %{v}% 后"
+        le: "比赛距离 %{v}% 前"
+      distance_rate_after_random:
+        eq: "比赛距离 %{v}% 后（随机）"
+      fan_count:
+        ge: "粉丝数 ≥%{v}"
+      hp_per:
+        ge: "体力% ≥%{v}"
+        le: "体力% ≤%{v}"
+      infront_near_lane_time:
+        ge: "对手近距离在前 %{v} 秒"
+      near_count:
+        eq: "恰好 %{v} 名附近对手"
+        ge: "%{v}+ 名附近对手"
+      near_infront_count:
+        ge: "%{v}+ 名附近前方对手"
+      order:
+        eq: "位置 %{v}"
+        ge: "位置 ≥%{v}"
+        le: "位置 ≤%{v}"
+      overtake_target_no_order_up_time:
+        ge: "有超越目标 ≥%{v} 秒"
+      overtake_target_time:
+        ge: "成为超越目标 ≥%{v} 秒"
+      popularity:
+        eq: "人气 %{v}"
+        ge: "人气 ≥%{v}"
+        le: "人气 ≤%{v}"
+        lt: "人气 ﹤%{v}"
+      post_number:
+        eq: "闸位 %{v}"
+        ge: "闸位 ≥%{v}"
+        le: "闸位 ≤%{v}"
+      random_lot:
+        eq: "随机概率 %{v}%"
+      remain_distance:
+        eq: "剩余距离 %{v}米"
+        ge: "剩余距离 ≥%{v}米"
+        le: "剩余距离 ≤%{v}米"
+      remain_distance_viewer_id:
+        ge: "剩余 ≥%{v}米（玩家角色）"
+        le: "剩余 ≤%{v}米（玩家角色）"
+      running_style_count_nige_otherself:
+        ge: "%{v}+ 名其他逃马"
+      running_style_count_oikomi_otherself:
+        ge: "%{v}+ 名其他追马"
+      running_style_count_same:
+        le: "≤%{v} 名相同跑法"
+      running_style_count_same_rate:
+        ge: "≥%{v}% 相同跑法"
+      running_style_count_sashi_otherself:
+        ge: "%{v}+ 名其他差马"
+      running_style_count_senko_otherself:
+        ge: "%{v}+ 名其他先行"
+      running_style_temptation_count_nige:
+        ge: "%{v}+ 名焦躁逃马（含你）"
+      running_style_temptation_count_oikomi:
+        ge: "%{v}+ 名焦躁追马（含你）"
+      running_style_temptation_count_sashi:
+        ge: "%{v}+ 名焦躁差马（含你）"
+      running_style_temptation_count_senko:
+        ge: "%{v}+ 名焦躁先行（含你）"
+      running_style_temptation_opponent_count_nige:
+        ge: "≥%{v} 名焦躁逃马"
+      running_style_temptation_opponent_count_oikomi:
+        ge: "≥%{v} 名焦躁追马"
+      running_style_temptation_opponent_count_sashi:
+        ge: "≥%{v} 名焦躁差马"
+      running_style_temptation_opponent_count_senko:
+        ge: "≥%{v} 名焦躁先行"
+      same_skill_horse_count:
+        ge: "≥%{v} 名赛马娘拥有此技能"
+      succession_skill_count:
+        eq: "拥有 %{v} 个继承技能"
+        ge: "拥有 ≥%{v} 个继承技能"
+        le: "拥有 ≤%{v} 个继承技能"
+      temptation_count:
+        eq: "焦躁 %{v} 次"
+      temptation_count_behind:
+        ge: "≥%{v} 次焦躁（后方）"
+      temptation_count_infront:
+        ge: "≥%{v} 次焦躁（前方）"
+      temptation_opponent_count_behind:
+        ge: "≥%{v} 次焦躁（后方）"
+      temptation_opponent_count_infront:
+        ge: "≥%{v} 次焦躁（前方）"
+      visiblehorse:
+        ge: "视野内 ≥%{v} 名对手"
+        le: "可见赛马娘 ≤%{v}"
+      distance_diff_top_float:
+        le: "距第一名 ≤%{v}米"
