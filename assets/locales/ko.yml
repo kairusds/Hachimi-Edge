@@ -241,6 +241,7 @@ config_editor:
   ingame_webview: "Open Umamusume links (news, help, gacha, ...) in webview"
   trainer_live_landscape: "Meni Shuki live에서 landscape 모드로 보기"
   force_orientation_mode: "Force orientation mode"
+  race_playback_slider_always: "경기중 항상 하단에 슬라이더바 표시"
 
 theme_editor:
   title: "GUI Theme Editor"
