@@ -15,7 +15,7 @@ impl_addr_wrapper_fn!(GetSkills, GET_SKILLS_ADDR, *mut Il2CppArray, this: *mut I
 def_method_wrapper_fn!(AddUsedSkillId, ADD_USED_SKILL_ID_ADDR, (), this: *mut Il2CppObject, skill_id: i32);
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if Hachimi::instance().game.region != Region::Japan {
+    if !matches!(Hachimi::instance().game.region, Region::Japan | Region::Global) {
         return;
     }
 

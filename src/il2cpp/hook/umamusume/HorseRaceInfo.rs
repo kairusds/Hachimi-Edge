@@ -1,6 +1,9 @@
-use crate::il2cpp::{
-    symbols::{get_field_from_name, get_method_addr, Array},
-    types::*,
+use crate::{
+    core::{Hachimi, game::Region},
+    il2cpp::{
+        symbols::{get_field_from_name, get_method_addr, Array},
+        types::*,
+    }
 };
 
 use super::{RaceDefine, RaceManager, RaceHorseManagerBase};
@@ -118,7 +121,9 @@ pub fn init(umamusume: *const Il2CppImage) {
         SKILL_MANAGER_FIELD = get_field_from_name(HorseRaceInfo, c"_skillManager");
         PHASE_FIELD = get_field_from_name(HorseRaceInfo, c"_phase");
         MIN_SPEED_FIELD = get_field_from_name(HorseRaceInfo, c"_minSpeed");
-        MAX_SPEED_IN_RACE_FIELD = get_field_from_name(HorseRaceInfo, c"_maxSpeedInRace");
+        if Hachimi::instance().game.region != Region::Global {
+            MAX_SPEED_IN_RACE_FIELD = get_field_from_name(HorseRaceInfo, c"_maxSpeedInRace");
+        }
         LAST_SELF_SPEED_FIELD = get_field_from_name(HorseRaceInfo, c"_lastSelfSpeed");
         LANE_DISTANCE_FIELD = get_field_from_name(HorseRaceInfo, c"_laneDistance");
         DISTANCE_FIELD = get_field_from_name(HorseRaceInfo, c"_distance");

@@ -7,6 +7,7 @@ use crate::{
     il2cpp::{ext::{StringExt, Il2CppStringExt}, hook::{LibNative_Runtime::Sqlite3::{Connection, Query}, umamusume::SceneManager}, types::{Il2CppObject, Il2CppString}}
 };
 use chrono::{Utc, Datelike};
+use rust_i18n::locale;
 
 pub static RETRIEVED_RAW_KEY: Lazy<Mutex<Vec<u8>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static AUTO_UNLOCK_NEXT_DB: AtomicBool = AtomicBool::new(false);
@@ -216,6 +217,506 @@ impl Column {
     }
 }
 
+#[derive(Default)]
+pub struct SkillDataDesc {
+    pub descs: FnvHashMap<i32, String>
+}
+
+struct SkillDataDescRow {
+    id: i32,
+    precondition_1: String,
+    condition_1: String,
+    ability_time_1: i32,
+    cooldown_time_1: i32,
+    precondition_2: String,
+    condition_2: String,
+    ability_time_2: i32,
+    cooldown_time_2: i32,
+    slots: [SkillDataDescSlot; 6]
+}
+
+#[derive(Clone, Copy, Default)]
+struct SkillDataDescSlot {
+    ability_type: i32,
+    ability_value: i32,
+    ability_value_usage: i32,
+    additional_activate_type: i32,
+    target_type: i32,
+    target_value: i32
+}
+
+impl SkillDataDesc {
+    pub fn load_from_db() -> Self {
+        let mut descs = FnvHashMap::default();
+
+        let db_path = get_masterdb_path();
+        let conn = Connection::new();
+
+        if Connection::Open(conn, db_path.to_il2cpp_string(), ptr::null_mut(), ptr::null_mut(), 0) {
+            let sql = "SELECT id, \
+                precondition_1, condition_1, float_ability_time_1, float_cooldown_time_1, \
+                ability_type_1_1, ability_value_usage_1_1, additional_activate_type_1_1, float_ability_value_1_1, target_type_1_1, target_value_1_1, \
+                ability_type_1_2, ability_value_usage_1_2, additional_activate_type_1_2, float_ability_value_1_2, target_type_1_2, target_value_1_2, \
+                ability_type_1_3, ability_value_usage_1_3, additional_activate_type_1_3, float_ability_value_1_3, target_type_1_3, target_value_1_3, \
+                precondition_2, condition_2, float_ability_time_2, float_cooldown_time_2, \
+                ability_type_2_1, ability_value_usage_2_1, additional_activate_type_2_1, float_ability_value_2_1, target_type_2_1, target_value_2_1, \
+                ability_type_2_2, ability_value_usage_2_2, additional_activate_type_2_2, float_ability_value_2_2, target_type_2_2, target_value_2_2, \
+                ability_type_2_3, ability_value_usage_2_3, additional_activate_type_2_3, float_ability_value_2_3, target_type_2_3, target_value_2_3 \
+                FROM skill_data";
+            let query = Connection::Query(conn, sql.to_il2cpp_string());
+
+            if !query.is_null() {
+                while Query::Step(query) {
+                    let row = Self::get_data_row(query);
+                    let desc = Self::format_data_desc(&row);
+                    descs.insert(row.id, desc);
+                }
+                Query::Dispose(query);
+            }
+            Connection::CloseDB(conn);
+        }
+
+        SkillDataDesc { descs }
+    }
+
+    pub fn get_desc(&self, id: i32) -> Option<&String> {
+        self.descs.get(&id)
+    }
+    
+    fn get_data_slot(query: *mut Il2CppObject, base: i32) -> SkillDataDescSlot {
+        SkillDataDescSlot {
+            ability_type: Query::GetInt(query, base),
+            ability_value_usage: Query::GetInt(query, base + 1),
+            additional_activate_type: Query::GetInt(query, base + 2),
+            ability_value: Query::GetInt(query, base + 3),
+            target_type: Query::GetInt(query, base + 4),
+            target_value: Query::GetInt(query, base + 5)
+        }
+    }
+
+    fn get_data_text(query: *mut Il2CppObject, idx: i32) -> String {
+        let text_ptr = Query::GetText(query, idx);
+        unsafe { text_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()).unwrap_or_default()
+    }
+
+    fn get_data_row(query: *mut Il2CppObject) -> SkillDataDescRow {
+        SkillDataDescRow {
+            id: Query::GetInt(query, 0),
+            precondition_1: Self::get_data_text(query, 1),
+            condition_1: Self::get_data_text(query, 2),
+            ability_time_1: Query::GetInt(query, 3),
+            cooldown_time_1: Query::GetInt(query, 4),
+            precondition_2: Self::get_data_text(query, 23),
+            condition_2: Self::get_data_text(query, 24),
+            ability_time_2: Query::GetInt(query, 25),
+            cooldown_time_2: Query::GetInt(query, 26),
+            slots: [
+                Self::get_data_slot(query, 5), Self::get_data_slot(query, 11), Self::get_data_slot(query, 17),
+                Self::get_data_slot(query, 27), Self::get_data_slot(query, 33), Self::get_data_slot(query, 39)
+            ]
+        }
+    }
+
+    fn round_ties_up(value: i32, units: i32) -> i32 {
+        let rem = value.rem_euclid(units);
+        let base = value - rem;
+        if rem * 2 >= units { base + units } else { base }
+    }
+
+    fn format_data_number(value: i32, div: i32, decimals: usize) -> String {
+        let units = div / 10i32.pow(decimals as u32);
+        let rounded = Self::round_ties_up(value, units);
+        let neg = rounded < 0;
+        let abs = rounded.unsigned_abs() as u64;
+        let div = div as u64;
+        let whole = abs / div;
+        let frac = (abs % div) / (div / 10u64.pow(decimals as u32));
+
+        let mut out = String::new();
+        if neg {
+            out.push('-');
+        }
+        out.push_str(&whole.to_string());
+        if frac > 0 {
+            out.push('.');
+            let frac_str = format!("{:0width$}", frac, width = decimals);
+            out.push_str(frac_str.trim_end_matches('0'));
+        }
+        out
+    }
+
+    fn str(key: &str) -> Option<String> {
+        let full_key = format!("skill_data_desc.{key}");
+        let locale = locale();
+        crate::_rust_i18n_try_translate(&locale, full_key.as_str()).map(|text| text.to_string())
+    }
+
+    fn data_fmt(key: &str, value: &str) -> Option<String> {
+        Self::str(key).map(|text| text.replace("%{v}", value))
+    }
+
+    fn op_tag(op: &str) -> &str {
+        match op {
+            "==" => "eq",
+            "!=" => "ne",
+            "<=" => "le",
+            ">=" => "ge",
+            "<" => "lt",
+            ">" => "gt",
+            _ => "op"
+        }
+    }
+
+    fn format_effect(slot: SkillDataDescSlot) -> Option<String> {
+        let (name_key, unit_key, div, decimals) = match slot.ability_type {
+            1 => ("speed_stat", "stat", 10000, 2),
+            2 => ("stamina_stat", "stat", 10000, 2),
+            3 => ("power_stat", "stat", 10000, 2),
+            4 => ("guts_stat", "stat", 10000, 2),
+            5 => ("wit_stat", "stat", 10000, 2),
+            8 => ("field_of_view", "deg", 10000, 2),
+            9 => ("current_hp", "percent", 100, 1),
+            13 => ("rushed_time", "second", 10000, 2),
+            14 => ("delay_start", "second", 10000, 2),
+            21 => ("current_speed", "mps", 10000, 2),
+            22 => ("current_speed_natural_decel", "mps", 10000, 2),
+            27 => ("target_speed", "mps", 10000, 2),
+            28 => ("lane_movement_speed", "percent", 100, 1),
+            29 => ("rushed_chance", "stat", 10000, 2),
+            31 => ("acceleration", "mps2", 10000, 2),
+            32 => ("all_stats", "stat", 10000, 2),
+            35 => ("target_lane", "stat", 10000, 2),
+            37 => ("activate_rare_skill", "stat", 10000, 2),
+            42 | 48 | 49 => ("special", "stat", 10000, 2),
+            501 => ("event_specific", "stat", 10000, 2),
+
+            6 => return Self::str("effect.fixed.aggressive_strategy"),
+            38 => return Self::str("effect.fixed.debuff_immunity"),
+            41 => return Self::str("effect.fixed.sympathy_all"),
+            502 => return Self::str("effect.fixed.loh_stat"),
+            10 => return Self::str(&format!("effect.start_reaction.{}", slot.ability_value)),
+            503 | _ => return None,
+        };
+
+        let name = Self::str(&format!("effect.name.{name_key}"))?;
+        let unit = Self::str(&format!("effect.unit.{unit_key}")).unwrap_or_default();
+        let value = Self::format_data_number(slot.ability_value, div, decimals);
+        let sign = if slot.ability_value > 0 { " +" } else { " " };
+        let mut out = format!("{name}{sign}{value}{unit}");
+        if slot.ability_value_usage == 19 {
+            out.push_str(&Self::str("effect.usage19_suffix").unwrap_or_default());
+        }
+
+        let star = match slot.additional_activate_type {
+            1 => Self::str("star.activate.1"),
+            2 => Self::str("star.activate.2"),
+            3 => Self::str("star.activate.3"),
+            _ => None
+        }.or_else(|| {
+            if slot.ability_value_usage != 1 {
+                Self::str(&format!("star.usage.{}", slot.ability_value_usage))
+            } else {
+                None
+            }
+        });
+        if let Some(star) = star {
+            out.push_str(&Self::str("sep.star").unwrap_or_default());
+            out.push_str(&star);
+        }
+
+        if slot.target_type != 1 {
+            let target = match slot.target_type {
+                4 => Self::str("target.all_in_fov"),
+                7 => Self::data_fmt("target.leading", &(slot.target_value - 1).to_string()),
+                9 => if slot.target_value == 18 {
+                    Self::str("target.all_ahead")
+                } else {
+                    Self::data_fmt("target.closest_ahead", &slot.target_value.to_string())
+                },
+                10 => if slot.target_value == 18 {
+                    Self::str("target.all_behind")
+                } else {
+                    Self::data_fmt("target.closest_behind", &slot.target_value.to_string())
+                },
+                11 => Self::str("target.team"),
+                18 => match Self::str(&format!("target.style.{}", slot.target_value)) {
+                    Some(text) => Some(text),
+                    None => return None
+                },
+                19 => Self::data_fmt("target.random_rushed_ahead", &slot.target_value.to_string()),
+                20 => Self::data_fmt("target.random_rushed_behind", &slot.target_value.to_string()),
+                21 => match Self::str(&format!("target.style_rushed.{}", slot.target_value)) {
+                    Some(text) => Some(text),
+                    None => return None
+                },
+                22 => Self::str("target.suzuka"),
+                23 => Self::data_fmt("target.random_recovery_users", &slot.target_value.to_string()),
+                24 => Self::str("target.unknown"),
+                _ => None
+            };
+            if let Some(target) = target {
+                out.push_str(&Self::str("sep.to").unwrap_or_default());
+                out.push_str(&target);
+            }
+        }
+
+        Some(out)
+    }
+
+    fn format_data_conditions(condition: &str) -> String {
+        let or_sep = Self::str("sep.or").unwrap_or_default();
+        let and_sep = Self::str("sep.and").unwrap_or_default();
+        let mut out = String::new();
+        for (i, group) in condition.split('@').enumerate() {
+            if i > 0 {
+                out.push_str(&or_sep);
+            }
+            for (j, atom) in group.split('&').enumerate() {
+                if j > 0 {
+                    out.push_str(&and_sep);
+                }
+                out.push_str(&Self::format_data_atom(atom));
+            }
+        }
+        out
+    }
+
+    fn format_data_atom(atom: &str) -> String {
+        let bytes = atom.as_bytes();
+        let mut token_end = 0;
+        while token_end < bytes.len() && (bytes[token_end].is_ascii_lowercase() || bytes[token_end] == b'_' || bytes[token_end].is_ascii_digit()) {
+            token_end += 1;
+        }
+        let op_start = token_end;
+        let mut op_end = op_start;
+        while op_end < bytes.len() && (bytes[op_end] == b'=' || bytes[op_end] == b'!' || bytes[op_end] == b'<' || bytes[op_end] == b'>') {
+            op_end += 1;
+        }
+        let token = &atom[..token_end];
+        let op = &atom[op_start..op_end];
+        let value = atom[op_end..].parse::<i32>().unwrap_or(0);
+
+        if token == "order_rate" {
+            let text = match op {
+                ">" => Self::data_fmt("cond.order_rate.gt", &(100 - value).to_string()),
+                ">=" => Self::data_fmt("cond.order_rate.ge", &(100 - value).to_string()),
+                "<=" => Self::data_fmt("cond.order_rate.le", &value.to_string()),
+                "<" => Self::data_fmt("cond.order_rate.lt", &value.to_string()),
+                _ => None
+            };
+            if let Some(text) = text {
+                return text;
+            }
+        }
+
+        if token == "corner" {
+            let text = match (op, value) {
+                ("==", 0) => Self::str("cond.corner.straight"),
+                ("==", _) => Self::data_fmt("cond.corner.corner", &value.to_string()),
+                ("!=", 0) => Self::str("cond.corner.any"),
+                ("!=", _) => Self::data_fmt("cond.corner.not", &value.to_string()),
+                _ => None
+            };
+            if let Some(text) = text {
+                return text;
+            }
+        }
+
+        if token == "phase" && matches!(op, "==" | "!=" | "<=" | ">=") {
+            if let Some(name) = Self::str(&format!("cond.phase.name.{value}")) {
+                return match op {
+                    "==" => name,
+                    "!=" => Self::data_fmt("cond.negate", &name).unwrap_or_default(),
+                    "<=" => Self::data_fmt("cond.phase.le", &name).unwrap_or_default(),
+                    _ => Self::data_fmt("cond.phase.ge", &name).unwrap_or_default()
+                };
+            }
+        }
+
+        if token == "ground_condition" && matches!(op, "==" | "!=" | "<=" | ">=") {
+            if let Some(name) = Self::str(&format!("cond.ground_condition.name.{value}")) {
+                if let Some(text) = Self::data_fmt(&format!("cond.ground_condition.{}", Self::op_tag(op)), &name) {
+                    return text;
+                }
+            }
+        }
+
+        if token == "track_id" {
+            if op == "<=" && value == 10010 {
+                if let Some(text) = Self::str("cond.track_id.jra") {
+                    return text;
+                }
+            }
+            if op == ">=" && value == 10001 {
+                if let Some(text) = Self::str("cond.track_id.any") {
+                    return text;
+                }
+            }
+            if op == "==" || op == "!=" {
+                if let Some(name) = Self::str(&format!("cond.track_name.{value}")) {
+                    let key = if op == "==" { "cond.track_id.at" } else { "cond.track_id.not_at" };
+                    if let Some(text) = Self::data_fmt(key, &name) {
+                        return text;
+                    }
+                }
+            }
+        }
+
+        if token == "same_skill_horse_count" && op == "==" {
+            let text = if value == 1 {
+                Self::str("cond.same_skill_horse_count.unique")
+            } else {
+                Self::data_fmt("cond.same_skill_horse_count.count", &value.to_string())
+            };
+            if let Some(text) = text {
+                return text;
+            }
+        }
+
+        if token == "near_infront_count" && op == "==" {
+            let text = if value == 0 {
+                Self::str("cond.near_infront_count.none")
+            } else {
+                Self::data_fmt("cond.near_infront_count.count", &value.to_string())
+            };
+            if let Some(text) = text {
+                return text;
+            }
+        }
+
+        if let Some(text) = Self::data_condition_enum(token, op, value) {
+            return text;
+        }
+
+        if op == "!=" {
+            if let Some(text) = Self::data_condition_enum(token, "==", value) {
+                if let Some(negated) = Self::data_fmt("cond.negate", &text) {
+                    return negated;
+                }
+            }
+        }
+
+        if let Some(text) = Self::data_condition_fixed(token, op) {
+            return text;
+        }
+
+        if token == "distance_diff_top_float" && op == "<=" {
+            if let Some(text) = Self::data_fmt("cond.template.distance_diff_top_float.le", &Self::format_data_number(value, 10, 1)) {
+                return text;
+            }
+        }
+
+        if let Some(text) = Self::data_condition_template(token, op, value) {
+            return text;
+        }
+
+        if token == "furlong" && op == "==" {
+            if let Some(text) = Self::data_fmt("cond.furlong", &(value + 1).to_string()) {
+                return text;
+            }
+        }
+
+        if token == "is_used_skill_id" && op == "==" {
+            if let Some(text) = Self::str(&format!("cond.used_skill.{value}")) {
+                return text;
+            }
+            if let Some(text) = Self::data_fmt("cond.used_skill.template", &value.to_string()) {
+                return text;
+            }
+        }
+
+        if token == "is_used_skill_id_with_detail_one" && op == "==" {
+            if let Some(text) = Self::str(&format!("cond.used_skill_detail_one.{value}")) {
+                return text;
+            }
+            if let Some(text) = Self::data_fmt("cond.used_skill_detail_one.template", &value.to_string()) {
+                return text;
+            }
+        }
+
+        if token == "is_popularity_top_character_activate_advantage_skill" && op == "==" {
+            if value == -1 {
+                if let Some(text) = Self::str("cond.popularity_top.any") {
+                    return text;
+                }
+            }
+            if let Some(text) = Self::data_fmt("cond.popularity_top.count", &value.to_string()) {
+                return text;
+            }
+        }
+
+        format!("{token} {op} {value}")
+    }
+
+    fn data_condition_enum(token: &str, op: &str, value: i32) -> Option<String> {
+        Self::str(&format!("cond.enum.{token}.{}.{}", Self::op_tag(op), value))
+    }
+
+    fn data_condition_fixed(token: &str, op: &str) -> Option<String> {
+        Self::str(&format!("cond.fixed.{token}.{}", Self::op_tag(op)))
+    }
+
+    fn data_condition_template(token: &str, op: &str, value: i32) -> Option<String> {
+        Self::str(&format!("cond.template.{token}.{}", Self::op_tag(op)))
+            .map(|text| text.replace("%{v}", &value.to_string()))
+    }
+
+    fn format_data_group(condition: &str, precondition: &str, ability_time: i32, cooldown_time: i32, slots: &[SkillDataDescSlot]) -> Option<String> {
+        let mut effects: Vec<String> = Vec::new();
+        for slot in slots {
+            if slot.ability_type == 0 && slot.ability_value == 0 {
+                continue;
+            }
+            if let Some(effect) = Self::format_effect(*slot) {
+                effects.push(effect);
+            }
+        }
+        if effects.is_empty() {
+            return None;
+        }
+
+        let first_type = slots.first().map(|s| s.ability_type).unwrap_or(0);
+        let first_value = slots.first().map(|s| s.ability_value).unwrap_or(0);
+        let time_suffix = if ability_time > 0 {
+            Self::data_fmt("group.duration", &Self::format_data_number(ability_time, 10000, 2))
+        } else if ability_time == 0 {
+            Self::str("group.immediate")
+        } else if first_type == 21 && first_value < 0 {
+            Self::str("group.long_negative")
+        } else {
+            Self::str("group.indefinite")
+        }.unwrap_or_default();
+
+        let mut body = effects.join(", ");
+        body.push(' ');
+        body.push_str(&time_suffix);
+
+        let mut line = format!("<b>{body}</b>");
+        if cooldown_time > 0 && cooldown_time < 5000000 {
+            line.push_str(&Self::data_fmt("group.cd", &format!("{:.1}", cooldown_time as f64 / 10000.0)).unwrap_or_default());
+        }
+        line.push_str(&Self::str("group.when").unwrap_or_default());
+        line.push_str(&Self::format_data_conditions(if condition.is_empty() { "always==1" } else { condition }));
+        if !precondition.is_empty() {
+            line.push_str(&Self::str("group.after").unwrap_or_default());
+            line.push_str(&Self::format_data_conditions(precondition));
+        }
+        Some(line)
+    }
+
+    fn format_data_desc(row: &SkillDataDescRow) -> String {
+        let group1 = Self::format_data_group(&row.condition_1, &row.precondition_1, row.ability_time_1, row.cooldown_time_1, &row.slots[0..3]);
+        let group2 = Self::format_data_group(&row.condition_2, &row.precondition_2, row.ability_time_2, row.cooldown_time_2, &row.slots[3..6]);
+
+        match (group1, group2) {
+            (Some(g1), Some(g2)) => format!("{g1}\n{g2}"),
+            (Some(g1), None) => g1,
+            (None, Some(g2)) => g2,
+            (None, None) => String::new()
+        }
+    }
+}
+
 // text_data
 #[derive(Default)]
 pub struct TextDataQuery {
@@ -242,6 +743,13 @@ impl TextDataQuery {
     }
 
     pub fn get_skill_desc(index: i32) -> Option<*mut Il2CppString> {
+        if Hachimi::instance().config.load().skill_data_desc {
+            let skill_data_desc = Hachimi::instance().skill_data_desc.load();
+            if let Some(desc) = skill_data_desc.get_desc(index) {
+                return Some(desc.to_il2cpp_string());
+            }
+        }
+
         let localized_data = Hachimi::instance().localized_data.load();
         localized_data
             .text_data_dict
@@ -281,6 +789,7 @@ impl SelectQueryState for TextDataQuery {
                 // specialized handlers
                 match category {
                     47 => return Self::get_skill_name(index),
+                    48 => return Self::get_skill_desc(index),
                     _ => ()
                 };
 

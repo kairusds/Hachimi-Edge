@@ -63,6 +63,7 @@ pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
     // GAME_INITIALIZED.store(true, Ordering::Relaxed);
     Hachimi::instance().init_skill_info();
+    Hachimi::instance().init_skill_data_desc();
 
     #[cfg(target_os = "android")]
     crate::android::utils::set_audio_capture_policy_all();
