@@ -212,6 +212,7 @@ config_editor:
   race_playback_button: "Playback ng karera - Ipakita ang pause/resume button"
   race_playback_key_enable: "I-enable ang keybind sa pag-pause/resume ng playback sa karera"
   race_playback_key: "Key sa pag-pause/resume ng playback sa karera"
+  race_playback_slider_always: "Palaging ipakita ang slider sa Playback ng Karera"
 
 
 free_camera:
