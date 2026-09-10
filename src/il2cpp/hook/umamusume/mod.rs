@@ -60,6 +60,7 @@ pub mod StoryTimelineController;
 mod DialogRaceOrientation;
 pub mod RaceDefine;
 pub mod RaceInfo;
+pub mod RacePhaseCalculator;
 mod RaceUtil;
 mod SaveDataManager;
 mod ApplicationSettingSaveLoader;
@@ -240,6 +241,7 @@ pub fn init() {
     StoryTimelineController::init(image);
     DialogRaceOrientation::init(image);
     RaceInfo::init(image);
+    RacePhaseCalculator::init(image);
     RaceUtil::init(image);
     SaveDataManager::init(image);
     ApplicationSettingSaveLoader::init(image);

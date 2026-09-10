@@ -10,7 +10,7 @@ static mut GET_SKILL_MASTER_ID_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_SkillMasterId, GET_SKILL_MASTER_ID_ADDR, i32, this: *mut Il2CppObject);
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if Hachimi::instance().game.region != Region::Japan {
+    if !matches!(Hachimi::instance().game.region, Region::Japan | Region::Global) {
         return;
     }
 
