@@ -232,6 +232,7 @@ config_editor:
   race_stat_hud_height_scale: "Escala vertical da interface de estatísticas da corrida"
   race_playback_slider: "Barra de progresso nas corridas"
   race_playback_button: "Botão de pause nas corridas"
+  race_playback_slider_always: "Sempre mostrar barra de progresso nas corridas"
   race_playback_key_enable: "Atalho para pausar as corridas"
   race_playback_key: "Tecla para pausar as corridas"
   live_slider_always_show: "Sempre mostrar barra de progresso nos shows"
