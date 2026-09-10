@@ -255,6 +255,7 @@ config_editor:
   race_stat_hud_height_scale: "比赛统计HUD高度缩放"
   disable_tap_effect: "禁用点击效果"
   race_playback_slider: "比赛回放进度条"
+  race_playback_slider_always: "始终显示比赛回放进度条"
   race_playback_button: "比赛回放暂停/继续按钮"
   race_playback_key_enable: "启用比赛回放暂停/继续快捷键"
   race_playback_key: "比赛回放暂停/继续快捷键"
