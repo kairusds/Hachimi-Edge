@@ -44,6 +44,7 @@ summer: "夏"
 fall: "秋"
 winter: "冬"
 cherry_blossom: "樱"
+ordinal: "第%{n}名"
 
 menu:
   check_for_updates: "\uf0aa 检查更新"
