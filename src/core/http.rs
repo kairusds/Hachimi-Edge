@@ -40,7 +40,8 @@ pub fn ureq_config_with_timeout(timeout: Option<Duration>) -> ureq::config::Conf
 
     ureq::config::Config::builder()
         .ip_family(if Hachimi::instance().config.load().ipv4_only { Ipv4Only } else { Any })
-        .timeout_global(timeout)
+        .timeout_connect(timeout)
+        .timeout_recv_response(timeout)
         .build()
 }
 

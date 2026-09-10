@@ -236,6 +236,7 @@ config_editor:
   race_stat_hud_width_scale: "Race Stat HUD width scale"
   race_stat_hud_height_scale: "Race Stat HUD height scale"
   race_playback_slider: "Race Playback Slider"
+  race_playback_slider_always: "Always show Race Playback Slider"
   race_playback_button: "Race playback pause/resume button"
   race_playback_key_enable: "Enable race playback pause/resume keybind"
   race_playback_key: "Race playback pause/resume keybind"
