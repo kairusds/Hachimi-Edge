@@ -2664,10 +2664,24 @@ impl Gui {
     }
 
     fn race_slider_showing() -> bool {
-        Hachimi::instance().config.load().race_playback_slider
-        && RaceHorseManagerBase::is_race_active()
-        && (!HorseRaceInfo::is_start_dash() || RACE_SLIDER_DRAGGING.load(atomic::Ordering::Acquire))
-        && !HorseRaceInfo::is_finished()
+        let config = Hachimi::instance().config.load();
+        let is_dragging = RACE_SLIDER_DRAGGING.load(atomic::Ordering::Acquire);
+
+        if !config.race_playback_slider
+            || !RaceHorseManagerBase::is_race_active()
+            || (HorseRaceInfo::is_start_dash() && !is_dragging)
+            || HorseRaceInfo::is_finished() {
+            return false;
+        }
+
+        if !config.race_playback_slider_always && !is_dragging {
+            let race_manager = RaceManager::instance();
+            if race_manager.is_null() || !RaceManagerReplayBase::IsPaused(race_manager) {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn run_race_slider(&mut self, ctx: &egui::Context) {
@@ -5163,6 +5177,12 @@ impl ConfigEditor {
             if should_show_option(search, &t!("config_editor.race_playback_slider")) {
                 ui.label(t!("config_editor.race_playback_slider"));
                 ui.checkbox(&mut config.race_playback_slider, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_playback_slider_always")) {
+                ui.label(t!("config_editor.race_playback_slider_always"));
+                ui.checkbox(&mut config.race_playback_slider_always, "");
                 ui.end_row();
             }
 

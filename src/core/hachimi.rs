@@ -775,6 +775,8 @@ pub struct Config {
     pub race_stat_hud_height_scale: f32,
     #[serde(default)]
     pub race_playback_slider: bool,
+    #[serde(default = "Config::default_true")]
+    pub race_playback_slider_always: bool,
     #[serde(default)]
     pub race_playback_button: bool,
     #[serde(default)]
@@ -860,6 +862,7 @@ impl Config {
     fn default_race_stat_hud_drag_y() -> f32 { -1.0 }
     fn default_race_stat_hud_width_scale() -> f32 { 1.0 }
     fn default_race_stat_hud_height_scale() -> f32 { 1.0 }
+    fn default_true() -> bool { true }
 }
 
 impl Default for Config {
