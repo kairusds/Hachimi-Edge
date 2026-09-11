@@ -282,6 +282,13 @@ impl Hachimi {
         }
         
         self.localized_data.store(Arc::new(new_data));
+
+        if !self.skill_data_desc.load().descs.is_empty() {
+            let data = SkillDataDesc::load_from_db();
+            if !data.descs.is_empty() {
+                self.skill_data_desc.store(Arc::new(data));
+            }
+        }
     }
 
     pub fn init_character_data(&self) {
@@ -1027,6 +1034,7 @@ pub struct LocalizedData {
     pub character_system_text_dict: FnvHashMap<i32, FnvHashMap<i32, String>>, // {"character_id": {"voice_id": "text"}}
     pub race_jikkyo_comment_dict: FnvHashMap<i32, String>, // {"id": "text"}
     pub race_jikkyo_message_dict: FnvHashMap<i32, String>, // {"id": "text"}
+    pub skill_data_desc_dict: FnvHashMap<String, String>, // {"skill_data_desc.<key>": "text"}
     assets_path: Option<PathBuf>,
 
     pub plural_form: plurals::Resolver,
@@ -1086,6 +1094,7 @@ impl LocalizedData {
             character_system_text_dict: Self::load_dict_static(&path, config.character_system_text_dict.as_ref()).unwrap_or_default(),
             race_jikkyo_comment_dict: Self::load_dict_static(&path, config.race_jikkyo_comment_dict.as_ref()).unwrap_or_default(),
             race_jikkyo_message_dict: Self::load_dict_static(&path, config.race_jikkyo_message_dict.as_ref()).unwrap_or_default(),
+            skill_data_desc_dict: Self::load_dict_static_ex(&path, Some("skill_data_desc_dict.json"), true).unwrap_or_default(),
             assets_path: path.as_ref()
                 .map(|p| config.assets_dir.as_ref()
                     .map(|dir| p.join(dir))
