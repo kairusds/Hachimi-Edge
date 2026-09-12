@@ -486,6 +486,8 @@ struct RaceStatHud {
     current_tab: RaceStatHudTab,
     drag_pos: Option<(f32, f32)>,
     drag_travel: f32,
+    resize_scale: Option<(f32, f32)>,
+    resize_dirty: bool,
     config: hachimi::Config,
     last_used_skills: Vec<i32>,
     last_unused_skills: Vec<i32>,
@@ -507,6 +509,8 @@ impl RaceStatHud {
             current_tab: RaceStatHudTab::Stats,
             drag_pos: None,
             drag_travel: 0.0,
+            resize_scale: None,
+            resize_dirty: false,
             config: (**Hachimi::instance().config.load()).clone(),
             last_used_skills: Vec::new(),
             last_unused_skills: Vec::new(),
@@ -524,6 +528,8 @@ impl RaceStatHud {
             self.config = (**Hachimi::instance().config.load()).clone();
             self.drag_pos = Self::saved_drag_pos(&self.config);
             self.drag_travel = 0.0;
+            self.resize_scale = None;
+            self.resize_dirty = false;
         }
         if !visible && self.visible {
             self.save_autoscroll_config();
@@ -613,13 +619,13 @@ impl RaceStatHud {
         let is_vertical = game_view.width() <= game_view.height();
         let (width_scale, height_scale) = {
             let config = Hachimi::instance().config.load();
-            (config.race_stat_hud_width_scale, config.race_stat_hud_height_scale)
+            hud.resize_scale.unwrap_or((config.race_stat_hud_width_scale, config.race_stat_hud_height_scale))
         };
         let hud_scale = scale;
         let panel = Self::panel_size(game_view, is_vertical, hud_scale, width_scale, height_scale);
         Self::log_game_view(split, game_view, source, panel, hud_scale);
 
-        hud.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button);
+        hud.run_hud(ctx, screen, game_view, panel, hud_scale, width_scale, height_scale, toggle_button);
 
         if toggle_button && !hud.visible {
             hud.run_button(ctx, game_view, hud_scale);
@@ -728,7 +734,8 @@ impl RaceStatHud {
         Self::clamp_panel_min(game_view, panel, base + offset) - base
     }
 
-    // offset for a stored normalized position (0..1 within the game view)
+    // offset for a stored normalized top-left position; unlike interactive
+    // movement this is not size-clamped, so resizing keeps that corner fixed
     fn drag_offset_from_pos(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, pos: Option<(f32, f32)>) -> egui::Vec2 {
         let Some((nx, ny)) = pos else {
             return egui::Vec2::ZERO;
@@ -738,7 +745,7 @@ impl RaceStatHud {
             game_view.left() + nx.clamp(0.0, 1.0) * game_view.width(),
             game_view.top() + ny.clamp(0.0, 1.0) * game_view.height(),
         );
-        Self::clamp_panel_min(game_view, panel, desired) - base
+        desired - base
     }
 
     // normalized position for a drag offset (what gets stored in the config)
@@ -754,7 +761,17 @@ impl RaceStatHud {
         )
     }
 
-    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, game_view: egui::Rect, panel: egui::Vec2, scale: f32, toggle_button: bool) {
+    fn run_hud(
+        &mut self,
+        ctx: &egui::Context,
+        screen: egui::Rect,
+        game_view: egui::Rect,
+        panel: egui::Vec2,
+        scale: f32,
+        width_scale: f32,
+        height_scale: f32,
+        toggle_button: bool,
+    ) {
         if !self.visible {
             return;
         }
@@ -780,11 +797,7 @@ impl RaceStatHud {
         let drag_save = config.race_stat_hud_draggable_save;
         drop(config);
 
-        let mut drag_offset = if draggable {
-            Self::drag_offset_from_pos(game_view, panel, is_vertical, self.drag_pos)
-        } else {
-            egui::Vec2::ZERO
-        };
+        let mut drag_offset = Self::drag_offset_from_pos(game_view, panel, is_vertical, self.drag_pos);
         let mut drag_active = false;
         let mut drag_travel = self.drag_travel;
 
@@ -804,7 +817,7 @@ impl RaceStatHud {
                     None
                 };
 
-                egui::Frame::NONE
+                let frame = egui::Frame::NONE
                     .fill(egui::Color32::from_black_alpha(200))
                     .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 100)))
                     .inner_margin(egui::Margin::same((8.0 * scale).min(120.0) as i8))
@@ -825,6 +838,69 @@ impl RaceStatHud {
 
                         self.hud_contents(ui, &all_stats, course_info.as_ref(), scale, inner.y, toggle_button, draggable);
                     });
+
+                let handle_size = 16.0 * scale;
+                let handle_rect = egui::Rect::from_min_size(
+                    frame.response.rect.right_bottom() - egui::Vec2::splat(handle_size),
+                    egui::Vec2::splat(handle_size),
+                );
+                let resize_response = ui.interact(handle_rect, area_id.with("resize"), egui::Sense::drag());
+                let resize_stroke = ui.style().interact(&resize_response).fg_stroke;
+                for inset in [3.0, 7.0, 11.0] {
+                    let inset = inset * scale;
+                    let points = [
+                        egui::pos2(handle_rect.right() - inset, handle_rect.bottom()),
+                        egui::pos2(handle_rect.right(), handle_rect.bottom() - inset),
+                    ];
+                    ui.painter().line_segment(points, resize_stroke);
+                }
+
+                if resize_response.hovered() || resize_response.dragged() {
+                    ctx.set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+                }
+                if resize_response.drag_started() {
+                    self.drag_pos = Some(Self::drag_pos_from_offset(
+                        game_view,
+                        panel,
+                        is_vertical,
+                        drag_offset,
+                    ));
+                    self.resize_dirty = false;
+                }
+                if resize_response.dragged() && panel.x > 0.0 && panel.y > 0.0 {
+                    let delta = resize_response.drag_delta();
+                    let desired_width = (panel.x + delta.x).max(1.0);
+                    let desired_height = (panel.y + delta.y).max(1.0);
+                    let new_scale = (
+                        Self::clamp_size_scale(
+                            width_scale * desired_width / panel.x,
+                            RACE_STAT_HUD_WIDTH_SCALE_MIN,
+                            RACE_STAT_HUD_WIDTH_SCALE_MAX,
+                        ),
+                        Self::clamp_size_scale(
+                            height_scale * desired_height / panel.y,
+                            RACE_STAT_HUD_HEIGHT_SCALE_MIN,
+                            RACE_STAT_HUD_HEIGHT_SCALE_MAX,
+                        ),
+                    );
+                    self.resize_scale = Some(new_scale);
+                    self.resize_dirty = true;
+                }
+                if resize_response.drag_stopped() && self.resize_dirty {
+                    if let Some((width_scale, height_scale)) = self.resize_scale {
+                        self.config.race_stat_hud_width_scale = width_scale;
+                        self.config.race_stat_hud_height_scale = height_scale;
+                        let mut new_config = (**Hachimi::instance().config.load()).clone();
+                        new_config.race_stat_hud_width_scale = width_scale;
+                        new_config.race_stat_hud_height_scale = height_scale;
+                        if let Some((x, y)) = self.drag_pos {
+                            new_config.race_stat_hud_drag_x = x;
+                            new_config.race_stat_hud_drag_y = y;
+                        }
+                        save_and_reload_config(new_config);
+                    }
+                    self.resize_dirty = false;
+                }
 
                 // process the whole-panel drag handle registered above
                 if let Some(resp) = drag_response {
