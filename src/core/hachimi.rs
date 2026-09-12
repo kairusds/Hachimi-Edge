@@ -91,6 +91,8 @@ pub struct Hachimi {
 
 static INSTANCE: OnceCell<Arc<Hachimi>> = OnceCell::new();
 
+static SKILL_DATA_DESC_REBUILD_REQUESTED: AtomicBool = AtomicBool::new(false);
+
 impl Hachimi {
     pub fn init() -> bool {
         if INSTANCE.get().is_some() {
@@ -284,10 +286,20 @@ impl Hachimi {
         self.localized_data.store(Arc::new(new_data));
 
         if !self.skill_data_desc.load().descs.is_empty() {
-            let data = SkillDataDesc::load_from_db();
-            if !data.descs.is_empty() {
-                self.skill_data_desc.store(Arc::new(data));
-            }
+            SKILL_DATA_DESC_REBUILD_REQUESTED.store(true, atomic::Ordering::Release);
+        }
+    }
+
+    pub fn drain_skill_data_desc_rebuild(&self) {
+        if !SKILL_DATA_DESC_REBUILD_REQUESTED.swap(false, atomic::Ordering::AcqRel) {
+            return;
+        }
+        if self.skill_data_desc.load().descs.is_empty() {
+            return;
+        }
+        let data = SkillDataDesc::load_from_db();
+        if !data.descs.is_empty() {
+            self.skill_data_desc.store(Arc::new(data));
         }
     }
 
