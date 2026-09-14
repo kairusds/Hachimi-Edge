@@ -347,6 +347,10 @@ impl SkillDataDesc {
 
     fn str(key: &str) -> Option<String> {
         let full_key = format!("skill_data_desc.{key}");
+        let localized_data = Hachimi::instance().localized_data.load();
+        if let Some(text) = localized_data.skill_data_desc_dict.get(full_key.as_str()) {
+            return Some(text.to_string());
+        }
         let locale = locale();
         crate::_rust_i18n_try_translate(&locale, full_key.as_str()).map(|text| text.to_string())
     }

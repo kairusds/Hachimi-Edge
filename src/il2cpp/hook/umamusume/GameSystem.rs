@@ -34,6 +34,7 @@ fn apply_free_camera_live_pause_request() {
 
 extern "C" fn GameSystem_Update(this: *mut Il2CppObject) {
     crate::core::gui::race_slider_drain();
+    Hachimi::instance().drain_skill_data_desc_rebuild();
 
     #[cfg(target_os = "windows")]
     {
