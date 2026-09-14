@@ -809,18 +809,18 @@ skill_data_desc:
         le: "Distance to first ≤%{v}m"
 
 theme_editor:
-  title: "GUI Theme Editor"
+  title: "태마 수정"
   ui_accent_color: "Accent Color"
-  ui_window_fill: "Window Background Color"
-  ui_panel_fill: "Panel Background Color"
+  ui_window_fill: "배경색"
+  ui_panel_fill: "전광판 배경색"
   ui_extreme_bg_color: "Input Background"
-  ui_text_color: "Text Color"
-  ui_window_rounding: "Rounded Corners"
+  ui_text_color: "글자 색"
+  ui_window_rounding: "굴곡"
 
 set_keybind:
-  title: "Set Keybind"
-  press_any_key: "Press any key…"
-  bound_key: "Bound key: %{key}"
+  title: "단축키 설정"
+  press_any_key: "아무 키나 누르세요."
+  bound_key: "감지된 단축키: %{key}"
 
 free_camera:
   settings_title: "Free Camera Settings"
