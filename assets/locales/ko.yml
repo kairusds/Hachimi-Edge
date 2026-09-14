@@ -458,12 +458,12 @@ skill_data_desc:
           "1": "제 4코너,폴스 스트레치,제 5코너(폴스 스트레치가 있는 경우),최종직선 이라면"
       is_goodstart:
         eq:
-          "0": "Not a good start"
-          "1": "Good start"
+          "0": "늦출/컨센트레이션 불발이라면"
+          "1": "깨끗한 스타토를 끊었다면"
       is_move_lane:
         eq:
-          "1": "Moved closer to fence"
-          "2": "Moved further from fence"
+          "1": "안쪽 라인으로 들어갔다면"
+          "2": "바깠쪽 라인으로 나왔다면"
       is_other_character_activate_advantage_skill:
         eq:
           "9": "Opponent used +Current HP skill"
@@ -486,8 +486,8 @@ skill_data_desc:
           "5": "Motivation ≤Peak"
       phase_corner_random:
         eq:
-          "1": "Middle leg corner (random)"
-          "2": "Final leg corner (random)"
+          "1": "경기 중반 무작위 코너"
+          "2": "경기 종반 무작위 코너"
       phase_first_half_straight_random:
         eq:
           "1": "Middle leg first half straight (random)"
