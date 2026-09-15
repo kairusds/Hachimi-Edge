@@ -774,6 +774,8 @@ pub struct Config {
     #[serde(default)]
     pub skill_data_desc: bool,
     #[serde(default)]
+    pub old_config_editor: bool,
+    #[serde(default)]
     pub homescreen_bgseason: crate::il2cpp::hook::umamusume::GameDefine::BgSeason,
     pub sugoi_url: Option<String>,
     #[serde(default)]
@@ -804,6 +806,8 @@ pub struct Config {
     pub race_stat_hud_width_scale: f32,
     #[serde(default = "Config::default_race_stat_hud_height_scale")]
     pub race_stat_hud_height_scale: f32,
+    #[serde(default = "Config::default_race_stat_hud_opacity_scale")]
+    pub race_stat_hud_opacity_scale: f32,
     #[serde(default)]
     pub race_playback_slider: bool,
     #[serde(default = "Config::default_true")]
@@ -893,6 +897,7 @@ impl Config {
     fn default_race_stat_hud_drag_y() -> f32 { -1.0 }
     fn default_race_stat_hud_width_scale() -> f32 { 1.0 }
     fn default_race_stat_hud_height_scale() -> f32 { 1.0 }
+    fn default_race_stat_hud_opacity_scale() -> f32 { 1.0 }
     fn default_true() -> bool { true }
 }
 
