@@ -239,6 +239,8 @@ config_editor:
   race_stat_hud_width_scale: "Race Stat HUD width scale"
   race_stat_hud_height_scale: "Race Stat HUD height scale"
   race_stat_hud_opacity_scale: "Race Stat HUD opacity scale"
+  race_stat_hud_persist_clones: "Race Stat HUD persist clones"
+  race_stat_hud_persist_selected_index: "Race Stat HUD save selected character(s)"
   race_playback_slider: "Race Playback Slider"
   race_playback_slider_always: "Always show Race Playback Slider"
   race_playback_button: "Race playback pause/resume button"

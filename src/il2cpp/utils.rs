@@ -5,6 +5,7 @@ use once_cell::sync::Lazy;
 use crate::{core::utils::{get_file_modified_time, load_rgba_png_file}, il2cpp::{ext::{Il2CppObjectExt, Il2CppStringExt}, hook::UnityEngine_CoreModule::{Component, RectTransform}, types::*}};
 
 use super::{
+    api::{il2cpp_class_get_fields, il2cpp_class_is_enum, il2cpp_field_get_flags, il2cpp_field_get_name},
     hook::{mscorlib, UnityEngine_CoreModule::{Texture, Texture2D},
     UnityEngine_ImageConversionModule::ImageConversion},
     symbols::{get_assembly_image, get_class, get_method_addr_cached, Array}
@@ -224,4 +225,29 @@ pub fn adjust_transform_size(component: *mut Il2CppObject, width: f32, height: f
             RectTransform::SetSizeWithCurrentAnchors(transform, RectTransform::Axis::Vertical, height);
         }
     }
+}
+
+pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
+    let mut options = Vec::new();
+    let Ok(image) = get_assembly_image(c"umamusume.dll") else { return options };
+    let Ok(klass) = get_class(image, c"Gallop", class_name) else { return options };
+
+    if !il2cpp_class_is_enum(klass) { return options; }
+
+    let mut iter: *mut std::ffi::c_void = std::ptr::null_mut();
+    loop {
+        let field = il2cpp_class_get_fields(klass, &mut iter);
+        if field.is_null() { break; }
+        let attrs = il2cpp_field_get_flags(field);
+        if (attrs & 0x0040) != 0 {
+            let name_ptr = il2cpp_field_get_name(field);
+            if !name_ptr.is_null() {
+                let name = unsafe { std::ffi::CStr::from_ptr(name_ptr) };
+                if let Ok(s) = name.to_str() {
+                    options.push(s.to_string());
+                }
+            }
+        }
+    }
+    options
 }

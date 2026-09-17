@@ -5,7 +5,7 @@ use std::{
     ops::RangeInclusive,
     os::raw::c_void,
     panic::{self, AssertUnwindSafe},
-    sync::{atomic::{self, AtomicBool, AtomicI32, AtomicU32}, Arc, Mutex},
+    sync::{atomic::{self, AtomicBool, AtomicI32, AtomicU32, AtomicUsize}, Arc, Mutex},
     thread,
     time::Instant
 };
@@ -68,7 +68,7 @@ use super::{
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
-    utils::{self, umamusume_enum_options, SendPtr},
+    utils::{self, SendPtr},
     Hachimi
 };
 
@@ -172,6 +172,7 @@ static INSTANCE: OnceCell<Mutex<Gui>> = OnceCell::new();
 pub static IS_CONSUMING_INPUT: AtomicBool = AtomicBool::new(false);
 pub static GUI_INPUT_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub static WANTS_INPUT: AtomicBool = AtomicBool::new(false);
+pub static EGUI_TYPING: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SCENE: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SLIDER_ACTIVE: AtomicBool = AtomicBool::new(false);
 
@@ -234,12 +235,18 @@ pub fn race_slider_drain() {
 }
 
 static TOGGLE_RACE_STAT_HUD_REQUESTED: AtomicBool = AtomicBool::new(false);
+static TOGGLE_RACE_STAT_HUD_CLONE_REQUESTED: AtomicUsize = AtomicUsize::new(usize::MAX);
+static PENDING_CLONE_KEYBIND: Lazy<Mutex<Option<(u32, i32)>>> = Lazy::new(|| Mutex::new(None));
 static RACE_STAT_HUD: Lazy<Mutex<RaceStatHud>> = Lazy::new(|| Mutex::new(RaceStatHud::new()));
 static RACE_STAT_HUD_CLONE_SEQ: AtomicU32 = AtomicU32::new(1);
 const RACE_STAT_HUD_CLONE_STAGGER: f32 = 24.0;
 
 pub fn toggle_race_stat_hud() {
     TOGGLE_RACE_STAT_HUD_REQUESTED.store(true, atomic::Ordering::Release);
+}
+
+pub fn toggle_race_stat_hud_clone(index: usize) {
+    TOGGLE_RACE_STAT_HUD_CLONE_REQUESTED.store(index, atomic::Ordering::Release);
 }
 
 // portrait: full width, fixed at 38% of the screen height
@@ -487,10 +494,14 @@ struct RaceStatHud {
     visible: bool,
     elements_showing: bool,
     selected_character: usize,
+    selected_character_dirty: bool,
     select_player_on_race_start: bool,
     current_tab: RaceStatHudTab,
     drag_pos: Option<(f32, f32)>,
     drag_travel: f32,
+    drag_save_pending: bool,
+    entry_index: Option<usize>,
+    toggle_key: Option<i32>,
     config: hachimi::Config,
     last_used_skills: Vec<i32>,
     last_unused_skills: Vec<i32>,
@@ -511,10 +522,14 @@ impl RaceStatHud {
             visible: false,
             elements_showing: false,
             selected_character: 0,
+            selected_character_dirty: false,
             select_player_on_race_start: false,
             current_tab: RaceStatHudTab::Stats,
             drag_pos: None,
             drag_travel: 0.0,
+            drag_save_pending: false,
+            entry_index: None,
+            toggle_key: None,
             config: (**Hachimi::instance().config.load()).clone(),
             last_used_skills: Vec::new(),
             last_unused_skills: Vec::new(),
@@ -539,10 +554,14 @@ impl RaceStatHud {
             visible: true,
             elements_showing: true,
             selected_character: selected,
+            selected_character_dirty: false,
             select_player_on_race_start: false,
             current_tab: tab,
             drag_pos,
             drag_travel: 0.0,
+            drag_save_pending: false,
+            entry_index: None,
+            toggle_key: None,
             config: (**Hachimi::instance().config.load()).clone(),
             last_used_skills: Vec::new(),
             last_unused_skills: Vec::new(),
@@ -594,6 +613,60 @@ impl RaceStatHud {
         save_and_reload_config(new_config);
     }
 
+    fn save_hud_state_config(&mut self) {
+        let mut live = (**Hachimi::instance().config.load()).clone();
+        let persist_clones = live.race_stat_hud_persist_clones;
+        let drag_save = live.race_stat_hud_draggable_save;
+        let mut entries = if persist_clones {
+            std::mem::take(&mut live.race_stat_hud_clones)
+        } else {
+            Vec::new()
+        };
+        let mut clones_changed = false;
+        if persist_clones {
+            for c in self.clones.iter_mut() {
+                let (drag_x, drag_y) = if drag_save { c.drag_pos.unwrap_or((-1.0, -1.0)) } else { (-1.0, -1.0) };
+                let entry = hachimi::RaceStatHudCloneConfig {
+                    drag_x,
+                    drag_y,
+                    selected_character: c.selected_character,
+                    toggle_key: c.toggle_key,
+                    open: c.visible
+                };
+                match c.entry_index {
+                    Some(i) if i < entries.len() => {
+                        if entries[i] != entry {
+                            clones_changed = true;
+                        }
+                        entries[i] = entry;
+                    }
+                    _ => {
+                        entries.push(entry);
+                        c.entry_index = Some(entries.len() - 1);
+                        clones_changed = true;
+                    }
+                }
+            }
+        }
+        let selected_character = if live.race_stat_hud_persist_selected_index && self.selected_character_dirty {
+            Some(self.selected_character)
+        } else {
+            live.race_stat_hud_selected_character
+        };
+        let selected_changed = live.race_stat_hud_selected_character != selected_character;
+        let main_open_changed = live.race_stat_hud_main_open != self.visible;
+        if !clones_changed && !selected_changed && !main_open_changed {
+            return;
+        }
+        let mut new_config = live;
+        if persist_clones {
+            new_config.race_stat_hud_clones = entries;
+        }
+        new_config.race_stat_hud_selected_character = selected_character;
+        new_config.race_stat_hud_main_open = self.visible;
+        save_and_reload_config(new_config);
+    }
+
     fn elements_showing() -> bool {
         if TOGGLE_RACE_STAT_HUD_REQUESTED.load(atomic::Ordering::Acquire) {
             return true;
@@ -631,16 +704,29 @@ impl RaceStatHud {
             hud.set_visible(visible);
         }
 
+        let clone_toggle_requested = TOGGLE_RACE_STAT_HUD_CLONE_REQUESTED.swap(usize::MAX, atomic::Ordering::AcqRel);
+        if clone_toggle_requested != usize::MAX {
+            if let Some(clone) = hud.clones.iter_mut().find(|c| c.entry_index == Some(clone_toggle_requested)) {
+                clone.visible = !clone.visible;
+            }
+        }
+
         let was_showing = hud.elements_showing;
         hud.elements_showing = Self::elements_showing_locked(&hud);
         if was_showing && !hud.elements_showing {
             hud.save_autoscroll_config();
+            hud.save_hud_state_config();
             hud.clones.clear();
         } else if !was_showing && hud.elements_showing {
             hud.config = (**Hachimi::instance().config.load()).clone();
             hud.last_used_skills.clear();
             hud.last_unused_skills.clear();
             hud.select_player_on_race_start = true;
+            hud.selected_character_dirty = false;
+            if !hud.visible {
+                let main_open = hud.config.race_stat_hud_main_open;
+                hud.set_visible(main_open);
+            }
         }
         if !hud.elements_showing {
             return;
@@ -666,16 +752,83 @@ impl RaceStatHud {
             (Vec::new(), None)
         };
 
+        if hud.clones.is_empty() && hud.config.race_stat_hud_persist_clones {
+            let entries: Vec<hachimi::RaceStatHudCloneConfig> = hud.config.race_stat_hud_clones.iter().copied().collect();
+            let persist_selected = hud.config.race_stat_hud_persist_selected_index;
+            let selected_default = hud.selected_character;
+            let current_tab = hud.current_tab;
+            let mut open_count = 0usize;
+            for (i, entry) in entries.iter().enumerate() {
+                let visible = entry.open && open_count < 18;
+                open_count += visible as usize;
+                let selected = if persist_selected { entry.selected_character } else { selected_default };
+                let pos = entry.drag_pos().or_else(|| Self::clamped_spawn_pos(game_view, panel, is_vertical, None, hud_scale, i));
+                let seq = RACE_STAT_HUD_CLONE_SEQ.fetch_add(1, atomic::Ordering::Relaxed);
+                let mut clone = RaceStatHud::new_clone(seq, selected, current_tab, pos);
+                clone.visible = visible;
+                clone.entry_index = Some(i);
+                clone.toggle_key = entry.toggle_key;
+                hud.clones.push(clone);
+            }
+        }
+
+        if let Some((seq, key)) = PENDING_CLONE_KEYBIND.lock().unwrap().take() {
+            if let Some(idx) = hud.clones.iter().position(|c| c.clone_seq == seq) {
+                hud.clones[idx].toggle_key = Some(key);
+                if (**Hachimi::instance().config.load()).race_stat_hud_persist_clones {
+                    hud.save_hud_state_config();
+                } else {
+                    let selected_character = hud.clones[idx].selected_character;
+                    let entry_index = hud.clones[idx].entry_index;
+                    let mut new_config = (**Hachimi::instance().config.load()).clone();
+                    match entry_index {
+                        Some(i) if i < new_config.race_stat_hud_clones.len() => {
+                            new_config.race_stat_hud_clones[i].toggle_key = Some(key);
+                        }
+                        _ => {
+                            new_config.race_stat_hud_clones.push(hachimi::RaceStatHudCloneConfig {
+                                drag_x: -1.0,
+                                drag_y: -1.0,
+                                selected_character,
+                                toggle_key: Some(key),
+                                open: true
+                            });
+                            hud.clones[idx].entry_index = Some(new_config.race_stat_hud_clones.len() - 1);
+                        }
+                    }
+                    save_and_reload_config(new_config);
+                }
+            }
+        }
+
+        let can_add_clone = hud.clones.iter().filter(|c| c.visible).count() < 18;
+
         if !all_stats.is_empty() {
-            hud.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button, &all_stats, course_info.as_ref());
+            hud.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button, can_add_clone, &all_stats, course_info.as_ref());
             for clone in hud.clones.iter_mut() {
                 if clone.selected_character >= all_stats.len() {
-                    clone.selected_character = 0;
+                    clone.selected_character = all_stats.len() - 1;
                 }
-                clone.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button, &all_stats, course_info.as_ref());
+                clone.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button, can_add_clone, &all_stats, course_info.as_ref());
             }
         }
         hud.stats_buf = all_stats;
+
+        if (hud.config.race_stat_hud_persist_selected_index && hud.selected_character_dirty)
+            || (hud.config.race_stat_hud_persist_clones && hud.clones.iter().any(|c| c.selected_character_dirty)) {
+            hud.save_hud_state_config();
+            hud.selected_character_dirty = false;
+            for c in hud.clones.iter_mut() {
+                c.selected_character_dirty = false;
+            }
+        }
+
+        if hud.clones.iter().any(|c| c.drag_save_pending) {
+            for c in hud.clones.iter_mut() {
+                c.drag_save_pending = false;
+            }
+            hud.save_hud_state_config();
+        }
 
         let clone_requested = hud.spawn_clone || hud.clones.iter().any(|c| c.spawn_clone);
         if clone_requested {
@@ -690,13 +843,16 @@ impl RaceStatHud {
             for c in hud.clones.iter_mut() {
                 c.spawn_clone = false;
             }
-            if hud.clones.len() < 16 {
+            if hud.clones.iter().filter(|c| c.visible).count() < 18 {
                 let pos = Self::clamped_spawn_pos(game_view, panel, is_vertical, parent_pos, hud_scale, hud.clones.len());
                 let seq = RACE_STAT_HUD_CLONE_SEQ.fetch_add(1, atomic::Ordering::Relaxed);
-                hud.clones.push(RaceStatHud::new_clone(seq, parent_selected, parent_tab, pos));
+                let mut clone = RaceStatHud::new_clone(seq, parent_selected, parent_tab, pos);
+                if hud.config.race_stat_hud_persist_clones {
+                    clone.entry_index = Some(hud.clones.len());
+                }
+                hud.clones.push(clone);
             }
         }
-        hud.clones.retain(|c| c.visible);
 
         if toggle_button && !hud.visible {
             hud.run_button(ctx, game_view, hud_scale);
@@ -844,7 +1000,7 @@ impl RaceStatHud {
         )
     }
 
-    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, game_view: egui::Rect, panel: egui::Vec2, scale: f32, toggle_button: bool, all_stats: &[CharacterStats], course_info: Option<&RaceCourseInfo>) {
+    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, game_view: egui::Rect, panel: egui::Vec2, scale: f32, toggle_button: bool, can_add_clone: bool, all_stats: &[CharacterStats], course_info: Option<&RaceCourseInfo>) {
         if !self.visible {
             return;
         }
@@ -920,7 +1076,7 @@ impl RaceStatHud {
                         ui.set_max_width(inner.x);
                         ui.set_min_height(inner.y);
 
-                        self.hud_contents(ui, all_stats, course_info, scale, inner.y, toggle_button, draggable);
+                        self.hud_contents(ui, all_stats, course_info, scale, inner.y, toggle_button, can_add_clone, draggable);
                     });
 
                 // process the whole-panel drag handle registered above
@@ -939,12 +1095,16 @@ impl RaceStatHud {
                         drag_active = true;
                         // a click (press + release without movement) is not a drag:
                         // egui marks drag-only widgets as dragged from the press on, so gate the save on real travel
-                        if drag_save && !self.is_clone() && drag_travel >= RACE_STAT_HUD_DRAG_SAVE_THRESHOLD * scale {
-                            let pos = Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset);
-                            let mut new_config = (**Hachimi::instance().config.load()).clone();
-                            new_config.race_stat_hud_drag_x = pos.0;
-                            new_config.race_stat_hud_drag_y = pos.1;
-                            save_and_reload_config(new_config);
+                        if drag_save && drag_travel >= RACE_STAT_HUD_DRAG_SAVE_THRESHOLD * scale {
+                            if self.is_clone() {
+                                self.drag_save_pending = true;
+                            } else {
+                                let pos = Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset);
+                                let mut new_config = (**Hachimi::instance().config.load()).clone();
+                                new_config.race_stat_hud_drag_x = pos.0;
+                                new_config.race_stat_hud_drag_y = pos.1;
+                                save_and_reload_config(new_config);
+                            }
                         }
                         drag_travel = 0.0;
                     }
@@ -982,7 +1142,63 @@ impl RaceStatHud {
             });
     }
 
-    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool, draggable_page: bool) {
+    fn toggle_keybind_label(&self) -> String {
+        if self.is_clone() {
+            let Some(key) = self.toggle_key else {
+                return "\u{f11c}".to_owned();
+            };
+            #[cfg(target_os = "android")]
+            return crate::android::gui_impl::keymap::keycode_display_label(key);
+            #[cfg(target_os = "windows")]
+            return crate::windows::utils::vk_to_display_label(key as u16);
+            #[cfg(not(any(target_os = "android", target_os = "windows")))]
+            return key.to_string();
+        }
+        let raw = {
+            #[cfg(target_os = "android")]
+            { Hachimi::instance().config.load().android.race_stat_hud_toggle_key }
+            #[cfg(target_os = "windows")]
+            { Hachimi::instance().config.load().windows.race_stat_hud_toggle_key }
+            #[cfg(not(any(target_os = "android", target_os = "windows")))]
+            { 0 }
+        };
+        if raw == 0 {
+            return "\u{f11c}".to_owned();
+        }
+        #[cfg(target_os = "android")]
+        return crate::android::gui_impl::keymap::keycode_display_label(raw);
+        #[cfg(target_os = "windows")]
+        return crate::windows::utils::vk_to_display_label(raw as u16);
+        #[cfg(not(any(target_os = "android", target_os = "windows")))]
+        return raw.to_string();
+    }
+
+    fn open_toggle_keybind_window(&self) {
+        let clone_seq = self.clone_seq;
+        thread::spawn(move || {
+            let Some(gui_mutex) = Gui::instance() else { return };
+            let mut gui = gui_mutex.lock().unwrap();
+            gui.show_window(Box::new(SetKeybindWindow::new(move |result| {
+                let Some(raw) = result else { return };
+
+                if clone_seq == 0 {
+                    let hachimi = Hachimi::instance();
+                    let mut new_config = hachimi.config.load().as_ref().clone();
+
+                    #[cfg(target_os = "windows")]
+                    { new_config.windows.race_stat_hud_toggle_key = raw; }
+                    #[cfg(target_os = "android")]
+                    { new_config.android.race_stat_hud_toggle_key = raw; }
+
+                    save_and_reload_config(new_config);
+                } else {
+                    PENDING_CLONE_KEYBIND.lock().unwrap().replace((clone_seq, raw as i32));
+                }
+            })));
+        });
+    }
+
+    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool, can_add_clone: bool, draggable_page: bool) {
         let mut selected = self.selected_character;
         let mut visible = self.visible;
         let current_tab = self.current_tab;
@@ -1023,7 +1239,7 @@ impl RaceStatHud {
                     });
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.button(" \u{f29c} ").clicked() {
+                    if !self.is_clone() && ui.button(" \u{f29c} ").clicked() {
                         thread::spawn(|| {
                             Gui::instance().unwrap()
                             .lock().unwrap()
@@ -1036,7 +1252,7 @@ impl RaceStatHud {
                         });
                     }
 
-                    {
+                    if can_add_clone {
                         let btn_size = 20.0 * scale;
                         let btn = egui::Button::new(
                             egui::RichText::new("\u{f067}").size(14.0 * scale)
@@ -1065,6 +1281,9 @@ impl RaceStatHud {
                 });
             });
         });
+        if selected != self.selected_character {
+            self.selected_character_dirty = true;
+        }
         self.selected_character = selected;
         self.set_visible(visible);
 
@@ -1080,11 +1299,25 @@ impl RaceStatHud {
             widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
             widgets.active.corner_radius = egui::CornerRadius::ZERO;
 
-            for (tab, label) in RaceStatHudTab::display_list() {
-                if ui.selectable_label(current_tab == tab, egui::RichText::new(label).size(13.0 * scale)).clicked() {
-                    current_tab = tab;
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                for (tab, label) in RaceStatHudTab::display_list() {
+                    if ui.selectable_label(current_tab == tab, egui::RichText::new(label).size(13.0 * scale)).clicked() {
+                        current_tab = tab;
+                    }
                 }
-            }
+            });
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                let keybind_label = self.toggle_keybind_label();
+                let btn_size = 20.0 * scale;
+                let btn = egui::Button::new(
+                    egui::RichText::new(keybind_label).size(13.0 * scale)
+                ).min_size(egui::Vec2::new(btn_size, btn_size));
+
+                if ui.add(btn).clicked() {
+                    self.open_toggle_keybind_window();
+                }
+            });
         });
         self.current_tab = current_tab;
 
@@ -1723,7 +1956,14 @@ impl RaceStatHud {
 
             if self.select_player_on_race_start {
                 self.select_player_on_race_start = false;
-                self.selected_character = player_idx.min(all_stats.len() - 1);
+                self.selected_character = if self.config.race_stat_hud_persist_selected_index {
+                    match self.config.race_stat_hud_selected_character {
+                        Some(i) => i.min(all_stats.len() - 1),
+                        None => player_idx.min(all_stats.len() - 1)
+                    }
+                } else {
+                    player_idx.min(all_stats.len() - 1)
+                };
             } else if self.selected_character >= all_stats.len() {
                 self.selected_character = player_idx.min(all_stats.len() - 1);
             }
@@ -2812,6 +3052,8 @@ impl Gui {
     }
 
     fn race_slider_showing() -> bool {
+        use crate::il2cpp::hook::umamusume::RaceInfo;
+
         let config = Hachimi::instance().config.load();
         let is_dragging = RACE_SLIDER_DRAGGING.load(atomic::Ordering::Acquire);
 
@@ -2819,6 +3061,11 @@ impl Gui {
             || !RaceHorseManagerBase::is_race_active()
             || (HorseRaceInfo::is_start_dash() && !is_dragging)
             || HorseRaceInfo::is_finished() {
+            return false;
+        }
+
+        let race_info = RaceManager::get_RaceInfo();
+        if !race_info.is_null() && RaceInfo::get_IsStoryRace(race_info) {
             return false;
         }
 
@@ -3186,6 +3433,11 @@ impl Gui {
             self.context.is_pointer_over_area() || 
             self.context.wants_keyboard_input() ||
             free_camera_input_capture,
+            atomic::Ordering::Release
+        );
+
+        EGUI_TYPING.store(
+            self.context.wants_keyboard_input(),
             atomic::Ordering::Release
         );
 
@@ -3906,6 +4158,10 @@ impl Gui {
         GUI_INPUT_ACTIVE.load(atomic::Ordering::Acquire)
     }
 
+    pub fn is_egui_typing_atomic() -> bool {
+        EGUI_TYPING.load(atomic::Ordering::Acquire)
+    }
+
     pub fn set_consuming_input(&mut self, val: bool) {
         if !self.windows.is_empty() && !val {
             self.windows.clear();
@@ -4448,6 +4704,17 @@ impl Window for SimpleOkDialog {
     }
 }
 
+#[derive(Clone)]
+pub struct GameOpts {
+    pub champions_resources: Arc<Vec<String>>,
+    pub champions_live_max_year: i32,
+    pub font_color_options: Arc<Vec<String>>,
+    pub outline_size_options: Arc<Vec<String>>,
+    pub outline_color_options: Arc<Vec<String>>
+}
+
+pub static GAME_OPTS_CACHE: Lazy<Mutex<Option<GameOpts>>> = Lazy::new(|| Mutex::new(None));
+
 struct ConfigEditor {
     last_ptr_config: usize,
     config: hachimi::Config,
@@ -4461,11 +4728,11 @@ struct ConfigEditor {
     swipe_scroll_state_id: Option<egui::Id>,
     swipe_locked_scroll_y: Option<f32>,
     swipe_prewarm: u8,
-    champions_resources: Vec<String>,
+    champions_resources: Arc<Vec<String>>,
     champions_live_max_year: i32,
-    font_color_options: Vec<String>,
-    outline_size_options: Vec<String>,
-    outline_color_options: Vec<String>,
+    font_color_options: Arc<Vec<String>>,
+    outline_size_options: Arc<Vec<String>>,
+    outline_color_options: Arc<Vec<String>>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -4537,7 +4804,6 @@ struct SwipeAnim {
 }
 
 const CONFIG_EDITOR_SWIPE_SLOP: f32 = 18.0;
-const CONFIG_EDITOR_SWIPE_FLING: f32 = 800.0;
 
 fn swipe_anim_duration(from: f32, to: f32, width: f32) -> f32 {
     if width <= 0.0 {
@@ -4563,6 +4829,26 @@ fn should_show_option(search: &str, label: &str) -> bool {
 impl ConfigEditor {
     pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
+        let mut champions_resources = Arc::new(Vec::new());
+        let mut champions_live_max_year = Utc::now().year();
+        let mut font_color_options = Arc::new(Vec::new());
+        let mut outline_size_options = Arc::new(Vec::new());
+        let mut outline_color_options = Arc::new(Vec::new());
+        let game_opts = match GAME_OPTS_CACHE.lock() {
+            Ok(opts) => opts.as_ref().cloned(),
+            Err(poisoned) => {
+                warn!("[gui] GAME_OPTS_CACHE mutex poisoned, recovering");
+                poisoned.into_inner().as_ref().cloned()
+            }
+        };
+        if let Some(opts) = game_opts {
+            champions_resources = opts.champions_resources;
+            champions_live_max_year = opts.champions_live_max_year;
+            font_color_options = opts.font_color_options;
+            outline_size_options = opts.outline_size_options;
+            outline_color_options = opts.outline_color_options;
+        }
+
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
             config: (**Hachimi::instance().config.load()).clone(),
@@ -4576,11 +4862,11 @@ impl ConfigEditor {
             swipe_scroll_state_id: None,
             swipe_locked_scroll_y: None,
             swipe_prewarm: 2,
-            champions_resources: crate::il2cpp::sql::get_champions_resources(),
-            champions_live_max_year: crate::il2cpp::sql::get_champions_live_max_year(),
-            font_color_options: umamusume_enum_options(c"FontColorType"),
-            outline_size_options: umamusume_enum_options(c"OutlineSizeType"),
-            outline_color_options: umamusume_enum_options(c"OutlineColorType"),
+            champions_resources,
+            champions_live_max_year,
+            font_color_options,
+            outline_size_options,
+            outline_color_options,
         }
     }
 
@@ -5431,6 +5717,20 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
+            if should_show_option(search, &t!("config_editor.race_stat_hud_persist_clones")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global)
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_persist_clones"));
+                ui.checkbox(&mut config.race_stat_hud_persist_clones, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_persist_selected_index")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global)
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_persist_selected_index"));
+                ui.checkbox(&mut config.race_stat_hud_persist_selected_index, "");
+                ui.end_row();
+            }
+
             if should_show_option(search, &t!("config_editor.race_playback_slider")) {
                 ui.label(t!("config_editor.race_playback_slider"));
                 ui.checkbox(&mut config.race_playback_slider, "");
@@ -5514,7 +5814,13 @@ impl ConfigEditor {
                     Gui::run_combo(ui, "champions_live_resource_id", &mut config.champions_live_resource_id, &choices);
                     ui.end_row();
                     ui.label(t!("config_editor.champions_live_year"));
-                    ui.add(egui::DragValue::new(&mut config.champions_live_year).range(2022..=self.champions_live_max_year));
+                    let year_choices: Vec<(i32, String)> = (2022..=self.champions_live_max_year).rev()
+                        .map(|year| (year, year.to_string()))
+                        .collect();
+                    let year_choices: Vec<(i32, &str)> = year_choices.iter()
+                        .map(|(year, label)| (*year, label.as_str()))
+                        .collect();
+                    Gui::run_combo(ui, "champions_live_year", &mut config.champions_live_year, &year_choices);
                     ui.end_row();
                 }
             }
@@ -5561,7 +5867,7 @@ impl ConfigEditor {
                     egui::ComboBox::new(ui.id().with("caption_color"), "")
                         .selected_text(&config.caption.caption_color)
                         .show_ui(ui, |ui| {
-                            for option in &self.font_color_options {
+                            for option in self.font_color_options.iter() {
                                 ui.selectable_value(&mut config.caption.caption_color, option.clone(), option);
                             }
                         });
@@ -5573,7 +5879,7 @@ impl ConfigEditor {
                     egui::ComboBox::new(ui.id().with("caption_outline_size"), "")
                         .selected_text(&config.caption.caption_outline_size)
                         .show_ui(ui, |ui| {
-                            for option in &self.outline_size_options {
+                            for option in self.outline_size_options.iter() {
                                 ui.selectable_value(&mut config.caption.caption_outline_size, option.clone(), option);
                             }
                         });
@@ -5585,7 +5891,7 @@ impl ConfigEditor {
                     egui::ComboBox::new(ui.id().with("caption_outline_color"), "")
                         .selected_text(&config.caption.caption_outline_color)
                         .show_ui(ui, |ui| {
-                            for option in &self.outline_color_options {
+                            for option in self.outline_color_options.iter() {
                                 ui.selectable_value(&mut config.caption.caption_outline_color, option.clone(), option);
                             }
                         });
@@ -5890,6 +6196,10 @@ impl ConfigEditor {
         }
     }
 
+    fn swipe_layer_id(&self, ctx: &egui::Context) -> egui::LayerId {
+        egui::LayerId::new(egui::Order::Middle, self.id.with(get_scale_salt(ctx).to_bits()))
+    }
+
     fn process_swipe(&mut self, ctx: &egui::Context) {
         let now = ctx.input(|i| i.time);
         if let Some(anim) = &mut self.swipe_anim {
@@ -5934,12 +6244,14 @@ impl ConfigEditor {
                     let visual = g.base_offset + swipe_fresh_offset(dx);
                     let width = self.swipe_body_rect.map_or(0.0, |r| r.width());
                     let commit = raw_total.abs() >= (width * 0.3).max(CONFIG_EDITOR_SWIPE_SLOP * 2.0)
-                        || velocity.x.abs() >= CONFIG_EDITOR_SWIPE_FLING;
+                        || velocity.x.abs() >= 800.0;
                     if commit && width > 0.0 {
                         self.swipe_commit_anim(ctx, raw_total, visual);
                     } else {
                         self.begin_swipe_anim_from(ctx, 0.0, visual);
                     }
+                } else if g.base_offset != 0.0 {
+                    self.begin_swipe_anim_from(ctx, 0.0, g.base_offset);
                 }
             }
         }
@@ -5954,7 +6266,8 @@ impl ConfigEditor {
                 }
             } else {
                 let in_body = self.swipe_body_rect.is_some_and(|r| latest.is_some_and(|p| r.contains(p)));
-                if in_body {
+                let owns_layer = latest.is_some_and(|p| ctx.layer_id_at(p) == Some(self.swipe_layer_id(ctx)));
+                if in_body && owns_layer {
                     let base = self.swipe_anim.map_or(0.0, |a| a.offset);
                     self.swipe_anim = None;
                     let pos = latest.unwrap_or_else(|| origin.unwrap_or(egui::Pos2::ZERO));
@@ -6161,6 +6474,7 @@ impl Window for ConfigEditor {
             .pivot(egui::Align2::LEFT_TOP)
             .fixed_rect(content_rect)
             .constrain_to(window_rect)
+            .fade_in(false)
             .open(&mut open)
             .show(ctx, |ui| {
                 let builder = egui::UiBuilder::new()

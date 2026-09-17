@@ -152,26 +152,35 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
                     }
                 }
 
-                if pressed && key_code == Hachimi::instance().config.load().android.menu_open_key {
-                    let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
-                        return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
-                    };
-                    gui.toggle_menu();
-                }
+                if !Gui::is_egui_typing_atomic() {
+                    if pressed && key_code == Hachimi::instance().config.load().android.menu_open_key {
+                        let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
+                            return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
+                        };
+                        gui.toggle_menu();
+                    }
 
-                if Hachimi::instance().config.load().hide_ingame_ui_hotkey && pressed
-                    && key_code == Hachimi::instance().config.load().android.hide_ingame_ui_hotkey_bind {
-                    Thread::main_thread().schedule(Gui::toggle_game_ui);
-                }
+                    if Hachimi::instance().config.load().hide_ingame_ui_hotkey && pressed
+                        && key_code == Hachimi::instance().config.load().android.hide_ingame_ui_hotkey_bind {
+                        Thread::main_thread().schedule(Gui::toggle_game_ui);
+                    }
 
-                if pressed && key_code == Hachimi::instance().config.load().android.race_stat_hud_toggle_key
-                    && Hachimi::instance().config.load().race_stat_hud {
-                    Thread::main_thread().schedule(gui::toggle_race_stat_hud);
-                }
+                    if pressed && key_code == Hachimi::instance().config.load().android.race_stat_hud_toggle_key
+                        && Hachimi::instance().config.load().race_stat_hud {
+                        Thread::main_thread().schedule(gui::toggle_race_stat_hud);
+                    }
 
-                if pressed && key_code == Hachimi::instance().config.load().android.race_playback_key
-                    && Hachimi::instance().config.load().race_playback_key_enable {
-                    Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
+                    if pressed && Hachimi::instance().config.load().race_stat_hud {
+                        if let Some(i) = Hachimi::instance().config.load().race_stat_hud_clones.iter()
+                            .position(|c| c.toggle_key == Some(key_code)) {
+                            gui::toggle_race_stat_hud_clone(i);
+                        }
+                    }
+
+                    if pressed && key_code == Hachimi::instance().config.load().android.race_playback_key
+                        && Hachimi::instance().config.load().race_playback_key_enable {
+                        Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
+                    }
                 }
 
                 if pressed && key_code == keymap::KEYCODE_BACK {
