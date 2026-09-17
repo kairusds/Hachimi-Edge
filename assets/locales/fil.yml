@@ -218,6 +218,8 @@ config_editor:
   skill_data_desc: "Gawing skill data ang paglalarawan ng kasanayan"
   old_config_editor: "Gamitin ang lumang config editor"
   race_stat_hud_opacity_scale: "Opacity ng Race Stat HUD"
+  race_stat_hud_persist_clones: "Panatilihin ang mga clone sa Race Stat Hud"
+  race_stat_hud_persist_selected_index: "I-save ang (mga) piniling character sa Race Stat Hud"
 
 
 free_camera:
