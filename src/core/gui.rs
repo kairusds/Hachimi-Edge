@@ -15,6 +15,7 @@ use egui_scale::EguiScale;
 use fnv::FnvHashSet;
 use once_cell::sync::{Lazy, OnceCell};
 use rust_i18n::t;
+use size::{Base, Size, Style};
 use chrono::{Utc, Datelike};
 
 use crate::il2cpp::{
@@ -160,6 +161,7 @@ pub struct Gui {
 
     live_slider_text: String,
     race_slider_text: String,
+    update_progress_text: String,
 
     notifications: Vec<Notification>,
     next_notification_id: u32,
@@ -2808,6 +2810,7 @@ impl Gui {
 
             live_slider_text: String::new(),
             race_slider_text: String::new(),
+            update_progress_text: String::new(),
 
             notifications: Vec::new(),
             next_notification_id: 0,
@@ -4056,7 +4059,7 @@ impl Gui {
         let progress = Hachimi::instance().tl_updater.progress().unwrap_or_else(|| {
             // Assume that update is complete
             self.update_progress_visible = false;
-            tl_repo::UpdateProgress::new(1, 1)
+            tl_repo::UpdateProgress::new(1, 1, tl_repo::UpdatePhase::Checking)
         });
         let ratio = progress.current as f32 / progress.total as f32;
 
@@ -4071,16 +4074,41 @@ impl Gui {
             .inner_margin(egui::Margin::same((4.0 * scale) as i8))
             .corner_radius(4.0 * scale)
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(t!("tl_updater.title"));
-                    ui.add_space(26.0 * scale);
-                    ui.label(format!("{:.2}%", ratio * 100.0));
+                ui.set_width(168.0 * scale);
+                ui.set_max_height((ctx.content_rect().height() - 8.0 * scale).max(0.0));
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    self.update_progress_text.clear();
+                    let _ = write!(self.update_progress_text, "{:.2}%", ratio * 100.0);
+                    ui.label(self.update_progress_text.as_str());
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        ui.label(t!("tl_updater.title"));
+                    });
                 });
                 ui.add(
                     egui::ProgressBar::new(ratio)
                     .desired_height(4.0 * scale)
-                    .desired_width(140.0 * scale)
+                    .desired_width(ui.available_width())
                 );
+                if matches!(progress.phase, tl_repo::UpdatePhase::Downloading | tl_repo::UpdatePhase::Extracting) {
+                    self.update_progress_text.clear();
+                    if progress.total > 0 {
+                        let _ = write!(
+                            self.update_progress_text,
+                            "{}/{}",
+                            Size::from_bytes(progress.current).format().with_base(Base::Base10).with_style(Style::Abbreviated),
+                            Size::from_bytes(progress.total).format().with_base(Base::Base10).with_style(Style::Abbreviated)
+                        );
+                    } else {
+                        let _ = write!(
+                            self.update_progress_text,
+                            "{}",
+                            Size::from_bytes(progress.current).format().with_base(Base::Base10).with_style(Style::Abbreviated)
+                        );
+                    }
+                    ui.label(self.update_progress_text.as_str());
+                }
                 ui.label(
                     egui::RichText::new(t!("tl_updater.warning"))
                     .font(egui::FontId::proportional(10.0 * scale))
