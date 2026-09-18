@@ -254,6 +254,7 @@ config_editor:
   race_stat_hud_draggable_save: "比赛统计HUD保存拖动位置"
   race_stat_hud_width_scale: "比赛统计HUD宽度缩放"
   race_stat_hud_height_scale: "比赛统计HUD高度缩放"
+  race_stat_hud_opacity_scale: "比赛状态 HUD 不透明度"
   disable_tap_effect: "禁用点击效果"
   race_playback_slider: "比赛回放进度条"
   race_playback_slider_always: "始终显示比赛回放进度条"
@@ -261,6 +262,7 @@ config_editor:
   race_playback_key_enable: "启用比赛回放暂停/继续快捷键"
   race_playback_key: "比赛回放暂停/继续快捷键"
   skill_data_desc: "技能详细数据"
+  old_config_editor: "使用旧版配置编辑器"
 
 theme_editor:
   title: "覆盖层主题编辑器"

@@ -1,8 +1,11 @@
-use std::{io::Write, path::{Path, PathBuf}};
+use std::{collections::HashSet, io::Write, path::{Path, PathBuf}, sync::Mutex};
+
+use once_cell::sync::Lazy;
 
 use crate::{core::utils::{get_file_modified_time, load_rgba_png_file}, il2cpp::{ext::{Il2CppObjectExt, Il2CppStringExt}, hook::UnityEngine_CoreModule::{Component, RectTransform}, types::*}};
 
 use super::{
+    api::{il2cpp_class_get_fields, il2cpp_class_is_enum, il2cpp_field_get_flags, il2cpp_field_get_name},
     hook::{mscorlib, UnityEngine_CoreModule::{Texture, Texture2D},
     UnityEngine_ImageConversionModule::ImageConversion},
     symbols::{get_assembly_image, get_class, get_method_addr_cached, Array}
@@ -23,6 +26,65 @@ pub fn get_texture_diff_path<P: AsRef<Path>>(path: P) -> PathBuf {
     diff_path
 }
 
+static VERIFIED_SOURCE_CACHES: Lazy<Mutex<HashSet<PathBuf>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+
+fn get_texture_src_hash_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let mut hash_path = path.as_ref().to_owned();
+    let mut name = hash_path.file_name().unwrap_or_default().to_os_string();
+    name.push(".srchash");
+    hash_path.set_file_name(name);
+    hash_path
+}
+
+// Hashes Unity Texture2D Color32 pixels using 64-bit FNV-1a (https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1a_hash)
+fn hash_color32_pixels(pixels: &[Color32_t]) -> u64 {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for pixel in pixels {
+        for byte in pixel.as_slice() {
+            hash ^= *byte as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+    }
+    hash
+}
+
+fn source_texture_hash(texture: *mut Il2CppObject) -> Option<u64> {
+    let new_texture = Texture2D::render_to_texture(texture);
+    let pixels_array = Texture2D::GetPixels32(new_texture, 0);
+    let pixels = unsafe { pixels_array.as_slice() };
+    Some(hash_color32_pixels(pixels))
+}
+
+fn cached_texture_matches_source(texture: *mut Il2CppObject, path: &Path) -> bool {
+    if let Ok(verified) = VERIFIED_SOURCE_CACHES.lock() {
+        if verified.contains(path) {
+            return true;
+        }
+    }
+    let stored = std::fs::read(get_texture_src_hash_path(path))
+        .ok()
+        .and_then(|bytes| <[u8; 8]>::try_from(bytes.as_slice()).ok())
+        .map(u64::from_le_bytes);
+    if let Some(stored) = stored {
+        if source_texture_hash(texture) == Some(stored) {
+            if let Ok(mut verified) = VERIFIED_SOURCE_CACHES.lock() {
+                verified.insert(path.to_path_buf());
+            }
+            return true;
+        }
+    }
+    false
+}
+
+fn store_source_texture_hash(path: &Path, pixels: &[Color32_t]) {
+    if let Err(e) = std::fs::write(
+        get_texture_src_hash_path(path),
+        hash_color32_pixels(pixels).to_le_bytes()
+    ) {
+        error!("Failed to write texture source hash: {}", e);
+    }
+}
+
 pub fn replace_texture_with_diff<P: AsRef<Path>>(texture: *mut Il2CppObject, path: P, mark_non_readable: bool) -> bool {
     replace_texture_with_diff_ex(texture, &path, get_texture_diff_path(&path), mark_non_readable, true)
 }
@@ -41,7 +103,7 @@ pub fn replace_texture_with_diff_ex<P1: AsRef<Path>, P2: AsRef<Path>>(
     };
 
     if let Some(image_mtime) = get_file_modified_time(&path) {
-        if diff_mtime < image_mtime {
+        if diff_mtime < image_mtime && cached_texture_matches_source(texture, path.as_ref()) {
             // Try to load image, otherwise generate it
             // SAFETY: Path has been guaranteed to be a file in mtime check
             if unsafe { Texture2D::load_image_file_unsafe(texture, &path, mark_non_readable) } {
@@ -141,6 +203,8 @@ pub fn replace_texture_with_diff_ex<P1: AsRef<Path>, P2: AsRef<Path>>(
         return false;
     }
 
+    store_source_texture_hash(path.as_ref(), orig_pixels);
+
     // And finally load image to texture
     let png_array = Array::<u8>::new(mscorlib::Byte::class(), png_buffer.len());
     unsafe { png_array.as_slice().copy_from_slice(&png_buffer); }
@@ -161,4 +225,29 @@ pub fn adjust_transform_size(component: *mut Il2CppObject, width: f32, height: f
             RectTransform::SetSizeWithCurrentAnchors(transform, RectTransform::Axis::Vertical, height);
         }
     }
+}
+
+pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
+    let mut options = Vec::new();
+    let Ok(image) = get_assembly_image(c"umamusume.dll") else { return options };
+    let Ok(klass) = get_class(image, c"Gallop", class_name) else { return options };
+
+    if !il2cpp_class_is_enum(klass) { return options; }
+
+    let mut iter: *mut std::ffi::c_void = std::ptr::null_mut();
+    loop {
+        let field = il2cpp_class_get_fields(klass, &mut iter);
+        if field.is_null() { break; }
+        let attrs = il2cpp_field_get_flags(field);
+        if (attrs & 0x0040) != 0 {
+            let name_ptr = il2cpp_field_get_name(field);
+            if !name_ptr.is_null() {
+                let name = unsafe { std::ffi::CStr::from_ptr(name_ptr) };
+                if let Ok(s) = name.to_str() {
+                    options.push(s.to_string());
+                }
+            }
+        }
+    }
+    options
 }
