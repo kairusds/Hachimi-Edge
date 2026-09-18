@@ -492,11 +492,12 @@ update_prompt_dialog:
     A new Hachimi Edge update is available (%{version}). Do you want to install it?
     The game will be restarted in order to apply the update.
   android_content: |
-    A new Hachimi Edge update is available (%{version}).
+    A new Hachimi Edge update is available (%{version})!
 
-    Tap "Yes" to open UmaPatcher Edge, then patch the game the same way you did before.
+    - Tap "Yes" to open UmaPatcher Edge.
+    - Once you're in UmaPatcher Edge, select your EXISTING game APK and tap "Patch" (it does NOT start automatically!).
 
-    Note: No full game or APK re-download needed!
+    Note: Reuse the APK you already have and do NOT download a new one!
 
 updating_dialog:
   title: "Updating"
