@@ -197,6 +197,7 @@ config_editor:
   ui_scale: "UI scale"
   recommended_ui_scale: "Apply recommended UI scale"
   gui_scale: "Overlay scale"
+  old_config_editor: "Use old Config Editor"
   gui_landscape_ratio: "Landscape overlay scale ratio"
   ui_animation_scale: "UI animation scale"
   graphics_quality: "Graphics quality"
@@ -237,6 +238,9 @@ config_editor:
   race_stat_hud_draggable_save: "Race Stat HUD save dragged position"
   race_stat_hud_width_scale: "Race Stat HUD width scale"
   race_stat_hud_height_scale: "Race Stat HUD height scale"
+  race_stat_hud_opacity_scale: "Race Stat HUD opacity scale"
+  race_stat_hud_persist_clones: "Race Stat HUD persist clones"
+  race_stat_hud_persist_selected_index: "Race Stat HUD save selected character(s)"
   race_playback_slider: "Race Playback Slider"
   race_playback_slider_always: "Always show Race Playback Slider"
   race_playback_button: "Race playback pause/resume button"
@@ -488,11 +492,12 @@ update_prompt_dialog:
     A new Hachimi Edge update is available (%{version}). Do you want to install it?
     The game will be restarted in order to apply the update.
   android_content: |
-    A new Hachimi Edge update is available (%{version}).
+    A new Hachimi Edge update is available (%{version})!
 
-    Tap "Yes" to open UmaPatcher Edge, then patch the game the same way you did before.
+    - Tap "Yes" to open UmaPatcher Edge.
+    - Once you're in UmaPatcher Edge, select your EXISTING game APK and tap "Patch" (it does NOT start automatically!).
 
-    Note: No full game or APK re-download needed!
+    Note: Reuse the APK you already have and do NOT download a new one!
 
 updating_dialog:
   title: "Updating"

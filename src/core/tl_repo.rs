@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use size::Size;
 use thread_priority::{ThreadBuilderExt, ThreadPriority};
 
-use crate::core::game::Region;
 use super::{gui::{NotificationGuard, SimpleYesNoDialog, TranslationRepoUpdateWindow}, hachimi::LocalizedData, http::{self, ureq_config, AsyncRequest}, utils, Error, Gui, Hachimi};
 use once_cell::sync::Lazy;
 
@@ -19,9 +18,11 @@ pub struct RepoInfo {
     pub short_desc: Option<String>,
     #[serde(default)]
     pub language: Option<String>,
-    #[serde(default)]
-    pub region: Region
+    #[serde(default = "default_region")]
+    pub region: String
 }
+
+fn default_region() -> String { "Japan".to_owned() }
 
 static SYS_LOCALE: Lazy<String> = Lazy::new(|| {
     sys_locale::get_locale().as_deref().unwrap_or("en").to_lowercase()

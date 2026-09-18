@@ -501,35 +501,44 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 return LRESULT(0);
             }
 
-            if current_key == 0x4B { // Virtual keycode for "K", see the get_key method on gui_impl/input.rs
-                let hotkey_vk = Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind;
+            if !Gui::is_egui_typing_atomic() {
+                if current_key == 0x4B { // Virtual keycode for "K", see the get_key method on gui_impl/input.rs
+                    let hotkey_vk = Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind;
 
-                if unsafe { windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState(hotkey_vk as i32) < 0 } {
-                    if let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) {
-                        gui.set_consuming_input(false);
+                    if unsafe { windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState(hotkey_vk as i32) < 0 } {
+                        if let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) {
+                            gui.set_consuming_input(false);
+                        }
+                        return LRESULT(0); 
                     }
-                    return LRESULT(0); 
                 }
-            }
 
-            if current_key == Hachimi::instance().config.load().windows.menu_open_key {
-                let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
-                    return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
-                };
-                gui.toggle_menu();
-                return LRESULT(0);
-            } else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
-                Thread::main_thread().schedule(Gui::toggle_game_ui);
-            }
+                if current_key == Hachimi::instance().config.load().windows.menu_open_key {
+                    let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
+                        return unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
+                    };
+                    gui.toggle_menu();
+                    return LRESULT(0);
+                } else if current_key == Hachimi::instance().config.load().windows.hide_ingame_ui_hotkey_bind && Hachimi::instance().config.load().hide_ingame_ui_hotkey {
+                    Thread::main_thread().schedule(Gui::toggle_game_ui);
+                }
 
-            if matches!(Hachimi::instance().game.region, Region::Japan | Region::Global) && current_key == Hachimi::instance().config.load().windows.race_stat_hud_toggle_key
-                && Hachimi::instance().config.load().race_stat_hud {
-                Thread::main_thread().schedule(gui::toggle_race_stat_hud);
-            }
+                if matches!(Hachimi::instance().game.region, Region::Japan | Region::Global) && current_key == Hachimi::instance().config.load().windows.race_stat_hud_toggle_key
+                    && Hachimi::instance().config.load().race_stat_hud {
+                    Thread::main_thread().schedule(gui::toggle_race_stat_hud);
+                }
 
-            if current_key == Hachimi::instance().config.load().windows.race_playback_key
-                && Hachimi::instance().config.load().race_playback_key_enable {
-                Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
+                if matches!(Hachimi::instance().game.region, Region::Japan | Region::Global) && Hachimi::instance().config.load().race_stat_hud {
+                    if let Some(i) = Hachimi::instance().config.load().race_stat_hud_clones.iter()
+                        .position(|c| c.toggle_key == Some(current_key as i32)) {
+                        gui::toggle_race_stat_hud_clone(i);
+                    }
+                }
+
+                if current_key == Hachimi::instance().config.load().windows.race_playback_key
+                    && Hachimi::instance().config.load().race_playback_key_enable {
+                    Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
+                }
             }
 
             if !Gui::is_gui_input_active_atomic() {

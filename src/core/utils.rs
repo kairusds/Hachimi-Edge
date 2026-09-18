@@ -7,10 +7,8 @@ use unicode_width::UnicodeWidthChar;
 use crate::{
     core::Gui,
     il2cpp::{
-        api::*,
         ext::{Il2CppObjectExt, Il2CppStringExt, StringExt},
         hook::umamusume::{Localize, TextId},
-        symbols::{get_assembly_image, get_class},
         types::{Il2CppObject, Il2CppString}
     }
 };
@@ -702,31 +700,6 @@ pub fn get_proc_address(handle: usize, name: &std::ffi::CStr) -> usize {
     {
         unsafe { libc::dlsym(handle as *mut libc::c_void, name.as_ptr()) as usize }
     }
-}
-
-pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
-    let mut options = Vec::new();
-    let Ok(image) = get_assembly_image(c"umamusume.dll") else { return options };
-    let Ok(klass) = get_class(image, c"Gallop", class_name) else { return options };
-
-    if !il2cpp_class_is_enum(klass) { return options; }
-
-    let mut iter: *mut std::ffi::c_void = std::ptr::null_mut();
-    loop {
-        let field = il2cpp_class_get_fields(klass, &mut iter);
-        if field.is_null() { break; }
-        let attrs = il2cpp_field_get_flags(field);
-        if (attrs & 0x0040) != 0 {
-            let name_ptr = il2cpp_field_get_name(field);
-            if !name_ptr.is_null() {
-                let name = unsafe { std::ffi::CStr::from_ptr(name_ptr) };
-                if let Ok(s) = name.to_str() {
-                    options.push(s.to_string());
-                }
-            }
-        }
-    }
-    options
 }
 
 static RACE_SEEK_STAGE: AtomicUsize = AtomicUsize::new(0);
