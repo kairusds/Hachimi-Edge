@@ -5582,6 +5582,12 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
+            if should_show_option(search, &t!("config_editor.disable_factor_name_translation")) {
+                ui.label(t!("config_editor.disable_factor_name_translation"));
+                ui.checkbox(&mut config.disable_factor_name_translation, "");
+                ui.end_row();
+            }
+
             if should_show_option(search, &t!("config_editor.skill_data_desc")) {
                 ui.label(t!("config_editor.skill_data_desc"));
                 ui.checkbox(&mut config.skill_data_desc, "");
@@ -6784,6 +6790,10 @@ impl Window for FirstTimeSetupWindow {
                         ui.horizontal(|ui| {
                             ui.label(t!("config_editor.disable_skill_name_translation"));
                             let _ = ui.checkbox(&mut self.config.disable_skill_name_translation, "");
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label(t!("config_editor.disable_factor_name_translation"));
+                            let _ = ui.checkbox(&mut self.config.disable_factor_name_translation, "");
                         });
                         ui.horizontal(|ui| {
                             ui.label(t!("config_editor.menu_open_key"));
