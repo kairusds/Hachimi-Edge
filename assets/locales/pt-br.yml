@@ -45,6 +45,7 @@ summer: "Verão"
 fall: "Outono"
 winter: "Inverno"
 cherry_blossom: "Cerejeiras"
+ordinal: "%{n}%{suffix}"
 
 menu:
   check_for_updates: "\uf0aa Buscar atualizações"
@@ -215,8 +216,10 @@ config_editor:
   free_camera: "Câmera livre"
   live_theater_allow_same_chara: "Permitir personagens repetidos nos shows"
   physics_update_mode: "Modo de atualização das físicas"
-  cyspring_mono_uncap_frame_scale: "Escala de Quadros CySpring Mono"
+  cyspring_mono_uncap_frame_scale: "Desbloquear escala de quadros CySpring Mono"
   disable_skill_name_translation: "Desabilitar tradução dos nomes das habilidades"
+  disable_factor_name_translation: "Desabilitar tradução dos nomes das centelhas"
+  skill_data_desc: "Descrição detalhada das habilidades"
   hide_ingame_ui_hotkey: "Atalho para esconder a UI do jogo"
   hide_ingame_ui_hotkey_info: >-
     Esta opção permite que um atalho seja utilizado para alternar a visualização da UI do jogo.
@@ -253,7 +256,7 @@ config_editor:
   caption_color: "Cor do texto das legendas"
   caption_outline_color: "Cor do contorno das legendas"
   caption_outline_size: "Tamanho do contorno das legendas"
-  disable_tap_effect: "Desligar efeito visual de toque"
+  disable_tap_effect: "Desabilitar efeito visual de toque"
   discord_rpc: "Discord RPC"
   enable_smtc: "Habilitar Controles de Mídia do Windows"
   menu_open_key: "Atalho para abrir o menu:"
@@ -338,9 +341,9 @@ free_camera:
   section_live: "Show"
   section_race: "Corrida"
   section_keybinds: "Atalhos do Windows"
-  remove_camera_effects: "Desligar efeitos da câmera"
-  live_remove_screen_effects: "Desligar efeitos da tela"
-  live_disable_character_teleport: "Desligar teleporte de personagens"
+  remove_camera_effects: "Desabilitar efeitos da câmera"
+  live_remove_screen_effects: "Desabilitar efeitos da tela"
+  live_disable_character_teleport: "Desabilitar teleporte de personagens"
   live_force_all_characters_visible: "Sempre mostrar todas as personagens"
   show_overlay: "Mostrar aviso de troca de câmera"
   selfie_use_head_transform: "Usar bastão de selfie no modo \"Acompanhar Personagem\""
@@ -480,9 +483,9 @@ tl_update_dialog:
   changelog_invalid: "O conteúdo do registro de alterações não é texto simples válido"
 
 update_prompt_dialog:
-  title: "Uma nova atualização está disponível"
+  title: "Uma nova versão está disponível"
   content: |
-    Uma nova atualização do Hachimi está disponível (%{version}). Deseja instalá-la?
+    Uma nova versão do Hachimi Edge está disponível (%{version}). Deseja instalá-la?
     O jogo será reiniciado para aplicar a atualização.
   android_content: |
     Uma nova versão do Hachimi Edge está disponível (%{version}).
@@ -548,6 +551,7 @@ key_names:
   copy: "Copiar"
   cut: "Cortar"
   paste: "Colar"
+  semicolon: ";"
   comma: ","
   backslash: "\\"
   slash: "/"
