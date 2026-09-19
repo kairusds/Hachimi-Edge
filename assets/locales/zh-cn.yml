@@ -202,7 +202,7 @@ config_editor:
   story_text_speed_multiplier: "剧情文本速度倍率"
   force_allow_dynamic_camera: "强制启用动态镜头"
   free_camera: "自由视角"
-  live_theater_allow_same_chara: "在 LIVE 剧场中 允许设置多个相同角色"
+  live_theater_allow_same_chara: "在 Live 剧场中允许设置多个相同角色"
   physics_update_mode: "物理引擎更新模式"
   disable_skill_name_translation: "禁用技能名称翻译"
   cyspring_mono_uncap_frame_scale: "恢复旧版 CySpring 物理行为"
@@ -246,22 +246,24 @@ config_editor:
   trainer_live_landscape: "在竖屏 Live 中强制使用横屏模式"
   force_orientation_mode: "屏幕方向锁定模式"
   taskbar_show_progress_on_schedule_book: "训练员手册执行时在任务栏显示进度"
-  race_stat_hud: "比赛状态HUD"
-  race_stat_hud_toggle_button: "比赛状态HUD切换按钮"
-  race_stat_hud_toggle_key: "比赛状态HUD切换快捷键"
-  race_stat_hud_landscapeui_portrait: "比赛统计HUD横屏UI游戏视图"
-  race_stat_hud_draggable: "比赛统计HUD可拖动"
-  race_stat_hud_draggable_save: "比赛统计HUD保存拖动位置"
-  race_stat_hud_width_scale: "比赛统计HUD宽度缩放"
-  race_stat_hud_height_scale: "比赛统计HUD高度缩放"
-  race_stat_hud_opacity_scale: "比赛状态 HUD 不透明度"
+  race_stat_hud: "比赛实时状态 HUD"
+  race_stat_hud_toggle_button: "比赛实时状态 HUD 切换按钮"
+  race_stat_hud_toggle_key: "比赛实时状态 HUD 切换快捷键"
+  race_stat_hud_landscapeui_portrait: "比赛实时状态 HUD 横屏 UI 游戏视图"
+  race_stat_hud_draggable: "比赛实时状态 HUD 可拖动"
+  race_stat_hud_draggable_save: "比赛实时状态 HUD 保存拖动位置"
+  race_stat_hud_width_scale: "比赛实时状态 HUD 宽度缩放"
+  race_stat_hud_height_scale: "比赛实时状态 HUD 高度缩放"
+  race_stat_hud_opacity_scale: "比赛实时状态 HUD 不透明度"
+  race_stat_hud_persist_clones: "比赛实时状态 HUD 双开"
+  race_stat_hud_persist_selected_index: "比赛实时状态 HUD 记忆上次选择的角色"
   disable_tap_effect: "禁用点击效果"
   race_playback_slider: "比赛回放进度条"
   race_playback_slider_always: "始终显示比赛回放进度条"
   race_playback_button: "比赛回放暂停/继续按钮"
   race_playback_key_enable: "启用比赛回放暂停/继续快捷键"
   race_playback_key: "比赛回放暂停/继续快捷键"
-  skill_data_desc: "技能详细数据"
+  skill_data_desc: "显示技能详细数据"
   old_config_editor: "使用旧版配置编辑器"
 
 theme_editor:
@@ -477,10 +479,9 @@ update_prompt_dialog:
     发现新的 Hachimi 更新 (%{version})，是否立即安装？
     安装完成后游戏将自动重启。
   android_content: |
-    检测到 Hachimi Edge 的新版本 (%{version})。是否更新？
-
-    点击“是”将跳转至 UmaPatcher Edge，在其中重新为当前游戏补丁以更新 Hachimi。
-    (无需重新下载完整游戏文件或 APK，重新为当前游戏版本的 APK 补丁并安装即可，UmaPatcher Edge 将自动下载最新版本的 Hachimi Edge。)
+    检测到 Hachimi Edge 的新版本 (%{version})。
+    
+    是否要打开 UmaPatcher Edge 以开始更新？
 
 updating_dialog:
   title: "更新中"
@@ -571,149 +572,149 @@ key_names:
 
 skill_data_desc:
   group:
-    duration: "持续 %{v} 秒"
-    immediate: "立即"
-    long_negative: "持续 500 秒"
-    indefinite: "无限持续"
-    cd: "（冷却 %{v} 秒）"
-    when: " 当："
-    after: " <color=#29b39e>之后</color>："
+    duration: "</b><color=#d6cb00>持续%{v}秒</color><b>"
+    immediate: "</b><color=#d6cb00>立即发动</color><b>"
+    long_negative: "</b><color=#d6cb00>持续500秒</color><b>"
+    indefinite: "</b><color=#d6cb00>常时发动</color><b>"
+    cd: "<color=#d6cb00>（冷却%{v}秒）</color>"
+    when: " <color=#29b39e>发动条件</color>："
+    after: " <color=#29b39e>附加条件</color>："
   sep:
-    or: " 或 "
-    and: " 且 "
-    star: " * "
-    to: " 至 "
+    or: " / "
+    and: " & "
+    star: " × "
+    to: "对于"
   effect:
     name:
-      speed_stat: "速度属性"
-      stamina_stat: "耐力属性"
-      power_stat: "力量属性"
-      guts_stat: "毅力属性"
-      wit_stat: "智力属性"
-      field_of_view: "视野"
-      current_hp: "当前体力"
-      rushed_time: "焦躁时间"
-      delay_start: "延迟起步"
-      current_speed: "当前速度"
-      current_speed_natural_decel: "当前速度（自然减速）"
-      target_speed: "目标速度"
-      lane_movement_speed: "变道速度"
-      rushed_chance: "焦躁概率"
-      acceleration: "加速度"
-      all_stats: "全属性"
-      target_lane: "目标赛道"
-      activate_rare_skill: "发动稀有技能"
-      special: "特殊"
-      event_specific: "事件专用"
+      speed_stat: "</b><color=#03befc>速度属性</color><b>"
+      stamina_stat: "</b><color=#03befc>耐力属性</color><b>"
+      power_stat: "</b><color=#03befc>力量属性</color><b>"
+      guts_stat: "</b><color=#03befc>毅力属性</color><b>"
+      wit_stat: "</b><color=#03befc>智力属性</color><b>"
+      field_of_view: "</b><color=#03befc>视野</color><b>"
+      current_hp: "</b><color=#03befc>当前体力</color><b>"
+      rushed_time: "</b><color=#03befc>焦躁时间</color><b>"
+      delay_start: "</b><color=#03befc>延迟起步</color><b>"
+      current_speed: "</b><color=#03befc>当前速度</color><b>"
+      current_speed_natural_decel: "</b><color=#03befc>当前速度（自然减速）</color><b>"
+      target_speed: "</b><color=#03befc>目标速度</color><b>"
+      lane_movement_speed: "</b><color=#03befc>变道速度</color><b>"
+      rushed_chance: "</b><color=#03befc>焦躁概率</color><b>"
+      acceleration: "</b><color=#03befc>加速度</color><b>"
+      all_stats: "</b><color=#03befc>全属性</color><b>"
+      target_lane: "</b><color=#03befc>目标赛道</color><b>"
+      activate_rare_skill: "</b><color=#03befc>发动稀有技能</color><b>"
+      special: "</b><color=#03befc>特殊</color><b>"
+      event_specific: "</b><color=#03befc>事件专用</color><b>"
     unit:
       stat: ""
-      deg: " °"
+      deg: "°"
       percent: "%"
-      second: " 秒"
-      mps: " 米/秒"
-      mps2: " 米/秒²"
+      second: "s"
+      mps: "m/s"
+      mps2: "m/s²"
     fixed:
       aggressive_strategy: "切换为极具攻击性的跑法"
       debuff_immunity: "免疫减益"
       sympathy_all: "对所有人发动共鸣"
-      loh_stat: "属性提升 {0}%，巅峰状态概率 {1}%"
+      loh_stat: "属性提升{0}%，巅峰状态概率{1}%"
     start_reaction:
-      "4000": "起跑反应时间 -60%"
-      "9000": "起跑反应时间 -10%"
-      "15000": "起跑反应时间 +50%"
-    usage19_suffix: " 若距领头马≥20米则 +0.1"
+      "4000": "起跑反应时间-60%"
+      "9000": "起跑反应时间-10%"
+      "15000": "起跑反应时间+50%"
+    usage19_suffix: " 若距领头马≥20米则+0.1"
   star:
     activate:
       "1": "在以下期间超越"
       "2": "在以下期间发动技能（最多3个）"
       "3": "在以下期间发动技能（最多2个）"
     usage:
-      "2": "技能数量"
-      "3": "队伍速度"
-      "4": "队伍耐力"
-      "5": "队伍力量"
-      "6": "队伍毅力"
-      "7": "队伍智力"
-      "8": "随机"
-      "10": "获胜场数"
-      "11": "最终弯道超越次数"
-      "12": "粉丝数"
-      "13": "最高属性"
-      "14": "绿色技能数量"
-      "20": "最长被堵时间（侧面、中段）"
-      "22": "最终速度属性（高）"
-      "23": "最终速度属性"
-      "24": "海外适性总等级"
-      "25": "最大领先差距"
-      "26": "H.A.F 获胜数"
-      "27": "料理点数"
-      "28": "研究总等级"
-      "30": "粉丝喜爱度"
-      "31": "培养点数"
-      "32": "温泉等级"
-      "34": "与领头马的距离（无详情）"
-      "35": "比赛距离类型"
-      "36": "比赛距离类型"
-      "37": "DREAMS 队伍排名"
-      "40": "总兴奋点数"
+      "2": "</b>技能数量<b>"
+      "3": "</b>队伍速度<b>"
+      "4": "</b>队伍耐力<b>"
+      "5": "</b>队伍力量<b>"
+      "6": "</b>队伍毅力<b>"
+      "7": "</b>队伍智力<b>"
+      "8": "</b>随机<b>"
+      "10": "</b>获胜场数<b>"
+      "11": "</b>最终弯道超越次数<b>"
+      "12": "</b>粉丝数<b>"
+      "13": "</b>最高属性<b>"
+      "14": "</b>绿色技能数量<b>"
+      "20": "</b>最长被堵时间（侧面、中段）<b>"
+      "22": "</b>最终速度属性（高）<b>"
+      "23": "</b>最终速度属性<b>"
+      "24": "</b>海外适性总等级<b>"
+      "25": "</b>最大领先差距<b>"
+      "26": "</b>H.A.F获胜数<b>"
+      "27": "</b>料理点数<b>"
+      "28": "</b>研究总等级<b>"
+      "30": "</b>粉丝喜爱度<b>"
+      "31": "</b>培养点数<b>"
+      "32": "</b>温泉等级<b>"
+      "34": "</b>与领头马的距离（无详情）<b>"
+      "35": "</b>比赛距离类型<b>"
+      "36": "</b>比赛距离类型<b>"
+      "37": "</b>DREAMS队伍排名<b>"
+      "40": "</b>总兴奋点数<b>"
   target:
     all_in_fov: "视野内所有人"
-    leading: "%{v} 领头"
+    leading: "%{v}领头"
     all_ahead: "所有前方"
-    closest_ahead: "%{v} 最近的前方"
+    closest_ahead: "%{v}最近的前方"
     all_behind: "所有后方"
-    closest_behind: "%{v} 最近的后方"
+    closest_behind: "%{v}最近的后方"
     team: "队伍"
     style:
       "1": "逃马"
       "2": "先行"
       "3": "差马"
       "4": "追马"
-    random_rushed_ahead: "%{v} 随机前方焦躁"
-    random_rushed_behind: "%{v} 随机后方焦躁"
+    random_rushed_ahead: "%{v}随机前方焦躁"
+    random_rushed_behind: "%{v}随机后方焦躁"
     style_rushed:
       "1": "逃马（焦躁）"
       "2": "先行（焦躁）"
       "3": "差马（焦躁）"
       "4": "追马（焦躁）"
     suzuka: "无声铃鹿"
-    random_recovery_users: "%{v} 随机回复技能使用者"
+    random_recovery_users: "%{v}随机回复技能使用者"
     unknown: "未知"
   cond:
-    negate: "非 %{v}"
+    negate: "非%{v}"
     order_rate:
-      gt: "在后方 ﹤%{v}%"
-      ge: "在后方 %{v}%"
-      le: "在前方 %{v}%"
-      lt: "在前方 ﹤%{v}%"
+      gt: "在后﹤%{v}%名内"
+      ge: "在后%{v}%名"
+      le: "在前%{v}%名"
+      lt: "在前%{v}%名内"
     corner:
       straight: "在直道上"
-      corner: "在弯道 %{v}"
+      corner: "在第%{v}弯道"
       any: "在弯道上"
-      not: "不在弯道 %{v}"
+      not: "不在第%{v}弯道"
     phase:
       name:
         "0": "序盘"
         "1": "中盘"
         "2": "终盘"
-        "3": "冲刺阶段（阶段）"
-      le: "%{v} 或更早"
-      ge: "%{v} 或更晚"
+        "3": "终直"
+      le: "%{v}或更早"
+      ge: "%{v}或更晚"
     ground_condition:
       name:
         "1": "良"
         "2": "稍重"
         "3": "重"
         "4": "不良"
-      eq: "场地状态 %{v}"
-      ne: "场地状态非 %{v}"
-      le: "场地状态 %{v} 或更好"
-      ge: "场地状态 %{v} 或更差"
+      eq: "场地状态%{v}"
+      ne: "场地状态非%{v}"
+      le: "场地状态%{v}或更好"
+      ge: "场地状态%{v}或更差"
     track_id:
-      jra: "在 JRA 赛场"
+      jra: "在JRA赛场"
       any: "在任意赛场"
-      at: "在 %{v}"
-      not_at: "不在 %{v}"
+      at: "在%{v}"
+      not_at: "不在%{v}"
     track_name:
       "10001": "札幌赛场"
       "10002": "函馆赛场"
@@ -734,11 +735,11 @@ skill_data_desc:
       "10203": "德尔玛赛场"
     same_skill_horse_count:
       unique: "只有你拥有此技能"
-      count: "%{v} 名赛马娘拥有此技能"
+      count: "%{v}名赛马娘拥有此技能"
     near_infront_count:
       none: "正前方无人"
-      count: "%{v} 名对手在正前方"
-    furlong: "%{v} 浪"
+      count: "%{v}名对手在正前方"
+    furlong: "%{v}浪"
     used_skill:
       "203781": "使用了技能 冲动"
       "203061": "使用了技能 无二"
@@ -751,7 +752,7 @@ skill_data_desc:
       template: "使用了技能 %{v}（Lv1）"
     popularity_top:
       any: "人气第一的赛马娘发动了技能"
-      count: "人气第一的赛马娘发动了技能 %{v}"
+      count: "人气第一的赛马娘发动了技能%{v}"
     enum:
       distance_type:
         eq:
@@ -769,8 +770,8 @@ skill_data_desc:
           "1": "海外"
       is_activate_other_skill_detail:
         eq:
-          "1": "发动了触发条件1"
-          "2": "发动了触发条件2"
+          "1": "发动了发动条件1"
+          "2": "发动了发动条件2"
       is_badstart:
         eq:
           "0": "起步尚佳"
@@ -813,22 +814,22 @@ skill_data_desc:
           "5": "绝好调以下"
       phase_corner_random:
         eq:
-          "1": "中盘弯道（随机）"
-          "2": "终盘弯道（随机）"
+          "1": "中盘弯道（随机处）"
+          "2": "终盘弯道（随机处）"
       phase_first_half_straight_random:
         eq:
-          "1": "中盘前半直道（随机）"
-          "2": "终盘前半直道（随机）"
+          "1": "中盘前半直道（随机处）"
+          "2": "终盘前半直道（随机处）"
       phase_firsthalf:
         eq:
           "1": "中盘前半"
-          "3": "冲刺阶段（阶段）前半"
+          "3": "终直前半"
       phase_firsthalf_random:
         eq:
-          "0": "序盘前半（随机）"
-          "1": "中盘前半（随机）"
-          "2": "终盘前半（随机）"
-          "3": "冲刺阶段（阶段）前半（随机）"
+          "0": "序盘前半（随机处）"
+          "1": "中盘前半（随机处）"
+          "2": "终盘前半（随机处）"
+          "3": "终直前半（随机处）"
       phase_laterhalf:
         eq:
           "0": "序盘后半"
@@ -836,23 +837,23 @@ skill_data_desc:
           "2": "终盘后半"
       phase_laterhalf_random:
         eq:
-          "0": "序盘后半（随机）"
-          "1": "中盘后半（随机）"
-          "2": "终盘后半（随机）"
+          "0": "序盘后半（随机处）"
+          "1": "中盘后半（随机处）"
+          "2": "终盘后半（随机处）"
       phase_latter_half_straight_random:
         eq:
-          "1": "中盘后半直道（随机）"
-          "2": "终盘后半直道（随机）"
+          "1": "中盘后半直道（随机处）"
+          "2": "终盘后半直道（随机处）"
       phase_random:
         eq:
-          "0": "序盘（随机）"
-          "1": "中盘（随机）"
-          "2": "终盘（随机）"
-          "3": "冲刺阶段（阶段）（随机）"
+          "0": "序盘（随机处）"
+          "1": "中盘（随机处）"
+          "2": "终盘（随机处）"
+          "3": "终直（随机处）"
       phase_straight_random:
         eq:
-          "1": "中盘直道（随机）"
-          "2": "终盘直道（随机）"
+          "1": "中盘直道（随机处）"
+          "2": "终盘直道（随机处）"
       rotation:
         eq:
           "1": "顺时针赛道"
@@ -865,11 +866,11 @@ skill_data_desc:
           "4": "追马"
       season:
         eq:
-          "1": "春"
-          "2": "夏"
-          "3": "秋"
-          "4": "冬"
-          "5": "樱花季（3月20日至4月20日）"
+          "1": "春天"
+          "2": "夏天"
+          "3": "秋天"
+          "4": "冬天"
+          "5": "樱花季"
       slope:
         eq:
           "0": "平地"
@@ -894,7 +895,7 @@ skill_data_desc:
       down_slope_random:
         eq: "下坡"
       grade:
-        eq: "G1 比赛"
+        eq: "G1比赛"
       is_activate_any_skill:
         eq: "使用了任意技能"
       is_activate_heal_skill:
@@ -919,9 +920,9 @@ skill_data_desc:
       is_last_straight_onetime:
         eq: "到达最终直道"
       is_lastspurt:
-        eq: "冲刺阶段（模式）"
+        eq: "正在最终冲刺中"
       is_overtake:
-        eq: "超越中"
+        eq: "正在超越他人"
       is_surrounded:
         eq: "被包围"
       is_tight_track:
@@ -933,21 +934,21 @@ skill_data_desc:
       lastspurt:
         eq: "冲刺阶段耐力良好"
       order_rate_in20_continue:
-        eq: "保持在前方 20%"
+        eq: "保持在前20%名"
       order_rate_in40_continue:
-        eq: "保持在前方 40%"
+        eq: "保持在前40%名"
       order_rate_in50_continue:
-        eq: "保持在前方 50%"
+        eq: "保持在前50%名"
       order_rate_in80_continue:
-        eq: "保持在前方 80%"
+        eq: "保持在前80%名"
       order_rate_out20_continue:
-        eq: "保持在后方 80%"
+        eq: "保持在后80%名"
       order_rate_out40_continue:
-        eq: "保持在后方 60%"
+        eq: "保持在后40%名"
       order_rate_out50_continue:
-        eq: "保持在后方 50%"
+        eq: "保持在后50%名"
       order_rate_out70_continue:
-        eq: "保持在后方 30%"
+        eq: "保持在后30%名"
       phase_firstquarter:
         eq: "终盘前四分之一"
       phase_firstquarter_random:
@@ -970,167 +971,167 @@ skill_data_desc:
         eq: "上坡（后半）"
     template:
       accumulatetime:
-        ge: "经过 %{v} 秒"
+        ge: "经过%{v}秒"
       activate_count_all:
-        ge: "使用 ≥%{v} 个技能"
-        le: "使用 ≤%{v} 个技能"
+        ge: "使用≥%{v}个技能"
+        le: "使用≤%{v}个技能"
       activate_count_all_team:
-        ge: "队伍使用 ≥%{v} 个技能"
+        ge: "队伍使用≥%{v}个技能"
       activate_count_end_after:
-        ge: "使用 ≥%{v} 个技能（从终盘起）"
+        ge: "使用≥%{v}个技能（从终盘起）"
       activate_count_heal:
-        ge: "回复体力 %{v}+ 次"
+        ge: "回复体力%{v}次以上"
       activate_count_later_half:
-        ge: "使用 ≥%{v} 个技能（后半）"
+        ge: "使用≥%{v}个技能（后半）"
       activate_count_middle:
-        eq: "使用 %{v} 个技能（中盘）"
-        ge: "使用 ≥%{v} 个技能（中盘）"
+        eq: "使用%{v}个技能（中盘）"
+        ge: "使用≥%{v}个技能（中盘）"
       activate_count_start:
-        ge: "使用 ≥%{v} 个技能（序盘）"
+        ge: "使用≥%{v}个技能（序盘）"
       base_guts:
-        ge: "基础毅力 ≥%{v}"
-        lt: "基础毅力 ﹤%{v}"
+        ge: "基础毅力≥%{v}"
+        lt: "基础毅力﹤%{v}"
       base_power:
-        ge: "基础力量 ≥%{v}"
-        lt: "基础力量 ﹤%{v}"
+        ge: "基础力量≥%{v}"
+        lt: "基础力量﹤%{v}"
       base_speed:
-        ge: "基础速度 ≥%{v}"
+        ge: "基础速度≥%{v}"
       base_stamina:
-        ge: "基础耐力 ≥%{v}"
-        lt: "基础耐力 ﹤%{v}"
+        ge: "基础耐力≥%{v}"
+        lt: "基础耐力﹤%{v}"
       base_wiz:
-        ge: "基础智力 ≥%{v}"
-        lt: "基础智力 ﹤%{v}"
+        ge: "基础智力≥%{v}"
+        lt: "基础智力﹤%{v}"
       bashin_diff_behind:
-        ge: "领先 ≥%{v} 马身"
-        le: "领先 ≤%{v} 马身"
+        ge: "领先≥%{v}马身"
+        le: "领先≤%{v}马身"
       bashin_diff_infront:
-        le: "落后 ≤%{v} 马身"
+        le: "落后≤%{v}马身"
       behind_near_lane_time:
-        ge: "对手近距离在后 %{v} 秒"
+        ge: "对手近距离在后%{v}秒"
       behind_near_lane_time_set1:
-        ge: "对手在后 %{v} 秒"
+        ge: "对手在后%{v}秒"
       blocked_all_continuetime:
-        ge: "被堵（前方和侧面）≥%{v} 秒"
+        ge: "被堵（前方和侧面）≥%{v}秒"
       blocked_front_continuetime:
-        ge: "被堵（前方）≥%{v} 秒"
+        ge: "被堵（前方）≥%{v}秒"
       blocked_side_continuetime:
-        ge: "被堵（侧面）≥%{v} 秒"
+        ge: "被堵（侧面）≥%{v}秒"
       change_order_up_end_after:
-        ge: "终盘超越 %{v} 次"
+        ge: "终盘超越%{v}次"
       change_order_up_finalcorner_after:
-        ge: "最终弯道后超越 %{v} 次"
+        ge: "最终弯道后超越%{v}次"
       change_order_up_middle:
-        ge: "中盘超越 %{v} 次"
+        ge: "中盘超越%{v}次"
       compete_fight_count:
-        gt: "﹥%{v} 次较量"
+        gt: "多于%{v}次较量"
       corner_count:
-        eq: "%{v} 个弯道"
+        eq: "%{v}个弯道"
       corner_random:
-        eq: "弯道 %{v}（随机）"
+        eq: "第%{v}弯道（随机处）"
       course_distance:
-        eq: "比赛距离 %{v} 米"
-        ge: "比赛距离 ≥%{v} 米"
-        gt: "比赛距离 ﹥%{v} 米"
-        le: "比赛距离 ≤%{v} 米"
-        lt: "比赛距离 ﹤%{v} 米"
-        ne: "比赛距离 ≠%{v} 米"
+        eq: "比赛距离%{v}米"
+        ge: "比赛距离≥%{v}米"
+        gt: "比赛距离﹥%{v}米"
+        le: "比赛距离≤%{v}米"
+        lt: "比赛距离﹤%{v}米"
+        ne: "比赛距离≠%{v}米"
       distance_diff_rate:
-        ge: "距领头马 ≥%{v}%"
-        le: "距领头马 ≤%{v}%"
+        ge: "距领头马≥%{v}%"
+        le: "距领头马≤%{v}%"
       distance_diff_top:
-        ge: "距第一名 ≥%{v}米"
-        gt: "距第一名 ﹥%{v}米"
-        le: "距第一名 ≤%{v}米"
+        ge: "距第一名≥%{v}米"
+        gt: "距第一名﹥%{v}米"
+        le: "距第一名≤%{v}米"
       distance_rate:
-        ge: "比赛距离 %{v}% 后"
-        le: "比赛距离 %{v}% 前"
+        ge: "比赛距离%{v}%后"
+        le: "比赛距离%{v}%前"
       distance_rate_after_random:
-        eq: "比赛距离 %{v}% 后（随机）"
+        eq: "比赛距离%{v}%后（随机）"
       fan_count:
-        ge: "粉丝数 ≥%{v}"
+        ge: "粉丝数≥%{v}"
       hp_per:
-        ge: "体力% ≥%{v}"
-        le: "体力% ≤%{v}"
+        ge: "体力≥%{v}%"
+        le: "体力≤%{v}%"
       infront_near_lane_time:
-        ge: "对手近距离在前 %{v} 秒"
+        ge: "对手近距离在前%{v}秒"
       near_count:
-        eq: "恰好 %{v} 名附近对手"
-        ge: "%{v}+ 名附近对手"
+        eq: "恰好%{v}名附近对手"
+        ge: "%{v}名以上附近对手"
       near_infront_count:
-        ge: "%{v}+ 名附近前方对手"
+        ge: "%{v}名以上附近前方对手"
       order:
-        eq: "位置 %{v}"
-        ge: "位置 ≥%{v}"
-        le: "位置 ≤%{v}"
+        eq: "处于第%{v}位"
+        ge: "处于第≥%{v}位"
+        le: "处于第≤%{v}位"
       overtake_target_no_order_up_time:
-        ge: "有超越目标 ≥%{v} 秒"
+        ge: "有超越的目标≥%{v}秒"
       overtake_target_time:
-        ge: "成为超越目标 ≥%{v} 秒"
+        ge: "成为超越目标≥%{v}秒"
       popularity:
-        eq: "人气 %{v}"
-        ge: "人气 ≥%{v}"
-        le: "人气 ≤%{v}"
-        lt: "人气 ﹤%{v}"
+        eq: "人气第%{v}"
+        ge: "人气≥第%{v}"
+        le: "人气≤第%{v}"
+        lt: "人气﹤第%{v}"
       post_number:
-        eq: "闸位 %{v}"
-        ge: "闸位 ≥%{v}"
-        le: "闸位 ≤%{v}"
+        eq: "闸位%{v}"
+        ge: "闸位≥%{v}"
+        le: "闸位≤%{v}"
       random_lot:
-        eq: "随机概率 %{v}%"
+        eq: "随机概率%{v}%"
       remain_distance:
-        eq: "剩余距离 %{v}米"
-        ge: "剩余距离 ≥%{v}米"
-        le: "剩余距离 ≤%{v}米"
+        eq: "剩余距离%{v}米"
+        ge: "剩余距离≥%{v}米"
+        le: "剩余距离≤%{v}米"
       remain_distance_viewer_id:
-        ge: "剩余 ≥%{v}米（玩家角色）"
-        le: "剩余 ≤%{v}米（玩家角色）"
+        ge: "剩余≥%{v}米（玩家角色）"
+        le: "剩余≤%{v}米（玩家角色）"
       running_style_count_nige_otherself:
-        ge: "%{v}+ 名其他逃马"
+        ge: "%{v}名以上其他逃马"
       running_style_count_oikomi_otherself:
-        ge: "%{v}+ 名其他追马"
+        ge: "%{v}名以上其他追马"
       running_style_count_same:
-        le: "≤%{v} 名相同跑法"
+        le: "≤%{v}名相同跑法"
       running_style_count_same_rate:
-        ge: "≥%{v}% 相同跑法"
+        ge: "≥%{v}%相同跑法"
       running_style_count_sashi_otherself:
-        ge: "%{v}+ 名其他差马"
+        ge: "%{v}名以上其他差马"
       running_style_count_senko_otherself:
-        ge: "%{v}+ 名其他先行"
+        ge: "%{v}名以上其他先行"
       running_style_temptation_count_nige:
-        ge: "%{v}+ 名焦躁逃马（含你）"
+        ge: "%{v}名以上焦躁逃马（含自身）"
       running_style_temptation_count_oikomi:
-        ge: "%{v}+ 名焦躁追马（含你）"
+        ge: "%{v}名以上焦躁追马（含自身）"
       running_style_temptation_count_sashi:
-        ge: "%{v}+ 名焦躁差马（含你）"
+        ge: "%{v}名以上焦躁差马（含自身）"
       running_style_temptation_count_senko:
-        ge: "%{v}+ 名焦躁先行（含你）"
+        ge: "%{v}名以上焦躁先行（含自身）"
       running_style_temptation_opponent_count_nige:
-        ge: "≥%{v} 名焦躁逃马"
+        ge: "%{v}名以上焦躁逃马"
       running_style_temptation_opponent_count_oikomi:
-        ge: "≥%{v} 名焦躁追马"
+        ge: "%{v}名以上焦躁追马"
       running_style_temptation_opponent_count_sashi:
-        ge: "≥%{v} 名焦躁差马"
+        ge: "%{v}名以上焦躁差马"
       running_style_temptation_opponent_count_senko:
-        ge: "≥%{v} 名焦躁先行"
+        ge: "%{v}名以上焦躁先行"
       same_skill_horse_count:
-        ge: "≥%{v} 名赛马娘拥有此技能"
+        ge: "%{v}名以上赛马娘拥有此技能"
       succession_skill_count:
-        eq: "拥有 %{v} 个继承技能"
-        ge: "拥有 ≥%{v} 个继承技能"
-        le: "拥有 ≤%{v} 个继承技能"
+        eq: "拥有%{v}个继承技能"
+        ge: "拥有≥%{v}个继承技能"
+        le: "拥有≤%{v}个继承技能"
       temptation_count:
-        eq: "焦躁 %{v} 次"
+        eq: "焦躁%{v}次"
       temptation_count_behind:
-        ge: "≥%{v} 次焦躁（后方）"
+        ge: "≥%{v}次焦躁（后方）"
       temptation_count_infront:
-        ge: "≥%{v} 次焦躁（前方）"
+        ge: "≥%{v}次焦躁（前方）"
       temptation_opponent_count_behind:
-        ge: "≥%{v} 次焦躁（后方）"
+        ge: "≥%{v}次焦躁（后方）"
       temptation_opponent_count_infront:
-        ge: "≥%{v} 次焦躁（前方）"
+        ge: "≥%{v}次焦躁（前方）"
       visiblehorse:
-        ge: "视野内 ≥%{v} 名对手"
-        le: "可见赛马娘 ≤%{v}"
+        ge: "视野内≥%{v}名对手"
+        le: "可见赛马娘≤%{v}"
       distance_diff_top_float:
-        le: "距第一名 ≤%{v}米"
+        le: "距第一名≤%{v}米"
