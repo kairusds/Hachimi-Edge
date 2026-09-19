@@ -479,10 +479,9 @@ update_prompt_dialog:
     发现新的 Hachimi 更新 (%{version})，是否立即安装？
     安装完成后游戏将自动重启。
   android_content: |
-    检测到 Hachimi Edge 的新版本 (%{version})。是否更新？
-
-    点击“是”将跳转至 UmaPatcher Edge，在其中重新为当前游戏补丁以更新 Hachimi。
-    (无需重新下载完整游戏文件或 APK，重新为当前游戏版本的 APK 补丁并安装即可，UmaPatcher Edge 将自动下载最新版本的 Hachimi Edge。)
+    检测到 Hachimi Edge 的新版本 (%{version})。
+    
+    是否要打开 UmaPatcher Edge 以开始更新？
 
 updating_dialog:
   title: "更新中"
@@ -747,10 +746,10 @@ skill_data_desc:
       "203071": "使用了技能 无三"
       "202051": "使用了技能 爆领"
       "120221": "使用了技能 丽影飞驰！拉面道"
-      template: "使用了技能%{v}"
+      template: "使用了技能 %{v}"
     used_skill_detail_one:
       "204452": "使用了技能 圣女试炼（Lv1）"
-      template: "使用了技能%{v}（Lv1）"
+      template: "使用了技能 %{v}（Lv1）"
     popularity_top:
       any: "人气第一的赛马娘发动了技能"
       count: "人气第一的赛马娘发动了技能%{v}"
