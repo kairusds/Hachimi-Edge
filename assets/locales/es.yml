@@ -490,10 +490,9 @@ update_prompt_dialog:
     ¿Quieres instalarla ahora? El juego será reiniciado para así poder
     aplicar la actualización.
   android_content: |
-    Se ha encontrado una nueva actualización de Hachimi Edge (%{version}). ¿Quieres instalarla ahora?
+    Se ha encontrado una nueva versión de Hachimi Edge (%{version}).
 
-    Pulsar en "Sí" abrirá UmaPatcher Edge para que vuelvas a parchear el juego.
-    (No será necesario volver a descargar el juego o los APK, solo vuelve a parchear el juego nuevamente para que se descargue e instale la nueva versión de Hachimi Edge.)
+    ¿Quieres abrir UmaPatcher Edge y actualizar?
 
 updating_dialog:
   title: "Actualizando"

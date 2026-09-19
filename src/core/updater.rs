@@ -122,12 +122,11 @@ impl Updater {
         }
         #[cfg(target_os = "android")]
         {
-            use crate::{android::utils, core::hachimi::{UMAPATCHER_INSTALL_URL, UMAPATCHER_PACKAGE_NAME}};
-            utils::open_app_or_fallback(
-                UMAPATCHER_PACKAGE_NAME,
-                &format!("{}.MainActivity", UMAPATCHER_PACKAGE_NAME.replace(".edge", "")),
-                UMAPATCHER_INSTALL_URL
-            );
+            use crate::{
+                core::hachimi::UMAPATCHER_UPDATER_DEEPLINK,
+                il2cpp::{ext::StringExt, hook::UnityEngine_CoreModule::Application}
+            };
+            Application::OpenURL(UMAPATCHER_UPDATER_DEEPLINK.to_il2cpp_string());
         }
     }
 
