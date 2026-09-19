@@ -356,13 +356,12 @@ tl_update_dialog:
 update_prompt_dialog:
   title: "May bagong update"
   content: |
-    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    May bagong update na available para sa Hachimi Edge (%{version}). Gusto mo ba ito i-install?
     Ire-restart ang laro para ma-apply ang update.
   android_content: |
-    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    May bagong update na available para sa Hachimi Edge (%{version}).
 
-    Pindutin ang "Oo" para buksan ang UmaPatcher Edge at i-patch muli ang laro.
-    (Hindi kailangang i-download muli ang laro o APK, kailangan mo lang mag-patch muli tulad ng dati mong ginamit na method dahil palaging dina-download ng UmaPatcher Edge ang pinakabagong version ng Hachimi Edge.)
+    Gusto mo bang buksan ang UmaPatcher Edge para simulan ang updater?
 
 updating_dialog:
   title: "Ina-update..."
