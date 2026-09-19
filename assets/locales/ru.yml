@@ -209,6 +209,7 @@ config_editor:
   physics_update_mode: "Режим обновления физики"
   cyspring_mono_uncap_frame_scale: "Неограниченный масштаб кадров CySpring Mono"
   disable_skill_name_translation: "Отключить перевод названий навыков"
+  disable_factor_name_translation: "Отключить перевод названий факторов"
   skill_data_desc: "Описания данных навыков"
   hide_ingame_ui_hotkey: "Включить кнопку скрытия интерфейса игры"
   hide_ingame_ui_hotkey_info: >-
@@ -478,10 +479,9 @@ update_prompt_dialog:
     Доступна новая версия Hachimi Edge (%{version}). Хотите её установить?
     Игра перезапустится, чтобы применить изменения.
   android_content: |
-    Доступна новая версия Hachimi Edge (%{version}).
+    Доступна новая версия Hachimi Edge (%{version})!
 
-    Нажмите Да, чтобы открыть UmaPatcher Edge, затем пропатчите игру, как обычно.
-    Заново скачивать игру или APK не требуется.
+    Хотите открыть UmaPatcher Edge, чтобы начать обновление?
 
 updating_dialog:
   title: "Обновление"
