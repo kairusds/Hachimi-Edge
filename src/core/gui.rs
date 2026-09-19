@@ -6796,6 +6796,10 @@ impl Window for FirstTimeSetupWindow {
                             let _ = ui.checkbox(&mut self.config.disable_factor_name_translation, "");
                         });
                         ui.horizontal(|ui| {
+                            ui.label(t!("config_editor.skill_data_desc"));
+                            let _ = ui.checkbox(&mut self.config.skill_data_desc, "");
+                        });
+                        ui.horizontal(|ui| {
                             ui.label(t!("config_editor.menu_open_key"));
                             #[cfg(target_os = "windows")]
                             ui.label(crate::windows::utils::vk_to_display_label(self.config.windows.menu_open_key));
