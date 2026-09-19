@@ -3886,7 +3886,7 @@ impl Gui {
 
         let mut changed = false;
         egui::ComboBox::new(ui.id().with(id_child), "")
-        .wrap_mode(egui::TextWrapMode::Extend)
+        .wrap_mode(egui::TextWrapMode::Wrap)
         .selected_text(selected)
         .show_ui(ui, |ui| {
             for choice in choices.iter() {
