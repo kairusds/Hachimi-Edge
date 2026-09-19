@@ -112,6 +112,7 @@ pub fn check_keyboard_status() -> bool {
     is_visible
 }
 
+#[allow(dead_code)]
 pub fn open_app_or_fallback(package_name: &str, activity_class: &str, fallback_url: &str) {
     let vm = match java_vm() {
         Some(v) => v,
