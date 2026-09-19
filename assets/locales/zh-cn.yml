@@ -205,6 +205,7 @@ config_editor:
   live_theater_allow_same_chara: "在 Live 剧场中允许设置多个相同角色"
   physics_update_mode: "物理引擎更新模式"
   disable_skill_name_translation: "禁用技能名称翻译"
+  disable_factor_name_translation: "禁用因子名称翻译"
   cyspring_mono_uncap_frame_scale: "恢复旧版 CySpring 物理行为"
   hide_ingame_ui_hotkey: "隐藏游戏内 UI 快捷键"
   hide_ingame_ui_hotkey_info: >-

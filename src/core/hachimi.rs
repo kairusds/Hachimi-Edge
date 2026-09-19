@@ -808,6 +808,8 @@ pub struct Config {
     #[serde(default)]
     pub disable_skill_name_translation: bool,
     #[serde(default)]
+    pub disable_factor_name_translation: bool,
+    #[serde(default)]
     pub hide_ingame_ui_hotkey: bool,
     #[serde(default)]
     pub race_stat_hud: bool,

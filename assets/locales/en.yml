@@ -223,6 +223,7 @@ config_editor:
   physics_update_mode: "Physics update mode"
   cyspring_mono_uncap_frame_scale: "CySpring Mono Frame Scale Uncap"
   disable_skill_name_translation: "Disable skill name translation"
+  disable_factor_name_translation: "Disable factor name translation"
   skill_data_desc: "Skill data descriptions"
   hide_ingame_ui_hotkey: "Hide ingame UI hotkey"
   hide_ingame_ui_hotkey_info: >-
