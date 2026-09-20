@@ -111,6 +111,34 @@ fn get_application<'local>(env: &mut JNIEnv<'local>) -> Option<JObject<'local>> 
 fn detect_internal_files_dir(env: &mut JNIEnv) -> Option<PathBuf> {
     let app = get_application(env)?;
 
+    let files_dir = env
+        .call_method(&app, "getFilesDir", "()Ljava/io/File;", &[])
+        .ok()?
+        .l()
+        .ok()?;
+    if files_dir.is_null() {
+        return None;
+    }
+
+    let path = env
+        .call_method(&files_dir, "getAbsolutePath", "()Ljava/lang/String;", &[])
+        .ok()?
+        .l()
+        .ok()?;
+    if path.is_null() {
+        return None;
+    }
+    let path_str: String = env.get_string(&JString::from(path)).ok()?.into();
+
+    let mut dir = PathBuf::from(path_str);
+
+    // Use file marker in the internal files dir instead for direct install
+    let marker_name = INTERNAL_FILES_MARKER.to_str().ok()?;
+    if dir.join(marker_name).exists() {
+        dir.push("hachimi");
+        return Some(dir);
+    }
+
     let assets = env
         .call_method(&app, "getAssets", "()Landroid/content/res/AssetManager;", &[])
         .ok()?
@@ -132,26 +160,6 @@ fn detect_internal_files_dir(env: &mut JNIEnv) -> Option<PathBuf> {
     }
     unsafe { AAsset_close(asset) };
 
-    let files_dir = env
-        .call_method(&app, "getFilesDir", "()Ljava/io/File;", &[])
-        .ok()?
-        .l()
-        .ok()?;
-    if files_dir.is_null() {
-        return None;
-    }
-
-    let path = env
-        .call_method(&files_dir, "getAbsolutePath", "()Ljava/lang/String;", &[])
-        .ok()?
-        .l()
-        .ok()?;
-    if path.is_null() {
-        return None;
-    }
-    let path_str: String = env.get_string(&JString::from(path)).ok()?.into();
-
-    let mut dir = PathBuf::from(path_str);
     dir.push("hachimi");
     Some(dir)
 }

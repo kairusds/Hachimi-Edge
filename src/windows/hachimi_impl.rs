@@ -109,6 +109,8 @@ pub struct Config {
     pub ingame_webview: bool,
     #[serde(default)]
     pub free_camera: super::free_camera::FreeCameraConfig,
+    #[serde(default)]
+    pub target_fps_unfocused: Option<i32>,
 }
 
 impl Config {
