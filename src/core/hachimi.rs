@@ -823,6 +823,8 @@ pub struct Config {
     pub race_stat_hud_draggable: bool,
     #[serde(default)]
     pub race_stat_hud_draggable_save: bool,
+    #[serde(default)]
+    pub race_stat_hud_resizable: bool,
     #[serde(default = "Config::default_race_stat_hud_drag_x")]
     pub race_stat_hud_drag_x: f32,
     #[serde(default = "Config::default_race_stat_hud_drag_y")]

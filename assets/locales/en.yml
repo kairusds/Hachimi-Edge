@@ -237,6 +237,7 @@ config_editor:
   race_stat_hud_landscapeui_portrait: "Race Stat HUD Landscape UI game view"
   race_stat_hud_draggable: "Race Stat HUD draggable"
   race_stat_hud_draggable_save: "Race Stat HUD save dragged position"
+  race_stat_hud_resizable: "Race Stat HUD resizable"
   race_stat_hud_width_scale: "Race Stat HUD width scale"
   race_stat_hud_height_scale: "Race Stat HUD height scale"
   race_stat_hud_opacity_scale: "Race Stat HUD opacity scale"

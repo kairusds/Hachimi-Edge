@@ -1044,6 +1044,7 @@ impl RaceStatHud {
         let config = Hachimi::instance().config.load();
         let draggable = config.race_stat_hud_draggable;
         let drag_save = config.race_stat_hud_draggable_save;
+        let resizable = config.race_stat_hud_resizable;
         let opacity_scale = config.race_stat_hud_opacity_scale
             .clamp(RACE_STAT_HUD_OPACITY_SCALE_MIN, RACE_STAT_HUD_OPACITY_SCALE_MAX);
         drop(config);
@@ -1098,69 +1099,69 @@ impl RaceStatHud {
                         self.hud_contents(ui, all_stats, course_info, scale, inner.y, toggle_button, can_add_clone, draggable);
                     });
 
-                if !self.is_clone() {
-                let handle_size = 16.0 * scale;
-                let handle_rect = egui::Rect::from_min_size(
-                    frame.response.rect.right_bottom() - egui::Vec2::splat(handle_size),
-                    egui::Vec2::splat(handle_size),
-                );
-                let resize_response = ui.interact(handle_rect, area_id.with("resize"), egui::Sense::drag());
-                let resize_stroke = ui.style().interact(&resize_response).fg_stroke;
-                for inset in [3.0, 7.0, 11.0] {
-                    let inset = inset * scale;
-                    let points = [
-                        egui::pos2(handle_rect.right() - inset, handle_rect.bottom()),
-                        egui::pos2(handle_rect.right(), handle_rect.bottom() - inset),
-                    ];
-                    ui.painter().line_segment(points, resize_stroke);
-                }
-
-                if resize_response.hovered() || resize_response.dragged() {
-                    ctx.set_cursor_icon(egui::CursorIcon::ResizeNwSe);
-                }
-                if resize_response.drag_started() {
-                    self.drag_pos = Some(Self::drag_pos_from_offset(
-                        game_view,
-                        panel,
-                        is_vertical,
-                        drag_offset,
-                    ));
-                    self.resize_dirty = false;
-                }
-                }
-                if resize_response.dragged() && panel.x > 0.0 && panel.y > 0.0 {
-                    let delta = resize_response.drag_delta();
-                    let desired_width = (panel.x + delta.x).max(1.0);
-                    let desired_height = (panel.y + delta.y).max(1.0);
-                    let new_scale = (
-                        Self::clamp_size_scale(
-                            width_scale * desired_width / panel.x,
-                            RACE_STAT_HUD_WIDTH_SCALE_MIN,
-                            RACE_STAT_HUD_WIDTH_SCALE_MAX,
-                        ),
-                        Self::clamp_size_scale(
-                            height_scale * desired_height / panel.y,
-                            RACE_STAT_HUD_HEIGHT_SCALE_MIN,
-                            RACE_STAT_HUD_HEIGHT_SCALE_MAX,
-                        ),
+                if resizable && !self.is_clone() {
+                    let handle_size = 16.0 * scale;
+                    let handle_rect = egui::Rect::from_min_size(
+                        frame.response.rect.right_bottom() - egui::Vec2::splat(handle_size),
+                        egui::Vec2::splat(handle_size),
                     );
-                    self.resize_scale = Some(new_scale);
-                    self.resize_dirty = true;
-                }
-                if resize_response.drag_stopped() && self.resize_dirty {
-                    if let Some((width_scale, height_scale)) = self.resize_scale {
-                        self.config.race_stat_hud_width_scale = width_scale;
-                        self.config.race_stat_hud_height_scale = height_scale;
-                        let mut new_config = (**Hachimi::instance().config.load()).clone();
-                        new_config.race_stat_hud_width_scale = width_scale;
-                        new_config.race_stat_hud_height_scale = height_scale;
-                        if let Some((x, y)) = self.drag_pos {
-                            new_config.race_stat_hud_drag_x = x;
-                            new_config.race_stat_hud_drag_y = y;
-                        }
-                        save_and_reload_config(new_config);
+                    let resize_response = ui.interact(handle_rect, area_id.with("resize"), egui::Sense::drag());
+                    let resize_stroke = ui.style().interact(&resize_response).fg_stroke;
+                    for inset in [3.0, 7.0, 11.0] {
+                        let inset = inset * scale;
+                        let points = [
+                            egui::pos2(handle_rect.right() - inset, handle_rect.bottom()),
+                            egui::pos2(handle_rect.right(), handle_rect.bottom() - inset),
+                        ];
+                        ui.painter().line_segment(points, resize_stroke);
                     }
-                    self.resize_dirty = false;
+
+                    if resize_response.hovered() || resize_response.dragged() {
+                        ctx.set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+                    }
+                    if resize_response.drag_started() {
+                        self.drag_pos = Some(Self::drag_pos_from_offset(
+                            game_view,
+                            panel,
+                            is_vertical,
+                            drag_offset,
+                        ));
+                        self.resize_dirty = false;
+                    }
+                    if resize_response.dragged() && panel.x > 0.0 && panel.y > 0.0 {
+                        let delta = resize_response.drag_delta();
+                        let desired_width = (panel.x + delta.x).max(1.0);
+                        let desired_height = (panel.y + delta.y).max(1.0);
+                        let new_scale = (
+                            Self::clamp_size_scale(
+                                width_scale * desired_width / panel.x,
+                                RACE_STAT_HUD_WIDTH_SCALE_MIN,
+                                RACE_STAT_HUD_WIDTH_SCALE_MAX,
+                            ),
+                            Self::clamp_size_scale(
+                                height_scale * desired_height / panel.y,
+                                RACE_STAT_HUD_HEIGHT_SCALE_MIN,
+                                RACE_STAT_HUD_HEIGHT_SCALE_MAX,
+                            ),
+                        );
+                        self.resize_scale = Some(new_scale);
+                        self.resize_dirty = true;
+                    }
+                    if resize_response.drag_stopped() && self.resize_dirty {
+                        if let Some((width_scale, height_scale)) = self.resize_scale {
+                            self.config.race_stat_hud_width_scale = width_scale;
+                            self.config.race_stat_hud_height_scale = height_scale;
+                            let mut new_config = (**Hachimi::instance().config.load()).clone();
+                            new_config.race_stat_hud_width_scale = width_scale;
+                            new_config.race_stat_hud_height_scale = height_scale;
+                            if let Some((x, y)) = self.drag_pos {
+                                new_config.race_stat_hud_drag_x = x;
+                                new_config.race_stat_hud_drag_y = y;
+                            }
+                            save_and_reload_config(new_config);
+                        }
+                        self.resize_dirty = false;
+                    }
                 }
 
                 // process the whole-panel drag handle registered above
@@ -5803,6 +5804,13 @@ impl ConfigEditor {
                 && config.race_stat_hud && config.race_stat_hud_draggable {
                 ui.label(t!("config_editor.race_stat_hud_draggable_save"));
                 ui.checkbox(&mut config.race_stat_hud_draggable_save, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_resizable")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global)
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_resizable"));
+                ui.checkbox(&mut config.race_stat_hud_resizable, "");
                 ui.end_row();
             }
 
