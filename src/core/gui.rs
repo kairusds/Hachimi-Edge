@@ -352,6 +352,7 @@ const VALUE_CHIP_HUE_ORDER: f32 = 0.24;
 const VALUE_CHIP_HUE_START_DELAY: f32 = 0.90;
 const VALUE_CHIP_HUE_FINISH: f32 = 0.13;
 const VALUE_CHIP_HUE_LANE: f32 = 0.66;
+const VALUE_CHIP_HUE_PLAYER_NAME: f32 = 0.78;
 
 // glint sweep period seconds for the zenkai spurt effect on the speed and stamina visualizers
 const ZENKAI_GLINT_PERIOD: f32 = 1.2;
@@ -375,6 +376,7 @@ impl RaceStatHudTab {
 
 struct CharacterStats {
     name: String,
+    player_name: String,
     speed: f32,
     accel: Option<f32>,
     min_speed: f32,
@@ -413,6 +415,7 @@ impl Default for CharacterStats {
     fn default() -> CharacterStats {
         CharacterStats {
             name: String::new(),
+            player_name: String::new(),
             speed: 0.0,
             accel: None,
             min_speed: 0.0,
@@ -1406,6 +1409,12 @@ impl RaceStatHud {
     }
 
     fn stats_page(&mut self, ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
+        if !stats.player_name.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                Self::value_chip(ui, &stats.player_name, VALUE_CHIP_HUE_PLAYER_NAME, scale);
+            });
+        }
+
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.speed")).size(13.0 * scale));
             self.chip_text.clear();
@@ -1542,14 +1551,9 @@ impl RaceStatHud {
             ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(color));
         });
 
-        // phase
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.phase")).size(13.0 * scale));
             Self::value_chip(ui, &Self::phase_name(stats.phase), VALUE_CHIP_HUE_PHASE, scale);
-        });
-
-        // order
-        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.order")).size(13.0 * scale));
             if stats.cur_order >= 0 {
                 Self::ordinal_into(stats.cur_order + 1, &mut self.chip_text);
@@ -1680,17 +1684,17 @@ impl RaceStatHud {
             }
             if stats.temptation_mode != 0 {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count);
+                let _ = write!(self.chip_text, "{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_BAD, scale);
             }
             if stats.is_compete_fight {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count);
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if stats.is_compete_top {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count, stats.compete_top_remain_time);
+                let _ = write!(self.chip_text, "{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count + 1, stats.compete_top_remain_time);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.run_at_full_speed {
@@ -1707,12 +1711,12 @@ impl RaceStatHud {
             }
             if se.compete_before_spurt {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count);
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.secure_lead {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count);
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
         });
@@ -2207,13 +2211,13 @@ impl RaceStatHud {
         }
 
         // name from HorseRaceInfo, fallback to HorseData
+        let horse_data = HorseRaceInfo::get_HorseData(race_info);
         let name_ptr = HorseRaceInfo::get_CharaName(race_info);
         if !name_ptr.is_null() {
             let s = unsafe { (*name_ptr).as_utf16str() };
             stats.name.clear();
             stats.name.extend(s.chars());
         } else {
-            let horse_data = HorseRaceInfo::get_HorseData(race_info);
             let hd_name = if !horse_data.is_null() { HorseData::get_charaName(horse_data) } else { 0 as _ };
             if !hd_name.is_null() {
                 let s = unsafe { (*hd_name).as_utf16str() };
@@ -2223,6 +2227,13 @@ impl RaceStatHud {
                 stats.name.clear();
                 stats.name.push('?');
             }
+        }
+
+        stats.player_name.clear();
+        let trainer_name_ptr = if !horse_data.is_null() { HorseData::get_TrainerName(horse_data) } else { 0 as _ };
+        if !trainer_name_ptr.is_null() {
+            let s = unsafe { (*trainer_name_ptr).as_utf16str() };
+            stats.player_name.extend(s.chars());
         }
 
         stats.speed = HorseRaceInfo::get__lastSpeed(race_info);
@@ -4389,6 +4400,63 @@ fn new_window<'a>(ctx: &egui::Context, id: egui::Id, title: impl Into<egui::Widg
     .constrain(false)
 }
 
+fn new_setup_window<'a>(ctx: &egui::Context, id: egui::Id, title: impl Into<egui::WidgetText>) -> egui::Window<'a> {
+    let scale = get_scale(ctx);
+    let salt = get_scale_salt(ctx);
+    let viewport_width = ctx.viewport_rect().width();
+
+    let max_width = (320.0 * scale).min((viewport_width - 24.0 * scale).max(96.0 * scale));
+    let title = fit_window_title(ctx, title.into(), (viewport_width - 24.0 * scale).max(96.0 * scale), scale);
+
+    egui::Window::new(title)
+    .id(id.with(salt.to_bits()))
+    .pivot(egui::Align2::CENTER_CENTER)
+    .fixed_pos(ctx.viewport_rect().max / 2.0)
+    .min_width(96.0 * scale)
+    .max_width(max_width)
+    .max_height(250.0 * scale)
+    .collapsible(false)
+    .resizable(false)
+    .constrain(false)
+}
+
+fn fit_window_title(ctx: &egui::Context, title: egui::WidgetText, budget_width: f32, scale: f32) -> egui::WidgetText {
+    let style = ctx.style();
+    let heading_size = style.text_styles.get(&egui::TextStyle::Heading).map_or(20.0, |font| font.size);
+    let inner_height = ctx.fonts_mut(|fonts| fonts.row_height(&egui::FontId::proportional(heading_size))).max(style.spacing.interact_size.y);
+    let button = style.spacing.icon_width.min(inner_height);
+    let left_pad = ((inner_height - button) / 2.0).round();
+    let budget = budget_width - 2.0 * (left_pad + button + style.spacing.item_spacing.x) - 4.0 * scale;
+    if budget <= 0.0 {
+        return title;
+    }
+    let text = title.text().to_owned();
+    let color = style.visuals.text_color();
+    let measure = |s: &str| {
+        let font_id = egui::FontId::proportional(heading_size);
+        ctx.fonts_mut(|fonts| fonts.layout_no_wrap(s.to_string(), font_id, color).size().x)
+    };
+    if measure(text.as_str()) <= budget {
+        return title;
+    }
+    let mut fitted = String::new();
+    for ch in text.chars() {
+        fitted.push(ch);
+        fitted.push('\u{2026}');
+        if measure(fitted.as_str()) > budget {
+            fitted.pop();
+            fitted.pop();
+            break;
+        }
+        fitted.pop();
+    }
+    if fitted.is_empty() {
+        return title;
+    }
+    fitted.push('\u{2026}');
+    fitted.into()
+}
+
 fn simple_window_layout(ui: &mut egui::Ui, id: egui::Id, add_contents: impl FnOnce(&mut egui::Ui), add_buttons: impl FnOnce(&mut egui::Ui)) {
     let builder = egui::UiBuilder::new()
         .id(id)
@@ -5274,6 +5342,11 @@ impl ConfigEditor {
         if show_all || tab == ConfigEditorTab::Graphics {
             if should_show_option(search, &t!("config_editor.target_fps")) {
                 Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=690);
+            }
+
+            #[cfg(target_os = "windows")]
+            if should_show_option(search, &t!("config_editor.target_fps_unfocused")) {
+                Self::option_slider(ui, &t!("config_editor.target_fps_unfocused"), &mut config.windows.target_fps_unfocused, 10..=30);
             }
 
             if should_show_option(search, &t!("config_editor.virtual_resolution_multiplier")) {
@@ -6683,7 +6756,7 @@ impl Window for FirstTimeSetupWindow {
             { self.config.android.menu_open_key = raw; }
         }
 
-        new_window(ctx, self.id, t!("first_time_setup.title"))
+        new_setup_window(ctx, self.id, t!("first_time_setup.title"))
         .open(&mut open)
         .show(ctx, |ui| {
             let allow_next = match self.current_page {
@@ -6770,7 +6843,7 @@ impl Window for FirstTimeSetupWindow {
                         ui.label(t!("first_time_setup.common_settings_content"));
                         ui.add_space(4.0);
 
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.target_fps"));
                             let mut enabled = self.config.target_fps.is_some();
                             if ui.checkbox(&mut enabled, t!("enable")).changed() {
@@ -6787,19 +6860,19 @@ impl Window for FirstTimeSetupWindow {
                                 let _ = ui.add(egui::Slider::new(fps, 30..=690));
                             });
                         }
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.disable_skill_name_translation"));
                             let _ = ui.checkbox(&mut self.config.disable_skill_name_translation, "");
                         });
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.disable_factor_name_translation"));
                             let _ = ui.checkbox(&mut self.config.disable_factor_name_translation, "");
                         });
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.skill_data_desc"));
                             let _ = ui.checkbox(&mut self.config.skill_data_desc, "");
                         });
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.menu_open_key"));
                             #[cfg(target_os = "windows")]
                             ui.label(crate::windows::utils::vk_to_display_label(self.config.windows.menu_open_key));
@@ -6829,7 +6902,7 @@ impl Window for FirstTimeSetupWindow {
                                 });
                             }
                         });
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.ui_animation_scale"));
                         });
                         let _ = ui.add(egui::Slider::new(&mut self.config.ui_animation_scale, 0.1..=10.0).step_by(0.1));
@@ -8288,7 +8361,7 @@ impl Window for AddTranslationRepoWindow {
         let mut open = true;
         let mut open2 = true;
 
-        new_window(ctx, self.id, t!("add_translation_repo.title"))
+        new_setup_window(ctx, self.id, t!("add_translation_repo.title"))
         .open(&mut open)
         .show(ctx, |ui| {
             ui.heading(t!("add_translation_repo.select_translation_repo"));
