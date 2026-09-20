@@ -4,9 +4,9 @@ windows:
   menu_open_key: "Стрелка вправо"
 
 android:
-  menu_open_key: "Громкость вверх + вниз\n\uf25a или трижды нажмите слева сверху"
+  menu_open_key: "Громкость вверх + вниз\n\uf25a или три тапа слева сверху"
 
-splash_sub: "\uf015 Нажмите %{open_key_str}, чтобы открыть меню."
+splash_sub: "\uf015 Открыть меню: %{open_key_str}"
 loading_label: "Загрузка..."
 search_filter: "Поиск..."
 open: "Открыть"
