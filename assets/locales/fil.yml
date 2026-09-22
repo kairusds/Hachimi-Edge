@@ -209,6 +209,7 @@ config_editor:
   race_stat_hud_landscapeui_portrait: "I-adjust ang Race Stat HUD para sa Landscape UI"
   race_stat_hud_draggable: "Gawing draggable ang Race Stat HUD"
   race_stat_hud_draggable_save: "I-save ang posisyon ng na-drag na Race Stat HUD"
+  race_stat_hud_resizable: "Gawing resizable ang Race Stat HUD"
   disable_tap_effect: "I-disable ang particle effect sa pag-tap"
   race_playback_slider: "Ipakita ang slider sa Playback ng Karera"
   race_playback_button: "Playback ng karera - Ipakita ang pause/resume button"
