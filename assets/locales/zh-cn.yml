@@ -253,6 +253,7 @@ config_editor:
   race_stat_hud_landscapeui_portrait: "比赛实时状态 HUD 横屏 UI 游戏视图"
   race_stat_hud_draggable: "比赛实时状态 HUD 可拖动"
   race_stat_hud_draggable_save: "比赛实时状态 HUD 保存拖动位置"
+  race_stat_hud_resizable: "比赛实时状态 HUD 可调整大小"
   race_stat_hud_width_scale: "比赛实时状态 HUD 宽度缩放"
   race_stat_hud_height_scale: "比赛实时状态 HUD 高度缩放"
   race_stat_hud_opacity_scale: "比赛实时状态 HUD 不透明度"
