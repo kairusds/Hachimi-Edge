@@ -148,6 +148,7 @@ config_editor:
     Toolkit. Kung walang tumatakbong server, walang karagdagang pag-translate ang mangyayari at maaaring
     maapektuhan ang gameplay. Paki-disable ang opsyong ito kung wala kang available na translation server.
   auto_translate_ui: "Awtomatikong i-translate ang UI (BAKA MASIRA ANG MGA UI)"
+  target_fps_unfocused: "Target FPS kung hindi aktibo ang window"
   virtual_resolution_multiplier: "Multiplier ng virtual resolution"
   ui_scale: "Laki ng UI"
   gui_scale: "Laki ng Overlay"
