@@ -5146,6 +5146,30 @@ impl ConfigEditor {
                 }
             }
 
+            if should_show_option(search, &t!("config_editor.custom_font_asset_bundle")) {
+                ui.label(t!("config_editor.custom_font_asset_bundle"));
+                let value = config.custom_font_asset_bundle.get_or_insert_default();
+                ui.add_sized(
+                    [ui.available_width(), 24.0 * scale],
+                    egui::TextEdit::singleline(value)
+                        .hint_text(t!("config_editor.custom_font_asset_bundle_hint"))
+                        .lock_focus(true)
+                );
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.custom_font_name")) {
+                ui.label(t!("config_editor.custom_font_name"));
+                let value = config.custom_font_name.get_or_insert_default();
+                ui.add_sized(
+                    [ui.available_width(), 24.0 * scale],
+                    egui::TextEdit::singleline(value)
+                        .hint_text(t!("config_editor.custom_font_name_hint"))
+                        .lock_focus(true)
+                );
+                ui.end_row();
+            }
+
             if should_show_option(search, &t!("config_editor.gui_scale")) {
                 ui.label(t!("config_editor.gui_scale"));
                 ui.add(egui::Slider::new(&mut config.gui_scale, 0.25..=2.0).step_by(0.05));

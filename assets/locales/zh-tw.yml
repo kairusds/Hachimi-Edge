@@ -115,6 +115,10 @@ config_editor:
     如果是不小心誤觸此選項，請關閉此對話框並禁用該選項。
   ipv4_only: "僅限 IPv4 ureq"
   meta_index_url: "翻譯 Meta URL"
+  custom_font_asset_bundle: "自訂字體 AssetBundle 路徑"
+  custom_font_asset_bundle_hint: "例如：custom_font/font.bundle"
+  custom_font_name: "自訂字體資源名稱"
+  custom_font_name_hint: "例如：assets/fonts/custom.ttf"
   debug_mode: "除錯模式"
   enable_file_logging: "啟用檔案記錄"
   apply_atlas_workaround: "套用 TL Atlas 修復"
