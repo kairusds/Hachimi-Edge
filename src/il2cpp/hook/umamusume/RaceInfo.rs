@@ -5,6 +5,7 @@ use crate::{
 
 def_method_wrapper_fn!(get_RaceType, GET_RACETYPE_ADDR, i32, this: *mut Il2CppObject);
 def_method_wrapper_fn!(set_RaceType, SET_RACETYPE_ADDR, (), this: *mut Il2CppObject, value: i32);
+def_method_wrapper_fn!(get_IsStoryRace, GET_IS_STORY_RACE_ADDR, bool, this: *mut Il2CppObject);
 def_method_wrapper_fn!(get_CourseOnlyDistance, GET_COURSE_ONLY_DISTANCE_ADDR, i32, this: *mut Il2CppObject);
 def_method_wrapper_fn!(get_RunUpDistance, GET_RUN_UP_DISTANCE_ADDR, i32, this: *mut Il2CppObject);
 def_method_wrapper_fn!(get_CourseDistance, GET_COURSE_DISTANCE_ADDR, i32, this: *mut Il2CppObject);
@@ -19,6 +20,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     unsafe {
         GET_RACETYPE_ADDR = get_method_addr(RaceInfo, c"get_RaceType", 0);
         SET_RACETYPE_ADDR = get_method_addr(RaceInfo, c"set_RaceType", 1);
+        GET_IS_STORY_RACE_ADDR = get_method_addr(RaceInfo, c"get_IsStoryRace", 0);
 
         match Hachimi::instance().game.region {
             Region::Global => {

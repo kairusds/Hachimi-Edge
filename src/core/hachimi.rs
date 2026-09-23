@@ -13,8 +13,7 @@ pub const REPO_PATH: &str = "kairusds/Hachimi-Edge";
 pub const GITHUB_API: &str = "https://api.github.com/repos";
 pub const CODEBERG_API: &str = "https://codeberg.org/api/v1/repos";
 pub const WEBSITE_URL: &str = "https://hachimi.noccu.art";
-pub const UMAPATCHER_PACKAGE_NAME: &str = "com.leadrdrk.umapatcher.edge";
-pub const UMAPATCHER_INSTALL_URL: &str = "https://github.com/kairusds/UmaPatcher-Edge/releases/latest";
+pub const UMAPATCHER_UPDATER_DEEPLINK: &str = "umapatcher-edge://update-hachimi";
 pub const RACE_MECHANICS_URL: &str = "https://docs.google.com/document/d/15VzW9W2tXBBTibBRbZ8IVpW6HaMX8H0RP03kq6Az7Xg";
 
 static mut ORIG_SQLITE3_OPEN_V2: Option<extern "C" fn(*const i8, *mut *mut std::ffi::c_void, i32, *const i8) -> i32> = None;
@@ -76,6 +75,9 @@ pub struct Hachimi {
 
     /// -1 = default
     pub target_fps: AtomicI32,
+
+    #[cfg(target_os = "windows")]
+    pub target_fps_unfocused: AtomicI32,
 
     #[cfg(target_os = "windows")]
     pub vsync_count: AtomicI32,
@@ -174,6 +176,9 @@ impl Hachimi {
             template_parser: template::Parser::new(&template_filters::LIST),
 
             target_fps: AtomicI32::new(config.target_fps.unwrap_or(-1)),
+
+            #[cfg(target_os = "windows")]
+            target_fps_unfocused: AtomicI32::new(config.windows.target_fps_unfocused.unwrap_or(-1)),
 
             #[cfg(target_os = "windows")]
             vsync_count: AtomicI32::new(config.windows.vsync_count),
@@ -700,6 +705,30 @@ impl CaptionConfig {
     fn default_pos_y() -> f32 { -3.0 }
 }
 
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
+pub struct RaceStatHudCloneConfig {
+    #[serde(default = "Config::default_race_stat_hud_drag_x")]
+    pub drag_x: f32,
+    #[serde(default = "Config::default_race_stat_hud_drag_y")]
+    pub drag_y: f32,
+    #[serde(default)]
+    pub selected_character: usize,
+    #[serde(default)]
+    pub toggle_key: Option<i32>,
+    #[serde(default)]
+    pub open: bool
+}
+
+impl RaceStatHudCloneConfig {
+    pub fn drag_pos(&self) -> Option<(f32, f32)> {
+        if (0.0..=1.0).contains(&self.drag_x) && (0.0..=1.0).contains(&self.drag_y) {
+            Some((self.drag_x, self.drag_y))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Config {
     #[serde(default)]
@@ -774,6 +803,8 @@ pub struct Config {
     #[serde(default)]
     pub skill_data_desc: bool,
     #[serde(default)]
+    pub old_config_editor: bool,
+    #[serde(default)]
     pub homescreen_bgseason: crate::il2cpp::hook::umamusume::GameDefine::BgSeason,
     pub sugoi_url: Option<String>,
     #[serde(default)]
@@ -782,6 +813,8 @@ pub struct Config {
     pub auto_translate_localize: bool,
     #[serde(default)]
     pub disable_skill_name_translation: bool,
+    #[serde(default)]
+    pub disable_factor_name_translation: bool,
     #[serde(default)]
     pub hide_ingame_ui_hotkey: bool,
     #[serde(default)]
@@ -796,14 +829,28 @@ pub struct Config {
     pub race_stat_hud_draggable: bool,
     #[serde(default)]
     pub race_stat_hud_draggable_save: bool,
+    #[serde(default)]
+    pub race_stat_hud_resizable: bool,
     #[serde(default = "Config::default_race_stat_hud_drag_x")]
     pub race_stat_hud_drag_x: f32,
     #[serde(default = "Config::default_race_stat_hud_drag_y")]
     pub race_stat_hud_drag_y: f32,
+    #[serde(default)]
+    pub race_stat_hud_main_open: bool,
+    #[serde(default)]
+    pub race_stat_hud_clones: Vec<RaceStatHudCloneConfig>,
+    #[serde(default)]
+    pub race_stat_hud_selected_character: Option<usize>,
+    #[serde(default)]
+    pub race_stat_hud_persist_clones: bool,
+    #[serde(default)]
+    pub race_stat_hud_persist_selected_index: bool,
     #[serde(default = "Config::default_race_stat_hud_width_scale")]
     pub race_stat_hud_width_scale: f32,
     #[serde(default = "Config::default_race_stat_hud_height_scale")]
     pub race_stat_hud_height_scale: f32,
+    #[serde(default = "Config::default_race_stat_hud_opacity_scale")]
+    pub race_stat_hud_opacity_scale: f32,
     #[serde(default)]
     pub race_playback_slider: bool,
     #[serde(default = "Config::default_true")]
@@ -893,6 +940,7 @@ impl Config {
     fn default_race_stat_hud_drag_y() -> f32 { -1.0 }
     fn default_race_stat_hud_width_scale() -> f32 { 1.0 }
     fn default_race_stat_hud_height_scale() -> f32 { 1.0 }
+    fn default_race_stat_hud_opacity_scale() -> f32 { 1.0 }
     fn default_true() -> bool { true }
 }
 

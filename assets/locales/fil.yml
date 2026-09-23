@@ -75,6 +75,8 @@ notification:
   free_camera_unavailable_live: "Hindi available ang Free Camera sa concert na ito dahil sa kilalang isyu."
   recommended_ui_scale_applied: "Nilapat ang recommended na UI scale"
   github_update_unreachable: "Hindi makakonekta sa GitHub, sinusubukan ang Codeberg..."
+  tl_repo_folder_missing: "Nawawala ang translation data folder. Pakitignan kung may update para ibalik sila."
+  tl_repo_changed: "Binago ang translation repo. Na-reload ang localized data."
 
 first_time_setup:
   title: "First Time Setup"
@@ -146,6 +148,7 @@ config_editor:
     Toolkit. Kung walang tumatakbong server, walang karagdagang pag-translate ang mangyayari at maaaring
     maapektuhan ang gameplay. Paki-disable ang opsyong ito kung wala kang available na translation server.
   auto_translate_ui: "Awtomatikong i-translate ang UI (BAKA MASIRA ANG MGA UI)"
+  target_fps_unfocused: "Target FPS kung hindi aktibo ang window"
   virtual_resolution_multiplier: "Multiplier ng virtual resolution"
   ui_scale: "Laki ng UI"
   gui_scale: "Laki ng Overlay"
@@ -207,12 +210,19 @@ config_editor:
   race_stat_hud_landscapeui_portrait: "I-adjust ang Race Stat HUD para sa Landscape UI"
   race_stat_hud_draggable: "Gawing draggable ang Race Stat HUD"
   race_stat_hud_draggable_save: "I-save ang posisyon ng na-drag na Race Stat HUD"
+  race_stat_hud_resizable: "Gawing resizable ang Race Stat HUD"
   disable_tap_effect: "I-disable ang particle effect sa pag-tap"
   race_playback_slider: "Ipakita ang slider sa Playback ng Karera"
   race_playback_button: "Playback ng karera - Ipakita ang pause/resume button"
   race_playback_key_enable: "I-enable ang keybind sa pag-pause/resume ng playback sa karera"
   race_playback_key: "Key sa pag-pause/resume ng playback sa karera"
   race_playback_slider_always: "Palaging ipakita ang slider sa Playback ng Karera"
+  skill_data_desc: "Gawing skill data ang paglalarawan ng kasanayan"
+  disable_factor_name_translation: "I-disable ang pag-translate ng pangalan ng sparks"
+  old_config_editor: "Gamitin ang lumang config editor"
+  race_stat_hud_opacity_scale: "Opacity ng Race Stat HUD"
+  race_stat_hud_persist_clones: "Panatilihin ang mga clone sa Race Stat Hud"
+  race_stat_hud_persist_selected_index: "I-save ang (mga) piniling character sa Race Stat Hud"
 
 
 free_camera:
@@ -340,7 +350,7 @@ set_keybind:
 tl_update_dialog:
   title: "May bagong update"
   content: "May bagong update sa translations (%{size}). Gusto mo ba itong i-download?"
-  content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}) sa halip. Gusto mo ba itong i-download?"
+  content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}). Gusto mo ba itong i-download?"
   show_changelog: "Ipakita ang Mga Pagbabago"
   changelog_title: "Mga Pagbabago"
   changelog_fetch_failed: "Hindi makuha ang changelog"
@@ -349,13 +359,12 @@ tl_update_dialog:
 update_prompt_dialog:
   title: "May bagong update"
   content: |
-    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    May bagong update na available para sa Hachimi Edge (%{version}). Gusto mo ba ito i-install?
     Ire-restart ang laro para ma-apply ang update.
   android_content: |
-    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    May bagong update na available para sa Hachimi Edge (%{version}).
 
-    Pindutin ang "Oo" para buksan ang UmaPatcher Edge at i-patch muli ang laro.
-    (Hindi kailangang i-download muli ang laro o APK, kailangan mo lang mag-patch muli tulad ng dati mong ginamit na method dahil palaging dina-download ng UmaPatcher Edge ang pinakabagong version ng Hachimi Edge.)
+    Gusto mo bang buksan ang UmaPatcher Edge para simulan ang updater?
 
 updating_dialog:
   title: "Ina-update..."
@@ -372,16 +381,15 @@ steam_overlay_conflict_dialog:
 race_stat_hud:
   open_race_mechanics_confirm: "Gusto mo bang buksan ang browser para ipakita ang dokumentasyon tungkol sa Race Mechanics? (Ingles lang)"
   speed: "Bilis"
-  accel: "Pagpabibilis"
-  min_speed: "Pinakamababang Bilis"
+  min_speed: "Min. na Bilis"
   phase: "Bahagi"
   order: "Posisyon"
   distance: "Distansya"
   lane: "Linya"
   start_delay: "Delay ng Pagsimula"
   finish: "Tapos"
-  used_skills: "Mga Ginamit na Kasanayan"
-  unused_skills: "Mga Kasanayang Di Ginamit"
+  used_skills: "Ginamit na Skills"
+  unused_skills: "Di Ginamit na Skills"
   autoscroll: "Awtomatikong mag-scroll"
   phase_start: "Simula"
   phase_middle: "Gitna"
@@ -403,6 +411,6 @@ race_stat_hud:
   stamina_limit_break: "Pagkalagpas ng Stamina Limit"
   stamina_keep: "Pagpapanatili ng Stamina"
   compete_before_spurt: "Lumalaban Bago Umagos"
-  secure_lead: "Panatilin ang Lead"
+  secure_lead: "Panatilin ang Pangunguna"
   clog: "Hinarangan"
 

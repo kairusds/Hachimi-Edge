@@ -1,4 +1,12 @@
-use crate::{core::{Hachimi, game::Region}, il2cpp::{symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr}, types::*}};
+use std::sync::Arc;
+use crate::{
+    core::{Hachimi, gui::{GameOpts, GAME_OPTS_CACHE}, game::Region},
+    il2cpp::{
+        sql::{get_champions_resources, get_champions_live_max_year},
+        symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr},
+        types::*, utils::umamusume_enum_options
+    }
+};
 #[cfg(target_os = "windows")]
 use crate::windows::free_camera::{self, CameraScene};
 #[cfg(target_os = "windows")]
@@ -59,12 +67,30 @@ extern "C" fn GameSystem_LateUpdate(this: *mut Il2CppObject) {
     Director::apply_paused_free_camera();
 }
 
+fn init_game_opts() {
+    let opts = GameOpts {
+        champions_resources: Arc::new(get_champions_resources()),
+        champions_live_max_year: get_champions_live_max_year(),
+        font_color_options: Arc::new(umamusume_enum_options(c"FontColorType")),
+        outline_size_options: Arc::new(umamusume_enum_options(c"OutlineSizeType")),
+        outline_color_options: Arc::new(umamusume_enum_options(c"OutlineColorType")),
+    };
+    match GAME_OPTS_CACHE.lock() {
+        Ok(mut slot) => *slot = Some(opts),
+        Err(poisoned) => {
+            warn!("GAME_OPTS_CACHE mutex poisoned, recovering");
+            *poisoned.into_inner() = Some(opts);
+        }
+    }
+}
+
 // good hook for initializing values i guess
 pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
     // GAME_INITIALIZED.store(true, Ordering::Relaxed);
     Hachimi::instance().init_skill_info();
     Hachimi::instance().init_skill_data_desc();
+    init_game_opts();
 
     #[cfg(target_os = "android")]
     crate::android::utils::set_audio_capture_policy_all();

@@ -5,15 +5,17 @@ use std::{
     ops::RangeInclusive,
     os::raw::c_void,
     panic::{self, AssertUnwindSafe},
-    sync::{atomic::{self, AtomicBool, AtomicI32, AtomicU32}, Arc, Mutex},
+    sync::{atomic::{self, AtomicBool, AtomicI32, AtomicU32, AtomicUsize}, Arc, Mutex},
     thread,
     time::Instant
 };
 
+use egui::emath::GuiRounding as _;
 use egui_scale::EguiScale;
 use fnv::FnvHashSet;
 use once_cell::sync::{Lazy, OnceCell};
 use rust_i18n::t;
+use size::{Base, Size, Style};
 use chrono::{Utc, Datelike};
 
 use crate::il2cpp::{
@@ -67,7 +69,7 @@ use super::{
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
-    utils::{self, umamusume_enum_options, SendPtr},
+    utils::{self, SendPtr},
     Hachimi
 };
 
@@ -159,6 +161,7 @@ pub struct Gui {
 
     live_slider_text: String,
     race_slider_text: String,
+    update_progress_text: String,
 
     notifications: Vec<Notification>,
     next_notification_id: u32,
@@ -171,6 +174,7 @@ static INSTANCE: OnceCell<Mutex<Gui>> = OnceCell::new();
 pub static IS_CONSUMING_INPUT: AtomicBool = AtomicBool::new(false);
 pub static GUI_INPUT_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub static WANTS_INPUT: AtomicBool = AtomicBool::new(false);
+pub static EGUI_TYPING: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SCENE: AtomicBool = AtomicBool::new(false);
 pub static IS_LIVE_SLIDER_ACTIVE: AtomicBool = AtomicBool::new(false);
 
@@ -233,10 +237,18 @@ pub fn race_slider_drain() {
 }
 
 static TOGGLE_RACE_STAT_HUD_REQUESTED: AtomicBool = AtomicBool::new(false);
+static TOGGLE_RACE_STAT_HUD_CLONE_REQUESTED: AtomicUsize = AtomicUsize::new(usize::MAX);
+static PENDING_CLONE_KEYBIND: Lazy<Mutex<Option<(u32, i32)>>> = Lazy::new(|| Mutex::new(None));
 static RACE_STAT_HUD: Lazy<Mutex<RaceStatHud>> = Lazy::new(|| Mutex::new(RaceStatHud::new()));
+static RACE_STAT_HUD_CLONE_SEQ: AtomicU32 = AtomicU32::new(1);
+const RACE_STAT_HUD_CLONE_STAGGER: f32 = 24.0;
 
 pub fn toggle_race_stat_hud() {
     TOGGLE_RACE_STAT_HUD_REQUESTED.store(true, atomic::Ordering::Release);
+}
+
+pub fn toggle_race_stat_hud_clone(index: usize) {
+    TOGGLE_RACE_STAT_HUD_CLONE_REQUESTED.store(index, atomic::Ordering::Release);
 }
 
 // portrait: full width, fixed at 38% of the screen height
@@ -261,6 +273,8 @@ const RACE_STAT_HUD_WIDTH_SCALE_MIN: f32 = 0.5;
 const RACE_STAT_HUD_WIDTH_SCALE_MAX: f32 = 3.0;
 const RACE_STAT_HUD_HEIGHT_SCALE_MIN: f32 = 0.3;
 const RACE_STAT_HUD_HEIGHT_SCALE_MAX: f32 = 3.0;
+const RACE_STAT_HUD_OPACITY_SCALE_MIN: f32 = 0.0;
+const RACE_STAT_HUD_OPACITY_SCALE_MAX: f32 = 1.0;
 
 const RACE_STAT_HUD_DRAG_SAVE_THRESHOLD: f32 = 6.0;
 
@@ -338,6 +352,7 @@ const VALUE_CHIP_HUE_ORDER: f32 = 0.24;
 const VALUE_CHIP_HUE_START_DELAY: f32 = 0.90;
 const VALUE_CHIP_HUE_FINISH: f32 = 0.13;
 const VALUE_CHIP_HUE_LANE: f32 = 0.66;
+const VALUE_CHIP_HUE_PLAYER_NAME: f32 = 0.78;
 
 // glint sweep period seconds for the zenkai spurt effect on the speed and stamina visualizers
 const ZENKAI_GLINT_PERIOD: f32 = 1.2;
@@ -361,6 +376,7 @@ impl RaceStatHudTab {
 
 struct CharacterStats {
     name: String,
+    player_name: String,
     speed: f32,
     accel: Option<f32>,
     min_speed: f32,
@@ -399,6 +415,7 @@ impl Default for CharacterStats {
     fn default() -> CharacterStats {
         CharacterStats {
             name: String::new(),
+            player_name: String::new(),
             speed: 0.0,
             accel: None,
             min_speed: 0.0,
@@ -482,10 +499,16 @@ struct RaceStatHud {
     visible: bool,
     elements_showing: bool,
     selected_character: usize,
+    selected_character_dirty: bool,
     select_player_on_race_start: bool,
     current_tab: RaceStatHudTab,
     drag_pos: Option<(f32, f32)>,
     drag_travel: f32,
+    drag_save_pending: bool,
+    entry_index: Option<usize>,
+    toggle_key: Option<i32>,
+    resize_scale: Option<(f32, f32)>,
+    resize_dirty: bool,
     config: hachimi::Config,
     last_used_skills: Vec<i32>,
     last_unused_skills: Vec<i32>,
@@ -494,7 +517,10 @@ struct RaceStatHud {
     sim_rates_buf: Vec<SimRates>,
     sim_events_buf: Vec<Vec<SimEvent>>,
     unused_skills_buf: Vec<i32>,
-    chip_text: String
+    chip_text: String,
+    clones: Vec<RaceStatHud>,
+    clone_seq: u32,
+    spawn_clone: bool
 }
 
 impl RaceStatHud {
@@ -503,10 +529,16 @@ impl RaceStatHud {
             visible: false,
             elements_showing: false,
             selected_character: 0,
+            selected_character_dirty: false,
             select_player_on_race_start: false,
             current_tab: RaceStatHudTab::Stats,
             drag_pos: None,
             drag_travel: 0.0,
+            drag_save_pending: false,
+            entry_index: None,
+            toggle_key: None,
+            resize_scale: None,
+            resize_dirty: false,
             config: (**Hachimi::instance().config.load()).clone(),
             last_used_skills: Vec::new(),
             last_unused_skills: Vec::new(),
@@ -515,7 +547,44 @@ impl RaceStatHud {
             sim_rates_buf: Vec::new(),
             sim_events_buf: Vec::new(),
             unused_skills_buf: Vec::new(),
-            chip_text: String::new()
+            chip_text: String::new(),
+            clones: Vec::new(),
+            clone_seq: 0,
+            spawn_clone: false
+        }
+    }
+
+    fn is_clone(&self) -> bool {
+        self.clone_seq != 0
+    }
+
+    fn new_clone(seq: u32, selected: usize, tab: RaceStatHudTab, drag_pos: Option<(f32, f32)>) -> RaceStatHud {
+        RaceStatHud {
+            visible: true,
+            elements_showing: true,
+            selected_character: selected,
+            selected_character_dirty: false,
+            select_player_on_race_start: false,
+            current_tab: tab,
+            drag_pos,
+            drag_travel: 0.0,
+            drag_save_pending: false,
+            entry_index: None,
+            toggle_key: None,
+            resize_scale: None,
+            resize_dirty: false,
+            config: (**Hachimi::instance().config.load()).clone(),
+            last_used_skills: Vec::new(),
+            last_unused_skills: Vec::new(),
+            skill_name_cache: HashMap::new(),
+            stats_buf: Vec::new(),
+            sim_rates_buf: Vec::new(),
+            sim_events_buf: Vec::new(),
+            unused_skills_buf: Vec::new(),
+            chip_text: String::new(),
+            clones: Vec::new(),
+            clone_seq: seq,
+            spawn_clone: false
         }
     }
 
@@ -524,6 +593,8 @@ impl RaceStatHud {
             self.config = (**Hachimi::instance().config.load()).clone();
             self.drag_pos = Self::saved_drag_pos(&self.config);
             self.drag_travel = 0.0;
+            self.resize_scale = None;
+            self.resize_dirty = false;
         }
         if !visible && self.visible {
             self.save_autoscroll_config();
@@ -555,6 +626,60 @@ impl RaceStatHud {
         save_and_reload_config(new_config);
     }
 
+    fn save_hud_state_config(&mut self) {
+        let mut live = (**Hachimi::instance().config.load()).clone();
+        let persist_clones = live.race_stat_hud_persist_clones;
+        let drag_save = live.race_stat_hud_draggable_save;
+        let mut entries = if persist_clones {
+            std::mem::take(&mut live.race_stat_hud_clones)
+        } else {
+            Vec::new()
+        };
+        let mut clones_changed = false;
+        if persist_clones {
+            for c in self.clones.iter_mut() {
+                let (drag_x, drag_y) = if drag_save { c.drag_pos.unwrap_or((-1.0, -1.0)) } else { (-1.0, -1.0) };
+                let entry = hachimi::RaceStatHudCloneConfig {
+                    drag_x,
+                    drag_y,
+                    selected_character: c.selected_character,
+                    toggle_key: c.toggle_key,
+                    open: c.visible
+                };
+                match c.entry_index {
+                    Some(i) if i < entries.len() => {
+                        if entries[i] != entry {
+                            clones_changed = true;
+                        }
+                        entries[i] = entry;
+                    }
+                    _ => {
+                        entries.push(entry);
+                        c.entry_index = Some(entries.len() - 1);
+                        clones_changed = true;
+                    }
+                }
+            }
+        }
+        let selected_character = if live.race_stat_hud_persist_selected_index && self.selected_character_dirty {
+            Some(self.selected_character)
+        } else {
+            live.race_stat_hud_selected_character
+        };
+        let selected_changed = live.race_stat_hud_selected_character != selected_character;
+        let main_open_changed = live.race_stat_hud_main_open != self.visible;
+        if !clones_changed && !selected_changed && !main_open_changed {
+            return;
+        }
+        let mut new_config = live;
+        if persist_clones {
+            new_config.race_stat_hud_clones = entries;
+        }
+        new_config.race_stat_hud_selected_character = selected_character;
+        new_config.race_stat_hud_main_open = self.visible;
+        save_and_reload_config(new_config);
+    }
+
     fn elements_showing() -> bool {
         if TOGGLE_RACE_STAT_HUD_REQUESTED.load(atomic::Ordering::Acquire) {
             return true;
@@ -577,7 +702,7 @@ impl RaceStatHud {
             return false;
         }
 
-        hud.visible || config.race_stat_hud_toggle_button
+        hud.visible || !hud.clones.is_empty() || config.race_stat_hud_toggle_button
     }
 
     fn is_active() -> bool {
@@ -592,15 +717,29 @@ impl RaceStatHud {
             hud.set_visible(visible);
         }
 
+        let clone_toggle_requested = TOGGLE_RACE_STAT_HUD_CLONE_REQUESTED.swap(usize::MAX, atomic::Ordering::AcqRel);
+        if clone_toggle_requested != usize::MAX {
+            if let Some(clone) = hud.clones.iter_mut().find(|c| c.entry_index == Some(clone_toggle_requested)) {
+                clone.visible = !clone.visible;
+            }
+        }
+
         let was_showing = hud.elements_showing;
         hud.elements_showing = Self::elements_showing_locked(&hud);
         if was_showing && !hud.elements_showing {
             hud.save_autoscroll_config();
+            hud.save_hud_state_config();
+            hud.clones.clear();
         } else if !was_showing && hud.elements_showing {
             hud.config = (**Hachimi::instance().config.load()).clone();
             hud.last_used_skills.clear();
             hud.last_unused_skills.clear();
             hud.select_player_on_race_start = true;
+            hud.selected_character_dirty = false;
+            if !hud.visible {
+                let main_open = hud.config.race_stat_hud_main_open;
+                hud.set_visible(main_open);
+            }
         }
         if !hud.elements_showing {
             return;
@@ -613,17 +752,136 @@ impl RaceStatHud {
         let is_vertical = game_view.width() <= game_view.height();
         let (width_scale, height_scale) = {
             let config = Hachimi::instance().config.load();
-            (config.race_stat_hud_width_scale, config.race_stat_hud_height_scale)
+            hud.resize_scale.unwrap_or((config.race_stat_hud_width_scale, config.race_stat_hud_height_scale))
         };
         let hud_scale = scale;
         let panel = Self::panel_size(game_view, is_vertical, hud_scale, width_scale, height_scale);
         Self::log_game_view(split, game_view, source, panel, hud_scale);
 
-        hud.run_hud(ctx, screen, game_view, panel, hud_scale, toggle_button);
+        let need_stats = hud.visible || !hud.clones.is_empty();
+        let (all_stats, course_info) = if need_stats {
+            hud.collect_stats()
+        } else {
+            (Vec::new(), None)
+        };
 
+        if hud.clones.is_empty() && hud.config.race_stat_hud_persist_clones {
+            let entries: Vec<hachimi::RaceStatHudCloneConfig> = hud.config.race_stat_hud_clones.iter().copied().collect();
+            let persist_selected = hud.config.race_stat_hud_persist_selected_index;
+            let selected_default = hud.selected_character;
+            let current_tab = hud.current_tab;
+            let mut open_count = 0usize;
+            for (i, entry) in entries.iter().enumerate() {
+                let visible = entry.open && open_count < 18;
+                open_count += visible as usize;
+                let selected = if persist_selected { entry.selected_character } else { selected_default };
+                let pos = entry.drag_pos().or_else(|| Self::clamped_spawn_pos(game_view, panel, is_vertical, None, hud_scale, i));
+                let seq = RACE_STAT_HUD_CLONE_SEQ.fetch_add(1, atomic::Ordering::Relaxed);
+                let mut clone = RaceStatHud::new_clone(seq, selected, current_tab, pos);
+                clone.visible = visible;
+                clone.entry_index = Some(i);
+                clone.toggle_key = entry.toggle_key;
+                hud.clones.push(clone);
+            }
+        }
+
+        if let Some((seq, key)) = PENDING_CLONE_KEYBIND.lock().unwrap().take() {
+            if let Some(idx) = hud.clones.iter().position(|c| c.clone_seq == seq) {
+                hud.clones[idx].toggle_key = Some(key);
+                if (**Hachimi::instance().config.load()).race_stat_hud_persist_clones {
+                    hud.save_hud_state_config();
+                } else {
+                    let selected_character = hud.clones[idx].selected_character;
+                    let entry_index = hud.clones[idx].entry_index;
+                    let mut new_config = (**Hachimi::instance().config.load()).clone();
+                    match entry_index {
+                        Some(i) if i < new_config.race_stat_hud_clones.len() => {
+                            new_config.race_stat_hud_clones[i].toggle_key = Some(key);
+                        }
+                        _ => {
+                            new_config.race_stat_hud_clones.push(hachimi::RaceStatHudCloneConfig {
+                                drag_x: -1.0,
+                                drag_y: -1.0,
+                                selected_character,
+                                toggle_key: Some(key),
+                                open: true
+                            });
+                            hud.clones[idx].entry_index = Some(new_config.race_stat_hud_clones.len() - 1);
+                        }
+                    }
+                    save_and_reload_config(new_config);
+                }
+            }
+        }
+
+        let can_add_clone = hud.clones.iter().filter(|c| c.visible).count() < 18;
+
+        if !all_stats.is_empty() {
+            hud.run_hud(ctx, screen, game_view, panel, hud_scale, width_scale, height_scale, toggle_button, can_add_clone, &all_stats, course_info.as_ref());
+            for clone in hud.clones.iter_mut() {
+                if clone.selected_character >= all_stats.len() {
+                    clone.selected_character = all_stats.len() - 1;
+                }
+                clone.run_hud(ctx, screen, game_view, panel, hud_scale, width_scale, height_scale, toggle_button, can_add_clone, &all_stats, course_info.as_ref());
+            }
+        }
+        hud.stats_buf = all_stats;
+
+        if (hud.config.race_stat_hud_persist_selected_index && hud.selected_character_dirty)
+            || (hud.config.race_stat_hud_persist_clones && hud.clones.iter().any(|c| c.selected_character_dirty)) {
+            hud.save_hud_state_config();
+            hud.selected_character_dirty = false;
+            for c in hud.clones.iter_mut() {
+                c.selected_character_dirty = false;
+            }
+        }
+
+        if hud.clones.iter().any(|c| c.drag_save_pending) {
+            for c in hud.clones.iter_mut() {
+                c.drag_save_pending = false;
+            }
+            hud.save_hud_state_config();
+        }
+
+        let clone_requested = hud.spawn_clone || hud.clones.iter().any(|c| c.spawn_clone);
+        if clone_requested {
+            let (parent_pos, parent_selected, parent_tab) = if hud.spawn_clone {
+                (hud.drag_pos, hud.selected_character, hud.current_tab)
+            } else if let Some(c) = hud.clones.iter().find(|c| c.spawn_clone) {
+                (c.drag_pos, c.selected_character, c.current_tab)
+            } else {
+                (hud.drag_pos, hud.selected_character, hud.current_tab)
+            };
+            hud.spawn_clone = false;
+            for c in hud.clones.iter_mut() {
+                c.spawn_clone = false;
+            }
+            if hud.clones.iter().filter(|c| c.visible).count() < 18 {
+                let pos = Self::clamped_spawn_pos(game_view, panel, is_vertical, parent_pos, hud_scale, hud.clones.len());
+                let seq = RACE_STAT_HUD_CLONE_SEQ.fetch_add(1, atomic::Ordering::Relaxed);
+                let mut clone = RaceStatHud::new_clone(seq, parent_selected, parent_tab, pos);
+                if hud.config.race_stat_hud_persist_clones {
+                    clone.entry_index = Some(hud.clones.len());
+                }
+                hud.clones.push(clone);
+            }
+        }
         if toggle_button && !hud.visible {
             hud.run_button(ctx, game_view, hud_scale);
         }
+    }
+
+    fn clamped_spawn_pos(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, parent: Option<(f32, f32)>, scale: f32, existing: usize) -> Option<(f32, f32)> {
+        let base = Self::panel_base_min(game_view, panel, vertical);
+        let panel_center = base + panel / 2.0;
+        let dir = egui::vec2(
+            (game_view.center().x - panel_center.x).signum(),
+            (game_view.center().y - panel_center.y).signum(),
+        );
+        let stagger = dir * RACE_STAT_HUD_CLONE_STAGGER * scale * (existing + 1) as f32;
+        let base_offset = Self::drag_offset_from_pos(game_view, panel, vertical, parent);
+        let offset = Self::clamped_drag_offset(game_view, panel, vertical, base_offset + stagger);
+        Some(Self::drag_pos_from_offset(game_view, panel, vertical, offset))
     }
 
     #[cfg(target_os = "windows")]
@@ -728,7 +986,8 @@ impl RaceStatHud {
         Self::clamp_panel_min(game_view, panel, base + offset) - base
     }
 
-    // offset for a stored normalized position (0..1 within the game view)
+    // offset for a stored normalized top-left position; unlike interactive
+    // movement this is not size-clamped, so resizing keeps that corner fixed
     fn drag_offset_from_pos(game_view: egui::Rect, panel: egui::Vec2, vertical: bool, pos: Option<(f32, f32)>) -> egui::Vec2 {
         let Some((nx, ny)) = pos else {
             return egui::Vec2::ZERO;
@@ -738,7 +997,7 @@ impl RaceStatHud {
             game_view.left() + nx.clamp(0.0, 1.0) * game_view.width(),
             game_view.top() + ny.clamp(0.0, 1.0) * game_view.height(),
         );
-        Self::clamp_panel_min(game_view, panel, desired) - base
+        desired - base
     }
 
     // normalized position for a drag offset (what gets stored in the config)
@@ -754,15 +1013,25 @@ impl RaceStatHud {
         )
     }
 
-    fn run_hud(&mut self, ctx: &egui::Context, screen: egui::Rect, game_view: egui::Rect, panel: egui::Vec2, scale: f32, toggle_button: bool) {
+    fn run_hud(
+        &mut self,
+        ctx: &egui::Context,
+        screen: egui::Rect,
+        game_view: egui::Rect,
+        panel: egui::Vec2,
+        scale: f32,
+        width_scale: f32,
+        height_scale: f32,
+        toggle_button: bool,
+        can_add_clone: bool,
+        all_stats: &[CharacterStats],
+        course_info: Option<&RaceCourseInfo>,
+    ) {
         if !self.visible {
             return;
         }
 
-        let (all_stats, course_info) = self.collect_stats();
         if all_stats.is_empty() {
-            // put the (empty) reusable buffer back before bailing
-            self.stats_buf = all_stats;
             return;
         }
 
@@ -778,17 +1047,20 @@ impl RaceStatHud {
         let config = Hachimi::instance().config.load();
         let draggable = config.race_stat_hud_draggable;
         let drag_save = config.race_stat_hud_draggable_save;
+        let resizable = config.race_stat_hud_resizable;
+        let opacity_scale = config.race_stat_hud_opacity_scale
+            .clamp(RACE_STAT_HUD_OPACITY_SCALE_MIN, RACE_STAT_HUD_OPACITY_SCALE_MAX);
         drop(config);
 
-        let mut drag_offset = if draggable {
-            Self::drag_offset_from_pos(game_view, panel, is_vertical, self.drag_pos)
-        } else {
-            egui::Vec2::ZERO
-        };
+        let mut drag_offset = Self::drag_offset_from_pos(game_view, panel, is_vertical, self.drag_pos);
         let mut drag_active = false;
         let mut drag_travel = self.drag_travel;
 
-        let area_id = egui::Id::new("race_stat_hud_overlay").with(is_vertical);
+        let area_id = if self.clone_seq == 0 {
+            egui::Id::new("race_stat_hud_overlay").with(is_vertical)
+        } else {
+            egui::Id::new("race_stat_hud_overlay").with(self.clone_seq).with(is_vertical)
+        };
         egui::Area::new(area_id)
             .anchor(anchor, offset + drag_offset)
             .show(ctx, |ui| {
@@ -804,9 +1076,13 @@ impl RaceStatHud {
                     None
                 };
 
-                egui::Frame::NONE
-                    .fill(egui::Color32::from_black_alpha(200))
-                    .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 100)))
+                let frame = egui::Frame::NONE
+                    .fill(ui.visuals().window_fill.linear_multiply(opacity_scale))
+                    .stroke(egui::Stroke::new(
+                        ui.visuals().window_stroke.width,
+                        ui.visuals().window_stroke.color.linear_multiply(opacity_scale),
+                    ))
+                    .corner_radius(ui.visuals().window_corner_radius)
                     .inner_margin(egui::Margin::same((8.0 * scale).min(120.0) as i8))
                     .show(ui, |ui| {
                         // let the fixed egui interaction minimums shrink with the HUD scale so small
@@ -823,8 +1099,73 @@ impl RaceStatHud {
                         ui.set_max_width(inner.x);
                         ui.set_min_height(inner.y);
 
-                        self.hud_contents(ui, &all_stats, course_info.as_ref(), scale, inner.y, toggle_button, draggable);
+                        self.hud_contents(ui, all_stats, course_info, scale, inner.y, toggle_button, can_add_clone, draggable);
                     });
+
+                if resizable && !self.is_clone() {
+                    let handle_size = 16.0 * scale;
+                    let handle_rect = egui::Rect::from_min_size(
+                        frame.response.rect.right_bottom() - egui::Vec2::splat(handle_size),
+                        egui::Vec2::splat(handle_size),
+                    );
+                    let resize_response = ui.interact(handle_rect, area_id.with("resize"), egui::Sense::drag());
+                    let resize_stroke = ui.style().interact(&resize_response).fg_stroke;
+                    for inset in [3.0, 7.0, 11.0] {
+                        let inset = inset * scale;
+                        let points = [
+                            egui::pos2(handle_rect.right() - inset, handle_rect.bottom()),
+                            egui::pos2(handle_rect.right(), handle_rect.bottom() - inset),
+                        ];
+                        ui.painter().line_segment(points, resize_stroke);
+                    }
+
+                    if resize_response.hovered() || resize_response.dragged() {
+                        ctx.set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+                    }
+                    if resize_response.drag_started() {
+                        self.drag_pos = Some(Self::drag_pos_from_offset(
+                            game_view,
+                            panel,
+                            is_vertical,
+                            drag_offset,
+                        ));
+                        self.resize_dirty = false;
+                    }
+                    if resize_response.dragged() && panel.x > 0.0 && panel.y > 0.0 {
+                        let delta = resize_response.drag_delta();
+                        let desired_width = (panel.x + delta.x).max(1.0);
+                        let desired_height = (panel.y + delta.y).max(1.0);
+                        let new_scale = (
+                            Self::clamp_size_scale(
+                                width_scale * desired_width / panel.x,
+                                RACE_STAT_HUD_WIDTH_SCALE_MIN,
+                                RACE_STAT_HUD_WIDTH_SCALE_MAX,
+                            ),
+                            Self::clamp_size_scale(
+                                height_scale * desired_height / panel.y,
+                                RACE_STAT_HUD_HEIGHT_SCALE_MIN,
+                                RACE_STAT_HUD_HEIGHT_SCALE_MAX,
+                            ),
+                        );
+                        self.resize_scale = Some(new_scale);
+                        self.resize_dirty = true;
+                    }
+                    if resize_response.drag_stopped() && self.resize_dirty {
+                        if let Some((width_scale, height_scale)) = self.resize_scale {
+                            self.config.race_stat_hud_width_scale = width_scale;
+                            self.config.race_stat_hud_height_scale = height_scale;
+                            let mut new_config = (**Hachimi::instance().config.load()).clone();
+                            new_config.race_stat_hud_width_scale = width_scale;
+                            new_config.race_stat_hud_height_scale = height_scale;
+                            if let Some((x, y)) = self.drag_pos {
+                                new_config.race_stat_hud_drag_x = x;
+                                new_config.race_stat_hud_drag_y = y;
+                            }
+                            save_and_reload_config(new_config);
+                        }
+                        self.resize_dirty = false;
+                    }
+                }
 
                 // process the whole-panel drag handle registered above
                 if let Some(resp) = drag_response {
@@ -843,11 +1184,15 @@ impl RaceStatHud {
                         // a click (press + release without movement) is not a drag:
                         // egui marks drag-only widgets as dragged from the press on, so gate the save on real travel
                         if drag_save && drag_travel >= RACE_STAT_HUD_DRAG_SAVE_THRESHOLD * scale {
-                            let pos = Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset);
-                            let mut new_config = (**Hachimi::instance().config.load()).clone();
-                            new_config.race_stat_hud_drag_x = pos.0;
-                            new_config.race_stat_hud_drag_y = pos.1;
-                            save_and_reload_config(new_config);
+                            if self.is_clone() {
+                                self.drag_save_pending = true;
+                            } else {
+                                let pos = Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset);
+                                let mut new_config = (**Hachimi::instance().config.load()).clone();
+                                new_config.race_stat_hud_drag_x = pos.0;
+                                new_config.race_stat_hud_drag_y = pos.1;
+                                save_and_reload_config(new_config);
+                            }
                         }
                         drag_travel = 0.0;
                     }
@@ -858,8 +1203,6 @@ impl RaceStatHud {
         if draggable && drag_active {
             self.drag_pos = Some(Self::drag_pos_from_offset(game_view, panel, is_vertical, drag_offset));
         }
-
-        self.stats_buf = all_stats;
     }
 
     fn run_button(&mut self, ctx: &egui::Context, game_view: egui::Rect, scale: f32) {
@@ -874,12 +1217,11 @@ impl RaceStatHud {
         };
         let btn_pos = egui::Pos2::new(x, game_view.center().y - btn_size / 2.0);
 
-        let icon = "\u{f0d9}";
         egui::Area::new(egui::Id::new("race_stat_hud_toggle_btn"))
             .fixed_pos(btn_pos)
             .show(ctx, |ui| {
                 let btn = egui::Button::new(
-                    egui::RichText::new(icon).size(14.0 * scale)
+                    egui::RichText::new("\u{f0d9}").size(14.0 * scale)
                 ).min_size(egui::Vec2::new(btn_size, btn_size));
 
                 if ui.add(btn).clicked() {
@@ -888,7 +1230,63 @@ impl RaceStatHud {
             });
     }
 
-    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool, draggable_page: bool) {
+    fn toggle_keybind_label(&self) -> String {
+        if self.is_clone() {
+            let Some(key) = self.toggle_key else {
+                return "\u{f11c}".to_owned();
+            };
+            #[cfg(target_os = "android")]
+            return crate::android::gui_impl::keymap::keycode_display_label(key);
+            #[cfg(target_os = "windows")]
+            return crate::windows::utils::vk_to_display_label(key as u16);
+            #[cfg(not(any(target_os = "android", target_os = "windows")))]
+            return key.to_string();
+        }
+        let raw = {
+            #[cfg(target_os = "android")]
+            { Hachimi::instance().config.load().android.race_stat_hud_toggle_key }
+            #[cfg(target_os = "windows")]
+            { Hachimi::instance().config.load().windows.race_stat_hud_toggle_key }
+            #[cfg(not(any(target_os = "android", target_os = "windows")))]
+            { 0 }
+        };
+        if raw == 0 {
+            return "\u{f11c}".to_owned();
+        }
+        #[cfg(target_os = "android")]
+        return crate::android::gui_impl::keymap::keycode_display_label(raw);
+        #[cfg(target_os = "windows")]
+        return crate::windows::utils::vk_to_display_label(raw as u16);
+        #[cfg(not(any(target_os = "android", target_os = "windows")))]
+        return raw.to_string();
+    }
+
+    fn open_toggle_keybind_window(&self) {
+        let clone_seq = self.clone_seq;
+        thread::spawn(move || {
+            let Some(gui_mutex) = Gui::instance() else { return };
+            let mut gui = gui_mutex.lock().unwrap();
+            gui.show_window(Box::new(SetKeybindWindow::new(move |result| {
+                let Some(raw) = result else { return };
+
+                if clone_seq == 0 {
+                    let hachimi = Hachimi::instance();
+                    let mut new_config = hachimi.config.load().as_ref().clone();
+
+                    #[cfg(target_os = "windows")]
+                    { new_config.windows.race_stat_hud_toggle_key = raw; }
+                    #[cfg(target_os = "android")]
+                    { new_config.android.race_stat_hud_toggle_key = raw; }
+
+                    save_and_reload_config(new_config);
+                } else {
+                    PENDING_CLONE_KEYBIND.lock().unwrap().replace((clone_seq, raw as i32));
+                }
+            })));
+        });
+    }
+
+    fn hud_contents(&mut self, ui: &mut egui::Ui, all_stats: &[CharacterStats], course: Option<&RaceCourseInfo>, scale: f32, panel_h: f32, toggle_button: bool, can_add_clone: bool, draggable_page: bool) {
         let mut selected = self.selected_character;
         let mut visible = self.visible;
         let current_tab = self.current_tab;
@@ -896,7 +1294,16 @@ impl RaceStatHud {
         // character select
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
-                if toggle_button {
+                if self.is_clone() {
+                    let btn_size = 20.0 * scale;
+                    let btn = egui::Button::new(
+                        egui::RichText::new("\u{f00d}").size(14.0 * scale)
+                    ).min_size(egui::Vec2::new(btn_size, btn_size));
+
+                    if ui.add(btn).clicked() {
+                        visible = false;
+                    }
+                } else if toggle_button {
                     let btn_size = 20.0 * scale;
                     let btn = egui::Button::new(
                         egui::RichText::new("\u{f0da}").size(14.0 * scale)
@@ -920,7 +1327,7 @@ impl RaceStatHud {
                     });
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.button(" \u{f29c} ").clicked() {
+                    if !self.is_clone() && ui.button(" \u{f29c} ").clicked() {
                         thread::spawn(|| {
                             Gui::instance().unwrap()
                             .lock().unwrap()
@@ -931,6 +1338,17 @@ impl RaceStatHud {
                                 });
                             })));
                         });
+                    }
+
+                    if can_add_clone {
+                        let btn_size = 20.0 * scale;
+                        let btn = egui::Button::new(
+                            egui::RichText::new("\u{f067}").size(14.0 * scale)
+                        ).min_size(egui::Vec2::new(btn_size, btn_size));
+
+                        if ui.add(btn).clicked() {
+                            self.spawn_clone = true;
+                        }
                     }
 
                     if current_tab != RaceStatHudTab::Stats {
@@ -951,6 +1369,9 @@ impl RaceStatHud {
                 });
             });
         });
+        if selected != self.selected_character {
+            self.selected_character_dirty = true;
+        }
         self.selected_character = selected;
         self.set_visible(visible);
 
@@ -966,11 +1387,25 @@ impl RaceStatHud {
             widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
             widgets.active.corner_radius = egui::CornerRadius::ZERO;
 
-            for (tab, label) in RaceStatHudTab::display_list() {
-                if ui.selectable_label(current_tab == tab, egui::RichText::new(label).size(13.0 * scale)).clicked() {
-                    current_tab = tab;
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                for (tab, label) in RaceStatHudTab::display_list() {
+                    if ui.selectable_label(current_tab == tab, egui::RichText::new(label).size(13.0 * scale)).clicked() {
+                        current_tab = tab;
+                    }
                 }
-            }
+            });
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                let keybind_label = self.toggle_keybind_label();
+                let btn_size = 20.0 * scale;
+                let btn = egui::Button::new(
+                    egui::RichText::new(keybind_label).size(13.0 * scale)
+                ).min_size(egui::Vec2::new(btn_size, btn_size));
+
+                if ui.add(btn).clicked() {
+                    self.open_toggle_keybind_window();
+                }
+            });
         });
         self.current_tab = current_tab;
 
@@ -980,10 +1415,15 @@ impl RaceStatHud {
         let page_h = (panel_h - used_h).max(24.0 * scale);
 
         let tab = self.current_tab;
-        let page_id = match tab {
+        let page_base = match tab {
             RaceStatHudTab::Stats => "race_stat_hud_page_stats",
             RaceStatHudTab::UsedSkills => "race_stat_hud_page_used",
             RaceStatHudTab::UnusedSkills => "race_stat_hud_page_unused"
+        };
+        let page_id = if self.clone_seq == 0 {
+            egui::Id::new(page_base)
+        } else {
+            egui::Id::new(page_base).with(self.clone_seq)
         };
         let stats = &all_stats[selected];
 
@@ -1052,6 +1492,12 @@ impl RaceStatHud {
     }
 
     fn stats_page(&mut self, ui: &mut egui::Ui, stats: &CharacterStats, course: Option<&RaceCourseInfo>, scale: f32) {
+        if !stats.player_name.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                Self::value_chip(ui, &stats.player_name, VALUE_CHIP_HUE_PLAYER_NAME, scale);
+            });
+        }
+
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.speed")).size(13.0 * scale));
             self.chip_text.clear();
@@ -1059,7 +1505,7 @@ impl RaceStatHud {
             Self::value_chip(ui, &self.chip_text, VALUE_CHIP_HUE_SPEED, scale);
             self.chip_text.clear();
             let _ = write!(self.chip_text, "{} {:.1}", t!("race_stat_hud.min_speed"), stats.min_speed);
-            ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(egui::Color32::from_gray(150)));
+            ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(ui.visuals().weak_text_color()));
 
             // speed bar: 0..max scale, fill up to the current speed, min
             // speed marked with a tick on top of the fill
@@ -1188,14 +1634,9 @@ impl RaceStatHud {
             ui.label(egui::RichText::new(self.chip_text.as_str()).size(11.0 * scale).color(color));
         });
 
-        // phase
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.phase")).size(13.0 * scale));
             Self::value_chip(ui, &Self::phase_name(stats.phase), VALUE_CHIP_HUE_PHASE, scale);
-        });
-
-        // order
-        ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(t!("race_stat_hud.order")).size(13.0 * scale));
             if stats.cur_order >= 0 {
                 Self::ordinal_into(stats.cur_order + 1, &mut self.chip_text);
@@ -1326,17 +1767,17 @@ impl RaceStatHud {
             }
             if stats.temptation_mode != 0 {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count);
+                let _ = write!(self.chip_text, "{} ({}, x{})", t!("race_stat_hud.rushed"), Self::temptation_mode_name(stats.temptation_mode), stats.temptation_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_BAD, scale);
             }
             if stats.is_compete_fight {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count);
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_fight"), stats.compete_fight_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if stats.is_compete_top {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count, stats.compete_top_remain_time);
+                let _ = write!(self.chip_text, "{} ({}, {:.1}s)", t!("race_stat_hud.compete_top"), stats.compete_top_count + 1, stats.compete_top_remain_time);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.run_at_full_speed {
@@ -1353,12 +1794,12 @@ impl RaceStatHud {
             }
             if se.compete_before_spurt {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count);
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.compete_before_spurt"), se.compete_before_spurt_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
             if se.secure_lead {
                 self.chip_text.clear();
-                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count);
+                let _ = write!(self.chip_text, "{} ({})", t!("race_stat_hud.secure_lead"), se.secure_lead_count + 1);
                 Self::state_chip(ui, &self.chip_text, STATE_CHIP_HUE_CONTEST, scale);
             }
         });
@@ -1604,7 +2045,14 @@ impl RaceStatHud {
 
             if self.select_player_on_race_start {
                 self.select_player_on_race_start = false;
-                self.selected_character = player_idx.min(all_stats.len() - 1);
+                self.selected_character = if self.config.race_stat_hud_persist_selected_index {
+                    match self.config.race_stat_hud_selected_character {
+                        Some(i) => i.min(all_stats.len() - 1),
+                        None => player_idx.min(all_stats.len() - 1)
+                    }
+                } else {
+                    player_idx.min(all_stats.len() - 1)
+                };
             } else if self.selected_character >= all_stats.len() {
                 self.selected_character = player_idx.min(all_stats.len() - 1);
             }
@@ -1846,13 +2294,13 @@ impl RaceStatHud {
         }
 
         // name from HorseRaceInfo, fallback to HorseData
+        let horse_data = HorseRaceInfo::get_HorseData(race_info);
         let name_ptr = HorseRaceInfo::get_CharaName(race_info);
         if !name_ptr.is_null() {
             let s = unsafe { (*name_ptr).as_utf16str() };
             stats.name.clear();
             stats.name.extend(s.chars());
         } else {
-            let horse_data = HorseRaceInfo::get_HorseData(race_info);
             let hd_name = if !horse_data.is_null() { HorseData::get_charaName(horse_data) } else { 0 as _ };
             if !hd_name.is_null() {
                 let s = unsafe { (*hd_name).as_utf16str() };
@@ -1862,6 +2310,13 @@ impl RaceStatHud {
                 stats.name.clear();
                 stats.name.push('?');
             }
+        }
+
+        stats.player_name.clear();
+        let trainer_name_ptr = if !horse_data.is_null() { HorseData::get_TrainerName(horse_data) } else { 0 as _ };
+        if !trainer_name_ptr.is_null() {
+            let s = unsafe { (*trainer_name_ptr).as_utf16str() };
+            stats.player_name.extend(s.chars());
         }
 
         stats.speed = HorseRaceInfo::get__lastSpeed(race_info);
@@ -2338,6 +2793,17 @@ pub fn handle_android_keyboard<T: 'static>(res: &egui::Response, val: &mut T) {
 }
 
 impl Gui {
+    fn base_style() -> egui::Style {
+        let mut style = egui::Style::default();
+        style.spacing.button_padding = egui::Vec2::new(8.0, 5.0);
+        style.spacing.interact_size = egui::Vec2::new(40.0, 26.0);
+        style.spacing.icon_width = 20.0;
+        style.spacing.icon_width_inner = 10.0;
+        style.spacing.icon_spacing = 6.0;
+        style.interaction.selectable_labels = false;
+        style
+    }
+
     pub fn apply_theme(ctx: &egui::Context, style: &mut egui::Style, config: &hachimi::Config) {
         let mut visuals = egui::Visuals::dark(); // Base theme
 
@@ -2374,9 +2840,7 @@ impl Gui {
 
         context.set_fonts(Self::get_font_definitions());
 
-        let mut style = egui::Style::default();
-        style.spacing.button_padding = egui::Vec2::new(8.0, 5.0);
-        style.interaction.selectable_labels = false;
+        let mut style = Self::base_style();
 
         Self::apply_theme(&context, &mut style, &config);
 
@@ -2440,6 +2904,7 @@ impl Gui {
 
             live_slider_text: String::new(),
             race_slider_text: String::new(),
+            update_progress_text: String::new(),
 
             notifications: Vec::new(),
             next_notification_id: 0,
@@ -2515,8 +2980,7 @@ impl Gui {
             self.fps_text = t!("menu.fps_text", fps = fps).into_owned();
             self.tmp_frame_count = 1;
             self.last_fps_update = Instant::now();
-        }
-        else {
+        } else {
             self.tmp_frame_count += 1;
         }
     }
@@ -2685,6 +3149,8 @@ impl Gui {
     }
 
     fn race_slider_showing() -> bool {
+        use crate::il2cpp::hook::umamusume::RaceInfo;
+
         let config = Hachimi::instance().config.load();
         let is_dragging = RACE_SLIDER_DRAGGING.load(atomic::Ordering::Acquire);
 
@@ -2692,6 +3158,11 @@ impl Gui {
             || !RaceHorseManagerBase::is_race_active()
             || (HorseRaceInfo::is_start_dash() && !is_dragging)
             || HorseRaceInfo::is_finished() {
+            return false;
+        }
+
+        let race_info = RaceManager::get_RaceInfo();
+        if !race_info.is_null() && RaceInfo::get_IsStoryRace(race_info) {
             return false;
         }
 
@@ -3062,6 +3533,11 @@ impl Gui {
             atomic::Ordering::Release
         );
 
+        EGUI_TYPING.store(
+            self.context.wants_keyboard_input(),
+            atomic::Ordering::Release
+        );
+
         self.context.end_pass()
     }
 
@@ -3419,8 +3895,7 @@ impl Gui {
                 if time.elapsed().as_secs_f32() >= self.context.style().animation_time {
                     self.menu_visible = false;
                 }
-            }
-            else {
+            } else {
                 self.menu_anim_time = Some(Instant::now());
             }
         }
@@ -3462,8 +3937,7 @@ impl Gui {
                     disabled_uis.insert(SendPtr(top_object));
                 }
             }
-        }
-        else {
+        } else {
             for canvas in canvas_iter {
                 if disabled_uis.contains(&SendPtr(*canvas)) {
                     Behaviour::set_enabled(*canvas, true);
@@ -3506,7 +3980,7 @@ impl Gui {
 
         let mut changed = false;
         egui::ComboBox::new(ui.id().with(id_child), "")
-        .wrap_mode(egui::TextWrapMode::Extend)
+        .wrap_mode(egui::TextWrapMode::Wrap)
         .selected_text(selected)
         .show_ui(ui, |ui| {
             for choice in choices.iter() {
@@ -3679,7 +4153,7 @@ impl Gui {
         let progress = Hachimi::instance().tl_updater.progress().unwrap_or_else(|| {
             // Assume that update is complete
             self.update_progress_visible = false;
-            tl_repo::UpdateProgress::new(1, 1)
+            tl_repo::UpdateProgress::new(1, 1, tl_repo::UpdatePhase::Checking)
         });
         let ratio = progress.current as f32 / progress.total as f32;
 
@@ -3694,16 +4168,41 @@ impl Gui {
             .inner_margin(egui::Margin::same((4.0 * scale) as i8))
             .corner_radius(4.0 * scale)
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(t!("tl_updater.title"));
-                    ui.add_space(26.0 * scale);
-                    ui.label(format!("{:.2}%", ratio * 100.0));
+                ui.set_width(168.0 * scale);
+                ui.set_max_height((ctx.content_rect().height() - 8.0 * scale).max(0.0));
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    self.update_progress_text.clear();
+                    let _ = write!(self.update_progress_text, "{:.2}%", ratio * 100.0);
+                    ui.label(self.update_progress_text.as_str());
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        ui.label(t!("tl_updater.title"));
+                    });
                 });
                 ui.add(
                     egui::ProgressBar::new(ratio)
                     .desired_height(4.0 * scale)
-                    .desired_width(140.0 * scale)
+                    .desired_width(ui.available_width())
                 );
+                if matches!(progress.phase, tl_repo::UpdatePhase::Downloading | tl_repo::UpdatePhase::Extracting) {
+                    self.update_progress_text.clear();
+                    if progress.total > 0 {
+                        let _ = write!(
+                            self.update_progress_text,
+                            "{}/{}",
+                            Size::from_bytes(progress.current).format().with_base(Base::Base10).with_style(Style::Abbreviated),
+                            Size::from_bytes(progress.total).format().with_base(Base::Base10).with_style(Style::Abbreviated)
+                        );
+                    } else {
+                        let _ = write!(
+                            self.update_progress_text,
+                            "{}",
+                            Size::from_bytes(progress.current).format().with_base(Base::Base10).with_style(Style::Abbreviated)
+                        );
+                    }
+                    ui.label(self.update_progress_text.as_str());
+                }
                 ui.label(
                     egui::RichText::new(t!("tl_updater.warning"))
                     .font(egui::FontId::proportional(10.0 * scale))
@@ -3781,6 +4280,10 @@ impl Gui {
         GUI_INPUT_ACTIVE.load(atomic::Ordering::Acquire)
     }
 
+    pub fn is_egui_typing_atomic() -> bool {
+        EGUI_TYPING.load(atomic::Ordering::Acquire)
+    }
+
     pub fn set_consuming_input(&mut self, val: bool) {
         if !self.windows.is_empty() && !val {
             self.windows.clear();
@@ -3799,8 +4302,7 @@ impl Gui {
         // Menu is always visible on show, but not immediately invisible on hide
         if self.show_menu {
             self.menu_visible = true;
-        }
-        else {
+        } else {
             self.menu_anim_time = None;
         }
     }
@@ -3860,8 +4362,7 @@ impl TweenInOutWithDelay {
         let anim_dir = if let Some(start) = self.delay_start {
             // Hold animation at peak position until duration passes
             start.elapsed().as_secs_f32() < self.delay_duration
-        }
-        else {
+        } else {
             // On animation start, initialize to 0.0. Next calls will start tweening to 1.0
             let v = self.started;
             self.started = true;
@@ -3980,6 +4481,63 @@ fn new_window<'a>(ctx: &egui::Context, id: egui::Id, title: impl Into<egui::Widg
     .collapsible(false)
     .resizable(false)
     .constrain(false)
+}
+
+fn new_setup_window<'a>(ctx: &egui::Context, id: egui::Id, title: impl Into<egui::WidgetText>) -> egui::Window<'a> {
+    let scale = get_scale(ctx);
+    let salt = get_scale_salt(ctx);
+    let viewport_width = ctx.viewport_rect().width();
+
+    let max_width = (320.0 * scale).min((viewport_width - 24.0 * scale).max(96.0 * scale));
+    let title = fit_window_title(ctx, title.into(), (viewport_width - 24.0 * scale).max(96.0 * scale), scale);
+
+    egui::Window::new(title)
+    .id(id.with(salt.to_bits()))
+    .pivot(egui::Align2::CENTER_CENTER)
+    .fixed_pos(ctx.viewport_rect().max / 2.0)
+    .min_width(96.0 * scale)
+    .max_width(max_width)
+    .max_height(250.0 * scale)
+    .collapsible(false)
+    .resizable(false)
+    .constrain(false)
+}
+
+fn fit_window_title(ctx: &egui::Context, title: egui::WidgetText, budget_width: f32, scale: f32) -> egui::WidgetText {
+    let style = ctx.style();
+    let heading_size = style.text_styles.get(&egui::TextStyle::Heading).map_or(20.0, |font| font.size);
+    let inner_height = ctx.fonts_mut(|fonts| fonts.row_height(&egui::FontId::proportional(heading_size))).max(style.spacing.interact_size.y);
+    let button = style.spacing.icon_width.min(inner_height);
+    let left_pad = ((inner_height - button) / 2.0).round();
+    let budget = budget_width - 2.0 * (left_pad + button + style.spacing.item_spacing.x) - 4.0 * scale;
+    if budget <= 0.0 {
+        return title;
+    }
+    let text = title.text().to_owned();
+    let color = style.visuals.text_color();
+    let measure = |s: &str| {
+        let font_id = egui::FontId::proportional(heading_size);
+        ctx.fonts_mut(|fonts| fonts.layout_no_wrap(s.to_string(), font_id, color).size().x)
+    };
+    if measure(text.as_str()) <= budget {
+        return title;
+    }
+    let mut fitted = String::new();
+    for ch in text.chars() {
+        fitted.push(ch);
+        fitted.push('\u{2026}');
+        if measure(fitted.as_str()) > budget {
+            fitted.pop();
+            fitted.pop();
+            break;
+        }
+        fitted.pop();
+    }
+    if fitted.is_empty() {
+        return title;
+    }
+    fitted.push('\u{2026}');
+    fitted.into()
 }
 
 fn simple_window_layout(ui: &mut egui::Ui, id: egui::Id, add_contents: impl FnOnce(&mut egui::Ui), add_buttons: impl FnOnce(&mut egui::Ui)) {
@@ -4122,9 +4680,8 @@ fn tl_repo_list_ui(
     };
 
     let hachimi = Hachimi::instance();
-
     let mut filtered_repos: Vec<_> = repo_list.iter()
-        .filter(|repo| repo.region == hachimi.game.region)
+        .filter(|repo| repo.region == "All" || repo.region == hachimi.game.region.as_str())
         .collect();
 
     if !*has_auto_selected && current_tl_repo.is_none() {
@@ -4255,8 +4812,7 @@ impl Window for SimpleYesNoDialog {
 
         if open && open2 {
             true
-        }
-        else {
+        } else {
             if let Some(cb) = self.callback.take() {
                 cb(result);
             }
@@ -4318,8 +4874,7 @@ impl Window for SimpleOkDialog {
 
         if open && open2 {
             true
-        }
-        else {
+        } else {
             if let Some(cb) = self.callback.take() {
                 cb();
             }
@@ -4328,17 +4883,35 @@ impl Window for SimpleOkDialog {
     }
 }
 
+#[derive(Clone)]
+pub struct GameOpts {
+    pub champions_resources: Arc<Vec<String>>,
+    pub champions_live_max_year: i32,
+    pub font_color_options: Arc<Vec<String>>,
+    pub outline_size_options: Arc<Vec<String>>,
+    pub outline_color_options: Arc<Vec<String>>
+}
+
+pub static GAME_OPTS_CACHE: Lazy<Mutex<Option<GameOpts>>> = Lazy::new(|| Mutex::new(None));
+
 struct ConfigEditor {
     last_ptr_config: usize,
     config: hachimi::Config,
     id: egui::Id,
     current_tab: ConfigEditorTab,
     search_term: String,
-    champions_resources: Vec<String>,
+    swipe_gesture: Option<SwipeGesture>,
+    swipe_anim: Option<SwipeAnim>,
+    swipe_body_rect: Option<egui::Rect>,
+    swipe_scroll_area_id: Option<egui::Id>,
+    swipe_scroll_state_id: Option<egui::Id>,
+    swipe_locked_scroll_y: Option<f32>,
+    swipe_prewarm: u8,
+    champions_resources: Arc<Vec<String>>,
     champions_live_max_year: i32,
-    font_color_options: Vec<String>,
-    outline_size_options: Vec<String>,
-    outline_color_options: Vec<String>,
+    font_color_options: Arc<Vec<String>>,
+    outline_size_options: Arc<Vec<String>>,
+    outline_color_options: Arc<Vec<String>>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -4356,6 +4929,76 @@ impl ConfigEditorTab {
             (ConfigEditorTab::Gameplay, t!("config_editor.gameplay_tab"))
         ]
     }
+
+    fn next(self) -> ConfigEditorTab {
+        match self {
+            ConfigEditorTab::General => ConfigEditorTab::Graphics,
+            ConfigEditorTab::Graphics => ConfigEditorTab::Gameplay,
+            ConfigEditorTab::Gameplay => ConfigEditorTab::General,
+        }
+    }
+
+    fn prev(self) -> ConfigEditorTab {
+        match self {
+            ConfigEditorTab::General => ConfigEditorTab::Gameplay,
+            ConfigEditorTab::Graphics => ConfigEditorTab::General,
+            ConfigEditorTab::Gameplay => ConfigEditorTab::Graphics,
+        }
+    }
+
+    fn index(self) -> usize {
+        match self {
+            ConfigEditorTab::General => 0,
+            ConfigEditorTab::Graphics => 1,
+            ConfigEditorTab::Gameplay => 2,
+        }
+    }
+
+    fn scroll_salt(self) -> &'static str {
+        match self {
+            ConfigEditorTab::General => "body_scroll_general",
+            ConfigEditorTab::Graphics => "body_scroll_graphics",
+            ConfigEditorTab::Gameplay => "body_scroll_gameplay",
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SwipeGesture {
+    origin: egui::Pos2,
+    last_pos: egui::Pos2,
+    base_offset: f32,
+    locked: bool,
+    dead: bool,
+}
+
+#[derive(Clone, Copy)]
+struct SwipeAnim {
+    offset: f32,
+    from: f32,
+    to: f32,
+    target: Option<ConfigEditorTab>,
+    start_t: f64,
+    duration: f32,
+}
+
+const CONFIG_EDITOR_SWIPE_SLOP: f32 = 18.0;
+
+fn swipe_anim_duration(from: f32, to: f32, width: f32) -> f32 {
+    if width <= 0.0 {
+        return 0.16;
+    }
+    (((to - from).abs() / width) * 0.42).clamp(0.08, 0.24)
+}
+
+fn swipe_fresh_offset(dx: f32) -> f32 {
+    if dx > 0.0 {
+        (dx - CONFIG_EDITOR_SWIPE_SLOP).max(0.0)
+    } else if dx < 0.0 {
+        (dx + CONFIG_EDITOR_SWIPE_SLOP).min(0.0)
+    } else {
+        0.0
+    }
 }
 
 fn should_show_option(search: &str, label: &str) -> bool {
@@ -4365,17 +5008,44 @@ fn should_show_option(search: &str, label: &str) -> bool {
 impl ConfigEditor {
     pub fn new() -> ConfigEditor {
         let handle = Hachimi::instance().config.load();
+        let mut champions_resources = Arc::new(Vec::new());
+        let mut champions_live_max_year = Utc::now().year();
+        let mut font_color_options = Arc::new(Vec::new());
+        let mut outline_size_options = Arc::new(Vec::new());
+        let mut outline_color_options = Arc::new(Vec::new());
+        let game_opts = match GAME_OPTS_CACHE.lock() {
+            Ok(opts) => opts.as_ref().cloned(),
+            Err(poisoned) => {
+                warn!("[gui] GAME_OPTS_CACHE mutex poisoned, recovering");
+                poisoned.into_inner().as_ref().cloned()
+            }
+        };
+        if let Some(opts) = game_opts {
+            champions_resources = opts.champions_resources;
+            champions_live_max_year = opts.champions_live_max_year;
+            font_color_options = opts.font_color_options;
+            outline_size_options = opts.outline_size_options;
+            outline_color_options = opts.outline_color_options;
+        }
+
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
             config: (**Hachimi::instance().config.load()).clone(),
             id: random_id(),
             current_tab: ConfigEditorTab::General,
             search_term: String::new(),
-            champions_resources: crate::il2cpp::sql::get_champions_resources(),
-            champions_live_max_year: crate::il2cpp::sql::get_champions_live_max_year(),
-            font_color_options: umamusume_enum_options(c"FontColorType"),
-            outline_size_options: umamusume_enum_options(c"OutlineSizeType"),
-            outline_color_options: umamusume_enum_options(c"OutlineColorType"),
+            swipe_gesture: None,
+            swipe_anim: None,
+            swipe_body_rect: None,
+            swipe_scroll_area_id: None,
+            swipe_scroll_state_id: None,
+            swipe_locked_scroll_y: None,
+            swipe_prewarm: 2,
+            champions_resources,
+            champions_live_max_year,
+            font_color_options,
+            outline_size_options,
+            outline_color_options,
         }
     }
 
@@ -4393,8 +5063,7 @@ impl ConfigEditor {
 
         if checked && value.is_none() {
             *value = Some(*range.start())
-        }
-        else if !checked && value.is_some() {
+        } else if !checked && value.is_some() {
             *value = None;
         }
 
@@ -4448,22 +5117,29 @@ impl ConfigEditor {
 
             if should_show_option(search, &t!("config_editor.meta_index_url")) {
                 ui.label(t!("config_editor.meta_index_url"));
-                let res = ui.add(egui::TextEdit::singleline(&mut config.meta_index_url).lock_focus(true));
-                #[cfg(target_os = "android")]
-                handle_android_keyboard(&res, &mut config.meta_index_url);
-                #[cfg(target_os = "windows")]
-                if res.has_focus() {
-                    ui.memory_mut(|mem| mem.set_focus_lock_filter(
-                        res.id,
-                        egui::EventFilter {
-                            tab: true,
-                            horizontal_arrows: true,
-                            vertical_arrows: true,
-                            escape: true,
-                            ..Default::default()
-                        }
-                    ));
-                }
+                let res = {
+                    let w = ui.available_width();
+                    let res = ui.add_sized(
+                        [w, 24.0 * scale],
+                        egui::TextEdit::singleline(&mut config.meta_index_url).lock_focus(true)
+                    );
+                    #[cfg(target_os = "android")]
+                    handle_android_keyboard(&res, &mut config.meta_index_url);
+                    #[cfg(target_os = "windows")]
+                    if res.has_focus() {
+                        ui.memory_mut(|mem| mem.set_focus_lock_filter(
+                            res.id,
+                            egui::EventFilter {
+                                tab: true,
+                                horizontal_arrows: true,
+                                vertical_arrows: true,
+                                escape: true,
+                                ..Default::default()
+                            }
+                        ));
+                    }
+                    res
+                };
                 ui.end_row();
                 if res.lost_focus() && config.meta_index_url.trim().is_empty() {
                     config.meta_index_url = hachimi::Config::default().meta_index_url;
@@ -4473,6 +5149,12 @@ impl ConfigEditor {
             if should_show_option(search, &t!("config_editor.gui_scale")) {
                 ui.label(t!("config_editor.gui_scale"));
                 ui.add(egui::Slider::new(&mut config.gui_scale, 0.25..=2.0).step_by(0.05));
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.old_config_editor")) {
+                ui.label(t!("config_editor.old_config_editor"));
+                ui.checkbox(&mut config.old_config_editor, "");
                 ui.end_row();
             }
 
@@ -4517,11 +5199,6 @@ impl ConfigEditor {
             if should_show_option(search, &t!("config_editor.menu_open_key")) {
                 ui.label(t!("config_editor.menu_open_key"));
                 ui.horizontal(|ui| {
-                    #[cfg(target_os = "windows")]
-                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.menu_open_key));
-                    #[cfg(target_os = "android")]
-                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.menu_open_key));
-
                     if ui.button(t!("bind_key")).clicked() {
                         std::thread::spawn(|| {
                             let Some(gui_mutex) = Gui::instance() else { return };
@@ -4541,6 +5218,11 @@ impl ConfigEditor {
                             })));
                         });
                     }
+
+                    #[cfg(target_os = "android")]
+                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.menu_open_key));
+                    #[cfg(target_os = "windows")]
+                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.menu_open_key));
                 });
                 ui.end_row();
             }
@@ -4608,8 +5290,8 @@ impl ConfigEditor {
                     ui.label(t!("config_editor.tl_auto_updater_interval"));
                     let mut minutes = (config.tl_auto_updater_interval_sec / 60) as i32;
                     ui.horizontal(|ui| {
-                        ui.add(egui::DragValue::new(&mut minutes).speed(1.0).range(1..=10080));
                         ui.label(t!("minutes"));
+                        ui.add(egui::DragValue::new(&mut minutes).speed(1.0).range(1..=10080));
                     });
                     config.tl_auto_updater_interval_sec = (minutes as u64) * 60;
                     ui.end_row();
@@ -4656,8 +5338,12 @@ impl ConfigEditor {
                 
                 if should_show_option(search, &t!("config_editor.custom_title_name")) {
                     ui.label(t!("config_editor.custom_title_name"));
+                    let w = ui.available_width();
                     let mut title_val = config.windows.custom_title_name.clone().unwrap_or_default();
-                    let _ = ui.add(egui::TextEdit::singleline(&mut title_val).hint_text(t!("default")));
+                    let _ = ui.add_sized(
+                        [w, 24.0 * scale],
+                        egui::TextEdit::singleline(&mut title_val).hint_text(t!("default"))
+                    );
                     config.windows.custom_title_name = if title_val.is_empty() { None } else { Some(title_val) };
                     ui.end_row();
                 }
@@ -4739,6 +5425,11 @@ impl ConfigEditor {
         if show_all || tab == ConfigEditorTab::Graphics {
             if should_show_option(search, &t!("config_editor.target_fps")) {
                 Self::option_slider(ui, &t!("config_editor.target_fps"), &mut config.target_fps, 30..=690);
+            }
+
+            #[cfg(target_os = "windows")]
+            if should_show_option(search, &t!("config_editor.target_fps_unfocused")) {
+                Self::option_slider(ui, &t!("config_editor.target_fps_unfocused"), &mut config.windows.target_fps_unfocused, 10..=30);
             }
 
             if should_show_option(search, &t!("config_editor.virtual_resolution_multiplier")) {
@@ -5047,6 +5738,12 @@ impl ConfigEditor {
                 ui.end_row();
             }
 
+            if should_show_option(search, &t!("config_editor.disable_factor_name_translation")) {
+                ui.label(t!("config_editor.disable_factor_name_translation"));
+                ui.checkbox(&mut config.disable_factor_name_translation, "");
+                ui.end_row();
+            }
+
             if should_show_option(search, &t!("config_editor.skill_data_desc")) {
                 ui.label(t!("config_editor.skill_data_desc"));
                 ui.checkbox(&mut config.skill_data_desc, "");
@@ -5075,11 +5772,6 @@ impl ConfigEditor {
             if should_show_option(search, &t!("config_editor.hide_ingame_ui_hotkey_bind")) && config.hide_ingame_ui_hotkey {
                 ui.label(t!("config_editor.hide_ingame_ui_hotkey_bind"));
                 ui.horizontal(|ui| {
-                    #[cfg(target_os = "windows")]
-                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.hide_ingame_ui_hotkey_bind));
-                    #[cfg(target_os = "android")]
-                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.hide_ingame_ui_hotkey_bind));
-
                     if ui.button(t!("bind_key")).clicked() {
                         std::thread::spawn(|| {
                             let Some(gui_mutex) = Gui::instance() else { return };
@@ -5099,6 +5791,11 @@ impl ConfigEditor {
                             })));
                         });
                     }
+
+                    #[cfg(target_os = "android")]
+                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.hide_ingame_ui_hotkey_bind));
+                    #[cfg(target_os = "windows")]
+                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.hide_ingame_ui_hotkey_bind));
                 });
                 ui.end_row();
             }
@@ -5120,11 +5817,6 @@ impl ConfigEditor {
                 && config.race_stat_hud {
                 ui.label(t!("config_editor.race_stat_hud_toggle_key"));
                 ui.horizontal(|ui| {
-                    #[cfg(target_os = "windows")]
-                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.race_stat_hud_toggle_key));
-                    #[cfg(target_os = "android")]
-                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.race_stat_hud_toggle_key));
-
                     if ui.button(t!("bind_key")).clicked() {
                         std::thread::spawn(|| {
                             let Some(gui_mutex) = Gui::instance() else { return };
@@ -5144,6 +5836,11 @@ impl ConfigEditor {
                             })));
                         });
                     }
+
+                    #[cfg(target_os = "android")]
+                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.race_stat_hud_toggle_key));
+                    #[cfg(target_os = "windows")]
+                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.race_stat_hud_toggle_key));
                 });
                 ui.end_row();
             }
@@ -5160,7 +5857,6 @@ impl ConfigEditor {
                 && config.race_stat_hud {
                 ui.label(t!("config_editor.race_stat_hud_draggable"));
                 ui.horizontal(|ui| {
-                    ui.checkbox(&mut config.race_stat_hud_draggable, "");
                     if ui.button(t!("reset")).clicked() {
                         config.race_stat_hud_drag_x = -1.0;
                         config.race_stat_hud_drag_y = -1.0;
@@ -5172,6 +5868,7 @@ impl ConfigEditor {
                             hud.drag_pos = None;
                         }
                     }
+                    ui.checkbox(&mut config.race_stat_hud_draggable, "");
                 });
                 ui.end_row();
             }
@@ -5180,6 +5877,13 @@ impl ConfigEditor {
                 && config.race_stat_hud && config.race_stat_hud_draggable {
                 ui.label(t!("config_editor.race_stat_hud_draggable_save"));
                 ui.checkbox(&mut config.race_stat_hud_draggable_save, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_resizable")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global)
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_resizable"));
+                ui.checkbox(&mut config.race_stat_hud_resizable, "");
                 ui.end_row();
             }
 
@@ -5198,6 +5902,29 @@ impl ConfigEditor {
                 ui.add(egui::Slider::new(&mut config.race_stat_hud_height_scale,
                     RACE_STAT_HUD_HEIGHT_SCALE_MIN..=RACE_STAT_HUD_HEIGHT_SCALE_MAX
                 ).step_by(0.05).fixed_decimals(2));
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_opacity_scale")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global)
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_opacity_scale"));
+                ui.add(egui::Slider::new(&mut config.race_stat_hud_opacity_scale,
+                    RACE_STAT_HUD_OPACITY_SCALE_MIN..=RACE_STAT_HUD_OPACITY_SCALE_MAX
+                ).step_by(0.05).fixed_decimals(2));
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_persist_clones")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global)
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_persist_clones"));
+                ui.checkbox(&mut config.race_stat_hud_persist_clones, "");
+                ui.end_row();
+            }
+
+            if should_show_option(search, &t!("config_editor.race_stat_hud_persist_selected_index")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global)
+                && config.race_stat_hud {
+                ui.label(t!("config_editor.race_stat_hud_persist_selected_index"));
+                ui.checkbox(&mut config.race_stat_hud_persist_selected_index, "");
                 ui.end_row();
             }
 
@@ -5228,11 +5955,6 @@ impl ConfigEditor {
             if should_show_option(search, &t!("config_editor.race_playback_key")) && config.race_playback_key_enable {
                 ui.label(t!("config_editor.race_playback_key"));
                 ui.horizontal(|ui| {
-                    #[cfg(target_os = "windows")]
-                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.race_playback_key));
-                    #[cfg(target_os = "android")]
-                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.race_playback_key));
-
                     if ui.button(t!("bind_key")).clicked() {
                         std::thread::spawn(|| {
                             let Some(gui_mutex) = Gui::instance() else { return };
@@ -5252,6 +5974,11 @@ impl ConfigEditor {
                             })));
                         });
                     }
+
+                    #[cfg(target_os = "android")]
+                    ui.label(crate::android::gui_impl::keymap::keycode_display_label(config.android.race_playback_key));
+                    #[cfg(target_os = "windows")]
+                    ui.label(crate::windows::utils::vk_to_display_label(config.windows.race_playback_key));
                 });
                 ui.end_row();
             }
@@ -5284,7 +6011,13 @@ impl ConfigEditor {
                     Gui::run_combo(ui, "champions_live_resource_id", &mut config.champions_live_resource_id, &choices);
                     ui.end_row();
                     ui.label(t!("config_editor.champions_live_year"));
-                    ui.add(egui::DragValue::new(&mut config.champions_live_year).range(2022..=self.champions_live_max_year));
+                    let year_choices: Vec<(i32, String)> = (2022..=self.champions_live_max_year).rev()
+                        .map(|year| (year, year.to_string()))
+                        .collect();
+                    let year_choices: Vec<(i32, &str)> = year_choices.iter()
+                        .map(|(year, label)| (*year, label.as_str()))
+                        .collect();
+                    Gui::run_combo(ui, "champions_live_year", &mut config.champions_live_year, &year_choices);
                     ui.end_row();
                 }
             }
@@ -5331,7 +6064,7 @@ impl ConfigEditor {
                     egui::ComboBox::new(ui.id().with("caption_color"), "")
                         .selected_text(&config.caption.caption_color)
                         .show_ui(ui, |ui| {
-                            for option in &self.font_color_options {
+                            for option in self.font_color_options.iter() {
                                 ui.selectable_value(&mut config.caption.caption_color, option.clone(), option);
                             }
                         });
@@ -5343,7 +6076,7 @@ impl ConfigEditor {
                     egui::ComboBox::new(ui.id().with("caption_outline_size"), "")
                         .selected_text(&config.caption.caption_outline_size)
                         .show_ui(ui, |ui| {
-                            for option in &self.outline_size_options {
+                            for option in self.outline_size_options.iter() {
                                 ui.selectable_value(&mut config.caption.caption_outline_size, option.clone(), option);
                             }
                         });
@@ -5355,7 +6088,7 @@ impl ConfigEditor {
                     egui::ComboBox::new(ui.id().with("caption_outline_color"), "")
                         .selected_text(&config.caption.caption_outline_color)
                         .show_ui(ui, |ui| {
-                            for option in &self.outline_color_options {
+                            for option in self.outline_color_options.iter() {
                                 ui.selectable_value(&mut config.caption.caption_outline_color, option.clone(), option);
                             }
                         });
@@ -5370,11 +6103,424 @@ impl ConfigEditor {
             }
         }
         // Gameplay tab end
+    }
+}
 
-        // Column widths workaround
-        ui.horizontal(|ui| ui.add_space(100.0 * scale));
-        ui.horizontal(|ui| ui.add_space(150.0 * scale));
-        ui.end_row();
+impl ConfigEditor {
+    fn window_rect(screen: egui::Rect, scale: f32) -> egui::Rect {
+        let clearance = 33.0 * scale;
+        let (min, max) = if Self::is_portrait(screen) {
+            (
+                screen.min + egui::Vec2::new(0.0, clearance),
+                screen.max - egui::Vec2::new(0.0, clearance),
+            )
+        } else {
+            (
+                screen.min + egui::Vec2::splat(clearance),
+                screen.max - egui::Vec2::new(clearance, 0.0),
+            )
+        };
+        egui::Rect::from_min_max(min, max.max(min))
+    }
+
+    fn dialog_rect(screen: egui::Rect, scale: f32) -> egui::Rect {
+        let avail = Self::window_rect(screen, scale);
+        let size = egui::vec2(
+            avail.width().min(540.0 * scale),
+            avail.height()
+        );
+        egui::Rect::from_center_size(avail.center(), size)
+    }
+
+    fn is_portrait(screen: egui::Rect) -> bool {
+        screen.height() > screen.width()
+    }
+
+    fn content_rect(ctx: &egui::Context, window_rect: egui::Rect) -> egui::Rect {
+        let style = ctx.style();
+        let window_frame = egui::Frame::window(&style);
+        let frame_margin = window_frame.inner_margin.sum();
+        let frame_stroke = window_frame.stroke.width;
+        let chrome = frame_margin + egui::Vec2::splat(2.0 * frame_stroke);
+        let content_size = (window_rect.size() - chrome).max(egui::Vec2::ZERO);
+        egui::Rect::from_min_size(window_rect.min, content_size)
+    }
+
+    fn editor_body(&mut self, ui: &mut egui::Ui, config: &mut hachimi::Config, scale: f32, column_spacing: f32, _label_frac: Option<f32>) {
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+        ui.horizontal(|ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                if ui.button("\u{f00d}").clicked() {
+                    self.search_term.clear();
+                }
+                let _search_res = ui.add_sized(
+                    [ui.available_width(), 24.0 * scale],
+                    egui::TextEdit::singleline(&mut self.search_term).hint_text(t!("search_filter"))
+                );
+                #[cfg(target_os = "android")]
+                handle_android_keyboard(&_search_res, &mut self.search_term);
+            });
+        });
+        ui.add_space(4.0);
+
+        if self.search_term.is_empty() {
+            ui.horizontal(|ui| {
+                let style = ui.style_mut();
+                style.spacing.button_padding = egui::vec2(8.0, 5.0);
+                style.spacing.item_spacing = egui::Vec2::ZERO;
+                let widgets = &mut style.visuals.widgets;
+                widgets.inactive.corner_radius = egui::CornerRadius::ZERO;
+                widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
+                widgets.active.corner_radius = egui::CornerRadius::ZERO;
+
+                let tabs = ConfigEditorTab::display_list();
+                let tab_w = ui.available_width() / tabs.len() as f32;
+                for (tab, label) in tabs {
+                    if ui.add_sized(
+                        [tab_w, 24.0 * scale],
+                        egui::Button::selectable(self.current_tab == tab, label)
+                    ).clicked() {
+                        self.current_tab = tab;
+                    }
+                }
+            });
+        }
+
+        ui.add_space(4.0);
+
+        let offset = self.swipe_visual_offset();
+        let swipe_scroll_lock = self.swipe_gesture.is_some_and(|g| g.locked) || self.swipe_anim.is_some();
+        let mut body_rect_out = egui::Rect::NOTHING;
+        let mut scroll_area_id_out: Option<egui::Id> = None;
+        let mut scroll_state_id_out: Option<egui::Id> = None;
+        ui.scope(|ui| {
+            ui.set_width(ui.available_width());
+            let body_rect = ui.max_rect();
+            body_rect_out = body_rect;
+            let width = body_rect.width();
+            let clamped = offset.clamp(-width, width);
+            let current_tab = self.current_tab;
+            let cur_rect = egui::Rect::from_min_size(body_rect.min + egui::vec2(clamped, 0.0), body_rect.size());
+            let restore_clip = ui.clip_rect();
+            if clamped != 0.0 {
+                ui.set_clip_rect(restore_clip.intersect(body_rect));
+            }
+
+            let mut cur_ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .id(self.id.with("swipe_page").with(current_tab.index() as u32))
+                    .max_rect(cur_rect)
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
+            );
+            let out = egui::ScrollArea::vertical()
+                .id_salt(current_tab.scroll_salt())
+                .auto_shrink([false, false])
+                .scroll_source(egui::containers::scroll_area::ScrollSource {
+                    drag: !swipe_scroll_lock,
+                    ..Default::default()
+                })
+                .show(&mut cur_ui, |ui| {
+                    self.options_page(ui, config, current_tab, scale, column_spacing);
+                });
+            scroll_area_id_out = Some(out.id.with("area"));
+            scroll_state_id_out = Some(out.id);
+            drop(cur_ui);
+
+            if clamped != 0.0 {
+                let target_tab = if clamped > 0.0 { current_tab.prev() } else { current_tab.next() };
+                let tgt_rect = egui::Rect::from_min_size(body_rect.min + egui::vec2(clamped - clamped.signum() * width, 0.0), body_rect.size());
+                let mut tgt_ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .id(self.id.with("swipe_page").with(target_tab.index() as u32))
+                        .max_rect(tgt_rect)
+                        .layout(egui::Layout::top_down(egui::Align::Min)),
+                );
+                egui::ScrollArea::vertical()
+                    .id_salt(target_tab.scroll_salt())
+                    .auto_shrink([false, false])
+                    .scroll_source(egui::containers::scroll_area::ScrollSource {
+                        drag: !swipe_scroll_lock,
+                        ..Default::default()
+                    })
+                    .show(&mut tgt_ui, |ui| {
+                        self.options_page(ui, config, target_tab, scale, column_spacing);
+                    });
+                drop(tgt_ui);
+
+                ui.set_clip_rect(restore_clip);
+            }
+
+            if self.swipe_prewarm > 0 && clamped == 0.0 && self.search_term.is_empty() {
+                let prewarm_tab = if self.swipe_prewarm == 2 {
+                    current_tab.next()
+                } else {
+                    current_tab.prev()
+                };
+                let prewarm_x = if self.swipe_prewarm == 2 { width } else { -width };
+                let prewarm_rect = egui::Rect::from_min_size(
+                    body_rect.min + egui::vec2(prewarm_x, 0.0),
+                    body_rect.size(),
+                );
+                ui.set_clip_rect(restore_clip.intersect(body_rect));
+                let mut prewarm_ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .id(self.id.with("swipe_page").with(prewarm_tab.index() as u32))
+                        .max_rect(prewarm_rect)
+                        .layout(egui::Layout::top_down(egui::Align::Min)),
+                );
+                egui::ScrollArea::vertical()
+                    .id_salt(prewarm_tab.scroll_salt())
+                    .auto_shrink([false, false])
+                    .scroll_source(egui::containers::scroll_area::ScrollSource {
+                        drag: !swipe_scroll_lock,
+                        ..Default::default()
+                    })
+                    .show(&mut prewarm_ui, |ui| {
+                        self.options_page(ui, config, prewarm_tab, scale, column_spacing);
+                    });
+                drop(prewarm_ui);
+                ui.set_clip_rect(restore_clip);
+                self.swipe_prewarm -= 1;
+            }
+        });
+        self.swipe_body_rect = Some(body_rect_out);
+        self.swipe_scroll_area_id = scroll_area_id_out;
+        self.swipe_scroll_state_id = scroll_state_id_out;
+    }
+
+    fn options_page(&self, ui: &mut egui::Ui, config: &mut hachimi::Config, tab: ConfigEditorTab, scale: f32, column_spacing: f32) {
+        ui.set_width(ui.available_width());
+        egui::Frame::NONE
+        .inner_margin(egui::Margin::symmetric(8, 0))
+        .show(ui, |ui| {
+            let label_w = ui.available_width() * 0.47;
+            let grid_id = self.id.with("options_grid").with(tab.index() as u32).with(label_w.round() as i32);
+            let avail = ui.available_width();
+            let widget_col = (avail - label_w - column_spacing).max(60.0);
+            ui.spacing_mut().slider_width = (widget_col - 64.0 * scale).max(60.0);
+            egui::Grid::new(grid_id)
+                .striped(true)
+                .num_columns(2)
+                .spacing([column_spacing, 4.0 * scale])
+                .min_col_width(label_w)
+                .show(ui, |ui| {
+                    self.run_options_grid(config, ui, tab, &self.search_term);
+                });
+        });
+        #[cfg(target_os = "android")]
+        {
+            let padding = ime_scroll_padding(ui.ctx());
+            if padding > 0.0 {
+                ui.add_space(padding);
+            }
+        }
+    }
+
+    fn swipe_visual_offset(&self) -> f32 {
+        if let Some(g) = self.swipe_gesture {
+            if g.locked {
+                return g.base_offset + swipe_fresh_offset(g.last_pos.x - g.origin.x);
+            }
+            return g.base_offset;
+        }
+        if let Some(anim) = self.swipe_anim {
+            anim.offset
+        } else {
+            0.0
+        }
+    }
+
+    fn begin_swipe_anim_from(&mut self, ctx: &egui::Context, to: f32, from: f32) {
+        let width = self.swipe_body_rect.map_or(0.0, |r| r.width());
+        let now = ctx.input(|i| i.time);
+        self.swipe_anim = Some(SwipeAnim {
+            offset: from,
+            from,
+            to,
+            target: None,
+            start_t: now,
+            duration: swipe_anim_duration(from, to, width),
+        });
+    }
+
+    fn swipe_commit_anim(&mut self, ctx: &egui::Context, raw_total: f32, from: f32) {
+        let width = self.swipe_body_rect.map_or(0.0, |r| r.width());
+        let target = if raw_total > 0.0 { self.current_tab.prev() } else { self.current_tab.next() };
+        let to = width * raw_total.signum();
+        let now = ctx.input(|i| i.time);
+        self.swipe_anim = Some(SwipeAnim {
+            offset: from,
+            from,
+            to,
+            target: Some(target),
+            start_t: now,
+            duration: swipe_anim_duration(from, to, width),
+        });
+    }
+
+    fn swipe_freeze_scroll(&self, ctx: &egui::Context) {
+        if let (Some(id), Some(y)) = (self.swipe_scroll_state_id, self.swipe_locked_scroll_y) {
+            if let Some(mut state) = egui::containers::scroll_area::State::load(ctx, id) {
+                state.offset.y = y;
+                state.store(ctx, id);
+            }
+        }
+    }
+
+    fn swipe_compensate_press_teleport(&self, ctx: &egui::Context) {
+        let owner = ctx.interaction_snapshot(|i| i.dragged);
+        if owner != self.swipe_scroll_area_id {
+            return;
+        }
+        let dy = ctx.input(|i| i.pointer.delta().y);
+        if dy != 0.0 {
+            if let Some(id) = self.swipe_scroll_state_id {
+                if let Some(mut state) = egui::containers::scroll_area::State::load(ctx, id) {
+                    state.offset.y += dy;
+                    state.store(ctx, id);
+                }
+            }
+        }
+    }
+
+    fn swipe_reset_scroll_kinetic(&self, ctx: &egui::Context) {
+        if let Some(id) = self.swipe_scroll_state_id {
+            let offset = egui::containers::scroll_area::State::load(ctx, id)
+                .map_or(egui::Vec2::ZERO, |s| s.offset);
+            let mut clean = egui::containers::scroll_area::State::default();
+            clean.offset = offset;
+            clean.store(ctx, id);
+        }
+    }
+
+    fn swipe_layer_id(&self, ctx: &egui::Context) -> egui::LayerId {
+        egui::LayerId::new(egui::Order::Middle, self.id.with(get_scale_salt(ctx).to_bits()))
+    }
+
+    fn process_swipe(&mut self, ctx: &egui::Context) {
+        let now = ctx.input(|i| i.time);
+        if let Some(anim) = &mut self.swipe_anim {
+            let t = if anim.duration > 0.0 {
+                ((now - anim.start_t) as f32 / anim.duration).clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            let eased = 1.0 - (1.0 - t) * (1.0 - t);
+            anim.offset = anim.from + (anim.to - anim.from) * eased;
+            if t >= 1.0 {
+                if let Some(target) = anim.target {
+                    self.current_tab = target;
+                }
+                self.swipe_anim = None;
+            } else {
+                ctx.request_repaint();
+            }
+        }
+
+        let (pressed, released, down, origin, latest, velocity, has_pointer) = ctx.input(|i| (
+            i.pointer.primary_pressed(),
+            i.pointer.primary_released(),
+            i.pointer.primary_down(),
+            i.pointer.press_origin(),
+            i.pointer.latest_pos(),
+            i.pointer.velocity(),
+            i.pointer.has_pointer(),
+        ));
+
+        if released || (!down && !has_pointer && self.swipe_gesture.is_some()) {
+            if let Some(mut g) = self.swipe_gesture.take() {
+                if !pressed {
+                    if let Some(p) = latest {
+                        g.last_pos = p;
+                    }
+                }
+                if g.locked {
+                    self.swipe_reset_scroll_kinetic(ctx);
+                    let dx = g.last_pos.x - g.origin.x;
+                    let raw_total = g.base_offset + dx;
+                    let visual = g.base_offset + swipe_fresh_offset(dx);
+                    let width = self.swipe_body_rect.map_or(0.0, |r| r.width());
+                    let commit = raw_total.abs() >= (width * 0.3).max(CONFIG_EDITOR_SWIPE_SLOP * 2.0)
+                        || velocity.x.abs() >= 800.0;
+                    if commit && width > 0.0 {
+                        self.swipe_commit_anim(ctx, raw_total, visual);
+                    } else {
+                        self.begin_swipe_anim_from(ctx, 0.0, visual);
+                    }
+                } else if g.base_offset != 0.0 {
+                    self.begin_swipe_anim_from(ctx, 0.0, g.base_offset);
+                }
+            }
+        }
+
+        if pressed {
+            self.swipe_compensate_press_teleport(ctx);
+            if self.swipe_gesture.is_some() {
+                let visual = self.swipe_visual_offset();
+                self.swipe_gesture = None;
+                if visual != 0.0 {
+                    self.begin_swipe_anim_from(ctx, 0.0, visual);
+                }
+            } else {
+                let in_body = self.swipe_body_rect.is_some_and(|r| latest.is_some_and(|p| r.contains(p)));
+                let owns_layer = latest.is_some_and(|p| ctx.layer_id_at(p) == Some(self.swipe_layer_id(ctx)));
+                if in_body && owns_layer {
+                    let base = self.swipe_anim.map_or(0.0, |a| a.offset);
+                    self.swipe_anim = None;
+                    let pos = latest.unwrap_or_else(|| origin.unwrap_or(egui::Pos2::ZERO));
+                    self.swipe_gesture = Some(SwipeGesture {
+                        origin: pos,
+                        last_pos: pos,
+                        base_offset: base,
+                        locked: false,
+                        dead: false,
+                    });
+                }
+            }
+        }
+
+        if let Some(g) = &mut self.swipe_gesture {
+            if !g.dead {
+                if latest.is_some() && (down || released) {
+                    g.last_pos = latest.unwrap();
+                }
+                if !g.locked {
+                    let dx = g.last_pos.x - g.origin.x;
+                    let dy = g.last_pos.y - g.origin.y;
+                    if dy.abs() >= CONFIG_EDITOR_SWIPE_SLOP && dy.abs() > dx.abs() {
+                        g.dead = true;
+                    } else if dx.abs() >= CONFIG_EDITOR_SWIPE_SLOP && dx.abs() > dy.abs() {
+                        let owner = ctx.interaction_snapshot(|i| i.dragged);
+                        let free = match owner {
+                            None => true,
+                            Some(o) => self.swipe_scroll_area_id == Some(o),
+                        };
+                        if free {
+                            g.locked = true;
+                            ctx.stop_dragging();
+                            self.swipe_locked_scroll_y = self.swipe_scroll_state_id
+                                .and_then(|id| egui::containers::scroll_area::State::load(ctx, id))
+                                .map(|s| s.offset.y);
+                        } else {
+                            g.dead = true;
+                        }
+                    }
+                }
+                if g.locked {
+                    self.swipe_freeze_scroll(ctx);
+                }
+            }
+        }
+
+        if let Some(g) = self.swipe_gesture {
+            if g.dead {
+                let visual = g.base_offset + swipe_fresh_offset(g.last_pos.x - g.origin.x);
+                self.swipe_gesture = None;
+                if visual != 0.0 {
+                    self.begin_swipe_anim_from(ctx, 0.0, visual);
+                }
+            }
+        }
     }
 }
 
@@ -5400,103 +6546,200 @@ impl Window for ConfigEditor {
         let mut reset_clicked = false;
         let mut save_clicked = false;
 
-        new_window(ctx, self.id, t!("config_editor.title"))
-        .max_height(270.0 * scale + {
-            #[cfg(target_os = "android")]
-            { ime_scroll_padding(ctx) }
-            #[cfg(target_os = "windows")]
-            { 0.0 }
-        })
-        .open(&mut open)
-        .show(ctx, |ui| {
-            simple_window_layout(ui, self.id,
-                |ui| {
-                    ui.horizontal(|ui| {
-                        // search bar
-                        let _search_res = ui.add_sized(
-                            [ui.available_width() - 30.0 * scale, 24.0 * scale],
-                            egui::TextEdit::singleline(&mut self.search_term).hint_text(t!("search_filter"))
-                        );
-                        #[cfg(target_os = "android")]
-                        handle_android_keyboard(&_search_res, &mut self.search_term);
+        let classic = config.old_config_editor;
 
-                        if ui.button("\u{f00d}").clicked() {
-                            self.search_term.clear();
+        if classic || !self.search_term.is_empty() {
+            self.swipe_gesture = None;
+            self.swipe_anim = None;
+        } else {
+            self.process_swipe(ctx);
+        }
+
+        if classic {
+            new_window(ctx, self.id, t!("config_editor.title"))
+            .max_height(270.0 * scale + {
+                #[cfg(target_os = "android")]
+                { ime_scroll_padding(ctx) }
+                #[cfg(target_os = "windows")]
+                { 0.0 }
+                #[cfg(not(any(target_os = "android", target_os = "windows")))]
+                { 0.0 }
+            })
+            .open(&mut open)
+            .show(ctx, |ui| {
+                simple_window_layout(ui, self.id,
+                    |ui| {
+                        ui.horizontal(|ui| {
+                            let _search_res = ui.add_sized(
+                                [ui.available_width() - 30.0 * scale, 24.0 * scale],
+                                egui::TextEdit::singleline(&mut self.search_term).hint_text(t!("search_filter"))
+                            );
+                            #[cfg(target_os = "android")]
+                            handle_android_keyboard(&_search_res, &mut self.search_term);
+
+                            if ui.button("\u{f00d}").clicked() {
+                                self.search_term.clear();
+                            }
+                        });
+                        ui.add_space(4.0);
+
+                        if self.search_term.is_empty() {
+                            egui::ScrollArea::horizontal()
+                            .id_salt("tabs_scroll")
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    let style = ui.style_mut();
+                                    style.spacing.button_padding = egui::vec2(8.0, 5.0);
+                                    style.spacing.item_spacing = egui::Vec2::ZERO;
+                                    let widgets = &mut style.visuals.widgets;
+                                    widgets.inactive.corner_radius = egui::CornerRadius::ZERO;
+                                    widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
+                                    widgets.active.corner_radius = egui::CornerRadius::ZERO;
+
+                                    for (tab, label) in ConfigEditorTab::display_list() {
+                                        if ui.selectable_label(self.current_tab == tab, label.as_ref()).clicked() {
+                                            self.current_tab = tab;
+                                        }
+                                    }
+                                });
+                            });
                         }
-                    });
-                    ui.add_space(4.0);
 
-                    if self.search_term.is_empty() {
-                        egui::ScrollArea::horizontal()
-                        .id_salt("tabs_scroll")
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                let style = ui.style_mut();
-                                style.spacing.button_padding = egui::vec2(8.0, 5.0);
-                                style.spacing.item_spacing = egui::Vec2::ZERO;
-                                let widgets = &mut style.visuals.widgets;
-                                widgets.inactive.corner_radius = egui::CornerRadius::ZERO;
-                                widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
-                                widgets.active.corner_radius = egui::CornerRadius::ZERO;
-    
-                                for (tab, label) in ConfigEditorTab::display_list() {
-                                    if ui.selectable_label(self.current_tab == tab, label.as_ref()).clicked() {
-                                        self.current_tab = tab;
+                        ui.add_space(4.0);
+
+                        ui.scope(|ui| {
+                            ui.set_width(ui.available_width());
+                            egui::ScrollArea::vertical()
+                            .id_salt("body_scroll")
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                ui.set_width(ui.available_width());
+                                egui::Frame::NONE
+                                .inner_margin(egui::Margin::symmetric(8, 0))
+                                .show(ui, |ui| {
+                                    egui::Grid::new(self.id.with("options_grid"))
+                                    .striped(true)
+                                    .num_columns(2)
+                                    .min_col_width(95.0 * scale)
+                                    .spacing([40.0 * scale, 4.0 * scale])
+                                    .show(ui, |ui| {
+                                        self.run_options_grid(&mut config, ui, self.current_tab, &self.search_term);
+                                    });
+                                });
+                                #[cfg(target_os = "android")]
+                                {
+                                    let padding = ime_scroll_padding(ui.ctx());
+                                    if padding > 0.0 {
+                                        ui.add_space(padding);
                                     }
                                 }
                             });
                         });
+                    },
+                    |ui| {
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                            if ui.button(t!("config_editor.restore_defaults")).clicked() {
+                                reset_clicked = true;
+                            }
+
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                                if ui.button(t!("cancel")).clicked() {
+                                    open2 = false;
+                                }
+                                if ui.button(t!("save")).clicked() {
+                                    save_clicked = true;
+                                    open2 = false;
+                                }
+                            });
+                        });
                     }
+                );
+            });
+        } else {
+            let screen = ctx.viewport_rect();
+            let portrait = Self::is_portrait(screen);
+            let window_rect = if portrait {
+                Self::window_rect(screen, scale)
+            } else {
+                Self::dialog_rect(screen, scale)
+            };
+            let content_rect = Self::content_rect(ctx, window_rect);
+            let column_spacing = if portrait { 16.0 * scale } else { 40.0 * scale };
 
-                    ui.add_space(4.0);
+            new_window(ctx, self.id, t!("config_editor.title"))
+            .title_bar(false)
+            .pivot(egui::Align2::LEFT_TOP)
+            .fixed_rect(content_rect)
+            .constrain_to(window_rect)
+            .fade_in(false)
+            .open(&mut open)
+            .show(ctx, |ui| {
+                let builder = egui::UiBuilder::new()
+                    .id(self.id)
+                    .layout(egui::Layout::top_down(egui::Align::Center).with_cross_justify(true));
 
-                    ui.scope(|ui| {
-                        ui.set_width(ui.available_width());
-                        egui::ScrollArea::vertical()
-                        .id_salt("body_scroll")
-                        .auto_shrink([false, false])
-                        .show(ui, |ui| {
-                            ui.set_width(ui.available_width());
-                            egui::Frame::NONE
-                            .inner_margin(egui::Margin::symmetric(8, 0))
-                            .show(ui, |ui| {
-                                egui::Grid::new(self.id.with("options_grid"))
-                                .striped(true)
-                                .num_columns(2)
-                                .spacing([40.0 * scale, 4.0 * scale])
-                                .show(ui, |ui| {
-                                    self.run_options_grid(&mut config, ui, self.current_tab, &self.search_term);
+                ui.scope_builder(builder, |ui| {
+                    egui::TopBottomPanel::bottom(self.id.with("config_editor_footer"))
+                        .frame(egui::Frame::NONE)
+                        .show_inside(ui, |ui| {
+                            ui.separator();
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                            ui.with_layout(egui::Layout::left_to_right(egui::Align::Min).with_main_wrap(true), |ui| {
+                                if ui.button(t!("config_editor.restore_defaults")).clicked() {
+                                    reset_clicked = true;
+                                }
+
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                                    if ui.button(t!("cancel")).clicked() {
+                                        open2 = false;
+                                    }
+                                    if ui.button(t!("save")).clicked() {
+                                        save_clicked = true;
+                                        open2 = false;
+                                    }
                                 });
                             });
-                            #[cfg(target_os = "android")]
-                            {
-                                let padding = ime_scroll_padding(ui.ctx());
-                                if padding > 0.0 {
-                                    ui.add_space(padding);
-                                }
-                            }
                         });
-                    });
-                },
-                |ui| {
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
-                        if ui.button(t!("config_editor.restore_defaults")).clicked() {
-                            reset_clicked = true;
-                        }
 
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                            if ui.button(t!("cancel")).clicked() {
-                                open2 = false;
-                            }
-                            if ui.button(t!("save")).clicked() {
-                                save_clicked = true;
-                                open2 = false;
-                            }
+                    ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                        ui.horizontal(|ui| {
+                            ui.heading(t!("config_editor.title"));
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                let bar_rect = ui.max_rect();
+                                let button_size = egui::Vec2::splat(ui.spacing().icon_width);
+                                let center = egui::Align2::RIGHT_CENTER
+                                    .align_size_within_rect(button_size, bar_rect)
+                                    .center();
+                                let button_rect = egui::Rect::from_center_size(center, button_size)
+                                    .round_to_pixels(ui.pixels_per_point());
+                                let close_id = ui.id().with("window_close_button");
+                                let response = ui.interact(button_rect, close_id, egui::Sense::click());
+                                response.widget_info(|| {
+                                    egui::WidgetInfo::labeled(
+                                        egui::WidgetType::Button,
+                                        ui.is_enabled(),
+                                        "Close window",
+                                    )
+                                });
+                                ui.expand_to_include_rect(response.rect);
+                                let visuals = ui.style().interact(&response);
+                                let rect = button_rect.shrink(2.0).expand(visuals.expansion);
+                                let stroke = visuals.fg_stroke;
+                                ui.painter().line_segment([rect.left_top(), rect.right_bottom()], stroke);
+                                ui.painter().line_segment([rect.right_top(), rect.left_bottom()], stroke);
+                                if response.clicked() {
+                                    open2 = false;
+                                }
+                            });
                         });
+                        ui.add_space(4.0);
+
+                        self.editor_body(ui, &mut config, scale, column_spacing, Some(0.45));
                     });
-                }
-            );
-        });
+                });
+            });
+        }
 
         self.config = config;
 
@@ -5603,7 +6846,7 @@ impl Window for FirstTimeSetupWindow {
             { self.config.android.menu_open_key = raw; }
         }
 
-        new_window(ctx, self.id, t!("first_time_setup.title"))
+        new_setup_window(ctx, self.id, t!("first_time_setup.title"))
         .open(&mut open)
         .show(ctx, |ui| {
             let allow_next = match self.current_page {
@@ -5690,7 +6933,7 @@ impl Window for FirstTimeSetupWindow {
                         ui.label(t!("first_time_setup.common_settings_content"));
                         ui.add_space(4.0);
 
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.target_fps"));
                             let mut enabled = self.config.target_fps.is_some();
                             if ui.checkbox(&mut enabled, t!("enable")).changed() {
@@ -5707,11 +6950,19 @@ impl Window for FirstTimeSetupWindow {
                                 let _ = ui.add(egui::Slider::new(fps, 30..=690));
                             });
                         }
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.disable_skill_name_translation"));
                             let _ = ui.checkbox(&mut self.config.disable_skill_name_translation, "");
                         });
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(t!("config_editor.disable_factor_name_translation"));
+                            let _ = ui.checkbox(&mut self.config.disable_factor_name_translation, "");
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(t!("config_editor.skill_data_desc"));
+                            let _ = ui.checkbox(&mut self.config.skill_data_desc, "");
+                        });
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.menu_open_key"));
                             #[cfg(target_os = "windows")]
                             ui.label(crate::windows::utils::vk_to_display_label(self.config.windows.menu_open_key));
@@ -5741,7 +6992,7 @@ impl Window for FirstTimeSetupWindow {
                                 });
                             }
                         });
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(t!("config_editor.ui_animation_scale"));
                         });
                         let _ = ui.add(egui::Slider::new(&mut self.config.ui_animation_scale, 0.1..=10.0).step_by(0.1));
@@ -7200,7 +8451,7 @@ impl Window for AddTranslationRepoWindow {
         let mut open = true;
         let mut open2 = true;
 
-        new_window(ctx, self.id, t!("add_translation_repo.title"))
+        new_setup_window(ctx, self.id, t!("add_translation_repo.title"))
         .open(&mut open)
         .show(ctx, |ui| {
             ui.heading(t!("add_translation_repo.select_translation_repo"));
@@ -7605,8 +8856,7 @@ impl Window for TranslationRepoUpdateWindow {
 
         if open && open2 {
             true
-        }
-        else {
+        } else {
             if let Some(cb) = self.callback.take() {
                 cb(result);
             }

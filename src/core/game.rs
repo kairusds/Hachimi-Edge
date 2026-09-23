@@ -22,22 +22,22 @@ pub enum Region {
     Global
 }
 
-impl Display for Region {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
+impl Region {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
             Region::Unknown => "Unknown",
             Region::Japan => "Japan",
             Region::Taiwan => "Taiwan",
             Region::Korea => "Korea",
             Region::China => "China",
             Region::Global => "Global"
-        })
+        }
     }
 }
 
-impl Default for Region {
-    fn default() -> Self {
-        Region::Japan
+impl Display for Region {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 

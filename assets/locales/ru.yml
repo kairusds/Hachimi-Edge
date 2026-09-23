@@ -4,9 +4,9 @@ windows:
   menu_open_key: "Стрелка вправо"
 
 android:
-  menu_open_key: "Громкость вверх + вниз\n\uf25a или трижды нажмите слева сверху"
+  menu_open_key: "Громкость вверх + вниз\n\uf25a или три тапа слева сверху"
 
-splash_sub: "\uf015 Нажмите %{open_key_str}, чтобы открыть меню."
+splash_sub: "\uf015 Открыть меню: %{open_key_str}"
 loading_label: "Загрузка..."
 search_filter: "Поиск..."
 open: "Открыть"
@@ -179,10 +179,12 @@ config_editor:
   taskbar_show_progress_on_connecting: "Прогресс подключения на панели задач"
   taskbar_show_progress_on_schedule_book: "Прогресс Журнала тренера на панели задач"
   target_fps: "Целевой FPS"
+  target_fps_unfocused: "Целевой FPS при неактивном окне"
   virtual_resolution_multiplier: "Множитель виртуального разрешения"
   ui_scale: "Масштаб интерфейса"
   recommended_ui_scale: "Применить рекомендуемый масштаб интерфейса"
   gui_scale: "Масштаб оверлея"
+  old_config_editor: "Использовать старое окно настроек"
   gui_landscape_ratio: "Масштаб оверлея в альбомном режиме"
   ui_animation_scale: "Масштаб анимаций интерфейса"
   graphics_quality: "Качество графики"
@@ -208,6 +210,7 @@ config_editor:
   physics_update_mode: "Режим обновления физики"
   cyspring_mono_uncap_frame_scale: "Неограниченный масштаб кадров CySpring Mono"
   disable_skill_name_translation: "Отключить перевод названий навыков"
+  disable_factor_name_translation: "Отключить перевод названий факторов"
   skill_data_desc: "Описания данных навыков"
   hide_ingame_ui_hotkey: "Включить кнопку скрытия интерфейса игры"
   hide_ingame_ui_hotkey_info: >-
@@ -221,8 +224,12 @@ config_editor:
   race_stat_hud_landscapeui_portrait: "Данные забега: оверлей на игровом экране в альбомном режиме"
   race_stat_hud_draggable: "Данные забега: перетаскиваемый оверлей"
   race_stat_hud_draggable_save: "Данные забега: запоминать позицию оверлея"
+  race_stat_hud_resizable: "Данные забега: изменяемый размер оверлея"
   race_stat_hud_width_scale: "Данные забега: масштаб ширины оверлея"
   race_stat_hud_height_scale: "Данные забега: масштаб высоты оверлея"
+  race_stat_hud_opacity_scale: "Данные забега: непрозрачность оверлея"
+  race_stat_hud_persist_clones: "Данные забега: сохранять клоны оверлея"
+  race_stat_hud_persist_selected_index: "Данные забега: запоминать выбранных персонажей"
   race_playback_slider: "Ползунок воспроизведения забега"
   race_playback_slider_always: "Всегда показывать ползунок воспроизведения забега"
   race_playback_button: "Кнопка паузы забега"
@@ -474,10 +481,9 @@ update_prompt_dialog:
     Доступна новая версия Hachimi Edge (%{version}). Хотите её установить?
     Игра перезапустится, чтобы применить изменения.
   android_content: |
-    Доступна новая версия Hachimi Edge (%{version}).
+    Доступна новая версия Hachimi Edge (%{version})!
 
-    Нажмите Да, чтобы открыть UmaPatcher Edge, затем пропатчите игру, как обычно.
-    Заново скачивать игру или APK не требуется.
+    Хотите открыть UmaPatcher Edge, чтобы начать обновление?
 
 updating_dialog:
   title: "Обновление"

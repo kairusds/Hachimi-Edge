@@ -746,6 +746,18 @@ impl TextDataQuery {
             .map(|t| t.to_il2cpp_string())
     }
 
+    pub fn get_factor_name(index: i32) -> Option<*mut Il2CppString> {
+        if Hachimi::instance().config.load().disable_factor_name_translation {
+            return None;
+        }
+
+        let localized_data = Hachimi::instance().localized_data.load();
+        localized_data.text_data_dict
+            .get(&147)
+            .and_then(|c| c.get(&index))
+            .map(|t| t.to_il2cpp_string())
+    }
+
     pub fn get_skill_desc(index: i32) -> Option<*mut Il2CppString> {
         if Hachimi::instance().config.load().skill_data_desc {
             let skill_data_desc = Hachimi::instance().skill_data_desc.load();
@@ -794,6 +806,7 @@ impl SelectQueryState for TextDataQuery {
                 match category {
                     47 => return Self::get_skill_name(index),
                     48 => return Self::get_skill_desc(index),
+                    147 => return Self::get_factor_name(index),
                     _ => ()
                 };
 
