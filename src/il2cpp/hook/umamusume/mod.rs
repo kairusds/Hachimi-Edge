@@ -176,6 +176,8 @@ mod CySpringNative;
 pub mod LiveViewController;
 pub mod LiveTimeController;
 pub mod HomeViewController;
+#[cfg(target_os = "windows")]
+pub mod HomeCameraController;
 pub mod WorkDataManager;
 pub mod AssetManager;
 pub mod WorkJukeboxData;
@@ -337,6 +339,8 @@ pub fn init() {
     LiveViewController::init(image);
     LiveTimeController::init(image);
     HomeViewController::init(image);
+    #[cfg(target_os = "windows")]
+    HomeCameraController::init(image);
     WorkDataManager::init(image);
     AssetManager::init(image);
     WorkJukeboxData::init(image);

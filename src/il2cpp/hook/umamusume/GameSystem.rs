@@ -12,7 +12,7 @@ use crate::windows::free_camera::{self, CameraScene};
 #[cfg(target_os = "windows")]
 use crate::core::live_utils;
 #[cfg(target_os = "windows")]
-use super::Director;
+use super::{Director, HomeCameraController};
 // use std::sync::atomic::{AtomicBool, Ordering};
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
@@ -65,6 +65,11 @@ type GameSystemLateUpdateFn = extern "C" fn(this: *mut Il2CppObject);
 extern "C" fn GameSystem_LateUpdate(this: *mut Il2CppObject) {
     get_orig_fn!(GameSystem_LateUpdate, GameSystemLateUpdateFn)(this);
     Director::apply_paused_free_camera();
+
+    #[cfg(target_os = "windows")]
+    if free_camera::scene() == CameraScene::Home {
+        HomeCameraController::apply_home_free_camera();
+    }
 }
 
 fn init_game_opts() {

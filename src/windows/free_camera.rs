@@ -261,6 +261,7 @@ impl Default for FreeCameraConfig {
 pub enum CameraScene {
     #[default]
     None,
+    Home,
     Live,
     Race,
 }
@@ -787,7 +788,7 @@ pub fn is_game_input_capture_active() -> bool {
         return false;
     }
 
-    matches!(STATE.lock().unwrap().scene, CameraScene::Live | CameraScene::Race)
+    matches!(STATE.lock().unwrap().scene, CameraScene::Home | CameraScene::Live | CameraScene::Race)
 }
 
 pub fn overlay_message() -> Option<(String, f32)> {
@@ -881,7 +882,7 @@ pub fn scene() -> CameraScene {
 pub fn is_scene_enabled(scene: CameraScene) -> bool {
     let config = Hachimi::instance().config.load();
     config.windows.free_camera.enabled &&
-        !LIVE_UNSUPPORTED.load(Ordering::Acquire) &&
+        (scene != CameraScene::Live || !LIVE_UNSUPPORTED.load(Ordering::Acquire)) &&
         STATE.lock().unwrap().scene == scene
 }
 
@@ -960,6 +961,7 @@ pub fn fov_for_scene(scene: CameraScene) -> Option<f32> {
     }
 
     Some(match scene {
+        CameraScene::Home => state.live_fov,
         CameraScene::Live => state.live_fov,
         CameraScene::Race => state.race_fov,
         CameraScene::None => return None,
@@ -1002,6 +1004,38 @@ pub fn set_live_active() {
     }
 
     STATE.lock().unwrap().set_scene(CameraScene::Live, &config.windows.free_camera);
+}
+
+#[allow(dead_code)]
+pub fn set_home_active() {
+    let config = Hachimi::instance().config.load();
+    if !config.windows.free_camera.enabled {
+        return;
+    }
+
+    STATE
+        .lock()
+        .unwrap()
+        .set_scene(CameraScene::Home, &config.windows.free_camera);
+}
+
+pub fn set_home_active_with_transform(pos: Vector3_t, rot: Quaternion_t) {
+    let config = Hachimi::instance().config.load();
+    if !config.windows.free_camera.enabled {
+        return;
+    }
+
+    let mut state = STATE.lock().unwrap();
+    if state.scene != CameraScene::Home {
+        state.scene = CameraScene::Home;
+        state.reset_with_config(&config.windows.free_camera);
+        state.camera_pos = Vec3::from(pos);
+        let q = Quat::from_quaternion(rot);
+        let forward = q.rotate_vec(Vec3::new(0.0, 0.0, 1.0));
+        state.yaw = forward.x.atan2(forward.z).to_degrees();
+        state.pitch = (-forward.y.clamp(-1.0, 1.0)).asin().to_degrees();
+        state.update_look_from_angles();
+    }
 }
 
 pub fn begin_live_director_update() {
@@ -1697,7 +1731,7 @@ pub fn tick() {
     if !config.enabled {
         return;
     }
-    if !matches!(state.scene, CameraScene::Live | CameraScene::Race) {
+    if !matches!(state.scene, CameraScene::Home | CameraScene::Live | CameraScene::Race) {
         state.last_tick = Instant::now();
         return;
     }
@@ -1929,6 +1963,7 @@ fn adjust_follow_offset_y_locked(state: &mut FreeCameraState, value: f32) {
 
 fn change_fov_locked(state: &mut FreeCameraState, value: f32) {
     match state.scene {
+        CameraScene::Home => state.live_fov = (state.live_fov + value).clamp(1.0, 120.0),
         CameraScene::Live => state.live_fov = (state.live_fov + value).clamp(1.0, 120.0),
         CameraScene::Race => state.race_fov = (state.race_fov + value).clamp(1.0, 120.0),
         CameraScene::None => (),

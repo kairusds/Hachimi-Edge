@@ -12,7 +12,8 @@ impl_addr_wrapper_fn!(set_fieldOfView, SET_FIELD_OF_VIEW_ADDR, (), this: *mut Il
 
 #[cfg(target_os = "windows")]
 fn should_override_near_clip() -> bool {
-    free_camera::is_scene_enabled(CameraScene::Live) ||
+    free_camera::is_scene_enabled(CameraScene::Home) ||
+        free_camera::is_scene_enabled(CameraScene::Live) ||
         free_camera::is_scene_enabled(CameraScene::Race)
 }
 
@@ -43,7 +44,9 @@ extern "C" fn Camera_get_nearClipPlane(this: *mut Il2CppObject) -> f32 {
 
 #[cfg(target_os = "windows")]
 extern "C" fn Camera_set_farClipPlane(this: *mut Il2CppObject, mut value: f32) {
-    if free_camera::is_scene_enabled(CameraScene::Live) || free_camera::is_scene_enabled(CameraScene::Race) {
+    if free_camera::is_scene_enabled(CameraScene::Home) ||
+        free_camera::is_scene_enabled(CameraScene::Live) ||
+        free_camera::is_scene_enabled(CameraScene::Race) {
         value = 2500.0;
     }
     get_orig_fn!(Camera_set_farClipPlane, CameraSetFloatFn)(this, value);
@@ -51,7 +54,9 @@ extern "C" fn Camera_set_farClipPlane(this: *mut Il2CppObject, mut value: f32) {
 
 #[cfg(target_os = "windows")]
 extern "C" fn Camera_get_farClipPlane(this: *mut Il2CppObject) -> f32 {
-    if free_camera::is_scene_enabled(CameraScene::Live) || free_camera::is_scene_enabled(CameraScene::Race) {
+    if free_camera::is_scene_enabled(CameraScene::Home) ||
+        free_camera::is_scene_enabled(CameraScene::Live) ||
+        free_camera::is_scene_enabled(CameraScene::Race) {
         return 2500.0;
     }
     get_orig_fn!(Camera_get_farClipPlane, CameraGetFloatFn)(this)
