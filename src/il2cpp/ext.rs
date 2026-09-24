@@ -9,12 +9,13 @@ use crate::core::hachimi::{Hachimi, LocalizedData};
 use super::{
     api::il2cpp_string_new_utf16,
     hook::{
-        UnityEngine_AssetBundleModule::AssetBundle,
+        UnityEngine_AssetBundleModule::{AssetBundle, AssetBundleCreateRequest, AsyncOperation},
         UnityEngine_CoreModule::{HideFlags_DontUnloadUnusedAsset, Object},
         UnityEngine_TextRenderingModule::Font, Unity_TextMeshPro::TMP_FontAsset
     },
     symbols::GCHandle,
-    types::*
+    types::*,
+    utils::read_font_pack
 };
 
 pub trait StringExt {
@@ -42,34 +43,95 @@ pub trait LocalizedDataExt {
 
 static EXTRA_ASSET_BUNDLE_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
 static CUSTOM_FONT_BUNDLE_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
-static CUSTOM_FONT_SOURCE: Lazy<Mutex<Option<(String, String)>>> = Lazy::new(|| Mutex::default());
+static CUSTOM_FONT_REQUEST: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
+static CUSTOM_FONT_BINARY: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
+static CUSTOM_FONT_ASSET_NAME: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::default());
+static CUSTOM_FONT_SOURCE: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::default());
 static CUSTOM_FONT_LOAD_ATTEMPTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 static CUSTOM_TMP_FONT_LOAD_ATTEMPTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 static REPLACEMENT_FONT_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
 static TMP_REPLACEMENT_FONT_HANDLE: Lazy<Mutex<Option<GCHandle>>> = Lazy::new(|| Mutex::default());
 
-fn custom_font_source() -> Option<(String, String)> {
+fn custom_font_source() -> Option<String> {
     let config = Hachimi::instance().config.load();
-    config.custom_font_asset_bundle.as_deref()
-        .filter(|path| !path.trim().is_empty())
-        .zip(config.custom_font_name.as_deref().filter(|name| !name.trim().is_empty()))
-        .map(|(path, name)| {
-            (
-                path.trim().to_owned(),
-                name.trim().replace('\\', "/").to_lowercase()
-            )
-        })
+    let file = config.custom_font_file.as_deref()?.trim().to_owned();
+    if file.is_empty() {
+        return None;
+    }
+    Some(file)
 }
 
-fn sync_custom_font_source(source: &Option<(String, String)>) {
+fn sync_custom_font_source(source: &Option<String>) {
     let mut cached_source = CUSTOM_FONT_SOURCE.lock().unwrap();
     if *cached_source != *source {
         *CUSTOM_FONT_BUNDLE_HANDLE.lock().unwrap() = None;
+        *CUSTOM_FONT_REQUEST.lock().unwrap() = None;
+        *CUSTOM_FONT_BINARY.lock().unwrap() = None;
+        *CUSTOM_FONT_ASSET_NAME.lock().unwrap() = None;
         *REPLACEMENT_FONT_HANDLE.lock().unwrap() = None;
         *TMP_REPLACEMENT_FONT_HANDLE.lock().unwrap() = None;
         *CUSTOM_FONT_LOAD_ATTEMPTED.lock().unwrap() = false;
         *CUSTOM_TMP_FONT_LOAD_ATTEMPTED.lock().unwrap() = false;
         *cached_source = source.clone();
+    }
+}
+
+fn load_custom_font_bundle() -> *mut Il2CppObject {
+    {
+        let mut handle_opt = CUSTOM_FONT_BUNDLE_HANDLE.lock().unwrap();
+        if let Some(handle) = handle_opt.as_ref() {
+            let bundle = handle.target();
+            if !bundle.is_null() && Object::IsNativeObjectAlive(bundle) {
+                return bundle;
+            }
+            *handle_opt = None;
+        }
+    }
+
+    let mut request_opt = CUSTOM_FONT_REQUEST.lock().unwrap();
+    if let Some(handle) = request_opt.as_ref() {
+        let request = handle.target();
+        if !request.is_null() && !AsyncOperation::get_isDone(request) {
+            return 0 as _;
+        }
+        *request_opt = None;
+        *CUSTOM_FONT_BINARY.lock().unwrap() = None;
+        if request.is_null() {
+            return 0 as _;
+        }
+        let bundle = AssetBundleCreateRequest::get_assetBundle(request);
+        if bundle.is_null() {
+            warn!("Failed to load custom font asset bundle from pack");
+            return 0 as _;
+        }
+        *CUSTOM_FONT_BUNDLE_HANDLE.lock().unwrap() = Some(GCHandle::new(bundle, false));
+        return bundle;
+    }
+
+    0 as _
+}
+
+fn start_custom_font_bundle_load(file: &str) {
+    let mut attempted = CUSTOM_FONT_LOAD_ATTEMPTED.lock().unwrap();
+    if *attempted {
+        return;
+    }
+    *attempted = true;
+    drop(attempted);
+
+    let path = Hachimi::instance().get_data_path(file);
+    match read_font_pack(&path) {
+        Ok((bytes, asset_name)) => {
+            *CUSTOM_FONT_ASSET_NAME.lock().unwrap() = Some(asset_name);
+            let (binary, request) = AssetBundle::load_from_memory_async(&bytes);
+            if request.is_null() {
+                warn!("Failed to start custom font asset bundle load");
+                return;
+            }
+            *CUSTOM_FONT_BINARY.lock().unwrap() = Some(GCHandle::new(binary, false));
+            *CUSTOM_FONT_REQUEST.lock().unwrap() = Some(GCHandle::new(request, false));
+        }
+        Err(reason) => warn!("Failed to load custom font pack {file}: {reason}")
     }
 }
 
@@ -117,52 +179,36 @@ impl LocalizedDataExt for LocalizedData {
             }
         }
 
-        if custom_source.is_some() {
-            let mut attempted = CUSTOM_FONT_LOAD_ATTEMPTED.lock().unwrap();
-            if *attempted {
+        let (bundle, name, custom) = if let Some(file) = custom_source {
+            start_custom_font_bundle_load(&file);
+            let bundle = load_custom_font_bundle();
+            if bundle.is_null() {
                 return 0 as _;
             }
-            *attempted = true;
-        }
-
-        let (bundle, name) = if let Some((path, name)) = custom_source {
-            let cached_bundle = CUSTOM_FONT_BUNDLE_HANDLE.lock().unwrap()
-                .as_ref().map(|handle| handle.target());
-            let bundle = if let Some(bundle) = cached_bundle {
-                bundle
-            }
-            else {
-                let path = Hachimi::instance().get_data_path(path);
-                let Some(path_str) = path.to_str() else {
-                    error!("Invalid custom font asset bundle path");
-                    return 0 as _;
-                };
-                info!("Loading custom font AssetBundle: {}", path.display());
-                let bundle = AssetBundle::LoadFromFile_Internal_orig(path_str.to_il2cpp_string(), 0, 0);
-                if bundle.is_null() {
-                    error!("Failed to load custom font asset bundle: {}", path.display());
-                    return 0 as _;
-                }
-                *CUSTOM_FONT_BUNDLE_HANDLE.lock().unwrap() = Some(GCHandle::new(bundle, false));
-                bundle
+            let Some(name) = CUSTOM_FONT_ASSET_NAME.lock().unwrap().clone() else {
+                return 0 as _;
             };
-            (bundle, name)
+            (bundle, name, true)
         } else {
             let Some(name) = &self.config.replacement_font_name else {
                 return 0 as _;
             };
-            (self.load_extra_asset_bundle(), name.to_owned())
+            (self.load_extra_asset_bundle(), name.to_owned(), false)
         };
         if bundle.is_null() {
             return 0 as _;
         }
 
-        if custom_font_source().is_some() {
+        if custom {
             info!("Loading custom font asset: {name}");
         }
         let font = AssetBundle::LoadAsset_Internal_orig(bundle, name.to_il2cpp_string(), Font::type_object());
         if font.is_null() {
-            error!("Failed to load replacement font asset: {name}");
+            if custom {
+                warn!("Failed to load custom font asset: {name}");
+            } else {
+                error!("Failed to load replacement font asset: {name}");
+            }
             return 0 as _;
         }
         Object::set_hideFlags(font, HideFlags_DontUnloadUnusedAsset);

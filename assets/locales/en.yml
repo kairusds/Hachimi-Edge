@@ -164,10 +164,8 @@ config_editor:
     If this was not intentional, close this dialog and DISABLE the option.
   ipv4_only: "IPv4 ureq only"
   meta_index_url: "Translations Meta URL"
-  custom_font_asset_bundle: "Custom font AssetBundle path"
-  custom_font_asset_bundle_hint: "Example: custom_font/font.bundle"
-  custom_font_name: "Custom font asset name"
-  custom_font_name_hint: "Example: assets/fonts/custom.ttf"
+  custom_font_file: "Custom font"
+  custom_font_none_found: "No .hachifont packs found"
   debug_mode: "Debug mode"
   enable_file_logging: "Enable file logging"
   apply_atlas_workaround: "Apply TL Atlas Workaround"
