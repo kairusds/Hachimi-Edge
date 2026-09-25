@@ -151,6 +151,8 @@ config_editor:
     您将无法再访问配置编辑器。
     如非本意，请关闭此窗口并禁用此选项。
   meta_index_url: "翻译 Meta URL"
+  custom_font_file: "自定义字体"
+  custom_font_none_found: "未找到 .hachifont 字体包"
   debug_mode: "调试模式"
   enable_file_logging: "记录日志"
   apply_atlas_workaround: "应用翻译 Atlas 修复"

@@ -890,6 +890,7 @@ pub struct Config {
     pub hide_now_loading: bool,
     #[serde(default)]
     pub replace_to_builtin_font: bool,
+    pub custom_font_file: Option<String>,
     #[serde(default)]
     pub disabled_hooks: FnvHashSet<String>,
 
