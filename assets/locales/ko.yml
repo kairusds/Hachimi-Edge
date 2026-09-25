@@ -178,6 +178,7 @@ config_editor:
   ui_scale: "UI 크기"
   recommended_ui_scale: "권장값 사용"
   gui_scale: "그래픽 사용자 인터페이스 크기"
+  old_config_editor: "옛 고급 설정 사용"
   gui_landscape_ratio: "Landscape overlay scale ratio"
   ui_animation_scale: "UI 크기"
   graphics_quality: "품질"
@@ -242,6 +243,8 @@ config_editor:
   trainer_live_landscape: "Meni Shuki live에서 landscape 모드로 보기"
   force_orientation_mode: "orientation mode 강제 활성화"
   race_playback_slider_always: "경기중 항상 하단에 슬라이더바 표시"
+  race_stat_hud_opacity_scale: "HUD 레이스 정보 크기"
+
 skill_data_desc:
   group:
     duration: "for %{v} s"
@@ -806,9 +809,7 @@ skill_data_desc:
         ge: "≥%{v} opponents in FOV"
         le: "Visible runners ≤%{v}"
       distance_diff_top_float:
-        le: "Distance to first ≤%{v}m
-  old_config_editor: "옛 고급 설정 사용"
-  race_stat_hud_opacity_scale: "HUD 레이스 정보 크기"
+        le: "Distance to first ≤%{v}m"
 
 theme_editor:
   title: "태마 수정"
