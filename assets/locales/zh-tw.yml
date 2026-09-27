@@ -115,6 +115,8 @@ config_editor:
     如果是不小心誤觸此選項，請關閉此對話框並禁用該選項。
   ipv4_only: "僅限 IPv4 ureq"
   meta_index_url: "翻譯 Meta URL"
+  custom_font_file: "自訂字體"
+  custom_font_none_found: "找不到 .hachifont 字體包"
   debug_mode: "除錯模式"
   enable_file_logging: "啟用檔案記錄"
   apply_atlas_workaround: "套用 TL Atlas 修復"

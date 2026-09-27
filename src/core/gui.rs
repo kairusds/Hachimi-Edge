@@ -5,9 +5,10 @@ use std::{
     ops::RangeInclusive,
     os::raw::c_void,
     panic::{self, AssertUnwindSafe},
+    path::Path,
     sync::{atomic::{self, AtomicBool, AtomicI32, AtomicU32, AtomicUsize}, Arc, Mutex},
     thread,
-    time::Instant
+    time::{Duration, Instant}
 };
 
 use egui::emath::GuiRounding as _;
@@ -3439,7 +3440,7 @@ impl Gui {
                             if let Some(id) = focused {
                                 *owner_lock = Some(KeyboardOwner::JNI(id));
                             }
-                            self.ime_cooldown = Some(Instant::now() + std::time::Duration::from_millis(500));
+                            self.ime_cooldown = Some(Instant::now() + Duration::from_millis(500));
                         }
                     }
                 } else if focused.is_none() && self.last_focused.is_some() {
@@ -4894,6 +4895,53 @@ pub struct GameOpts {
 
 pub static GAME_OPTS_CACHE: Lazy<Mutex<Option<GameOpts>>> = Lazy::new(|| Mutex::new(None));
 
+struct HachifontScan {
+    signature: Vec<(String, u64, u64)>,
+    fonts: Arc<Vec<String>>
+}
+
+static HACHIFONT_CACHE: Lazy<Mutex<Option<HachifontScan>>> = Lazy::new(|| Mutex::new(None));
+const HACHIFONT_STAT_INTERVAL: Duration = Duration::from_secs(3);
+const HACHIFONT_EXTENSION: &str = "hachifont";
+
+fn stat_hachifonts(dir: &Path) -> Vec<(String, u64, u64)> {
+    let mut signature = Vec::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return signature;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !name.to_lowercase().ends_with(&format!(".{HACHIFONT_EXTENSION}")) {
+            continue;
+        }
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        let mtime = meta.modified().ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        signature.push((name, meta.len(), mtime));
+    }
+    signature.sort();
+    signature
+}
+
+fn scan_hachifonts(dir: &Path) -> HachifontScan {
+    let signature = stat_hachifonts(dir);
+    let mut fonts = Vec::with_capacity(signature.len());
+    for (name, _, _) in &signature {
+        match crate::il2cpp::utils::read_font_pack(&dir.join(name)) {
+            Ok(_) => fonts.push(name.clone()),
+            Err(reason) => warn!("Ignoring font pack {name}: {reason}")
+        }
+    }
+    HachifontScan { signature, fonts: Arc::new(fonts) }
+}
+
 struct ConfigEditor {
     last_ptr_config: usize,
     config: hachimi::Config,
@@ -4912,6 +4960,10 @@ struct ConfigEditor {
     font_color_options: Arc<Vec<String>>,
     outline_size_options: Arc<Vec<String>>,
     outline_color_options: Arc<Vec<String>>,
+    hachifont_items: Arc<Vec<String>>,
+    hachifont_signature: Vec<(String, u64, u64)>,
+    hachifont_result: Option<Arc<Mutex<Option<HachifontScan>>>>,
+    hachifont_last_stat: Instant,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -5028,6 +5080,23 @@ impl ConfigEditor {
             outline_color_options = opts.outline_color_options;
         }
 
+        let (hachifont_items, hachifont_signature, hachifont_result) = {
+            let cache = HACHIFONT_CACHE.lock().unwrap();
+            if let Some(summary) = cache.as_ref() {
+                (summary.fonts.clone(), summary.signature.clone(), None)
+            } else {
+                drop(cache);
+                let result = Arc::new(Mutex::new(None));
+                let result_clone = result.clone();
+                let dir = Hachimi::instance().game.data_dir.clone();
+                thread::spawn(move || {
+                    let summary = scan_hachifonts(&dir);
+                    *result_clone.lock().unwrap() = Some(summary);
+                });
+                (Arc::new(Vec::new()), Vec::new(), Some(result))
+            }
+        };
+
         ConfigEditor {
             last_ptr_config: Arc::as_ptr(&handle) as usize,
             config: (**Hachimi::instance().config.load()).clone(),
@@ -5046,6 +5115,10 @@ impl ConfigEditor {
             font_color_options,
             outline_size_options,
             outline_color_options,
+            hachifont_items,
+            hachifont_signature,
+            hachifont_result,
+            hachifont_last_stat: Instant::now(),
         }
     }
 
@@ -5071,6 +5144,41 @@ impl ConfigEditor {
             ui.label("");
             ui.add(egui::Slider::new(num, range));
             ui.end_row();
+        }
+    }
+
+    fn spawn_hachifont_scan(&mut self) {
+        let result = Arc::new(Mutex::new(None));
+        self.hachifont_result = Some(result.clone());
+        let dir = Hachimi::instance().game.data_dir.clone();
+        thread::spawn(move || {
+            let summary = scan_hachifonts(&dir);
+            *result.lock().unwrap() = Some(summary);
+        });
+    }
+
+    fn poll_hachifonts(&mut self) {
+        if let Some(result) = self.hachifont_result.take() {
+            let drained = result.try_lock().ok().and_then(|mut lock| lock.take());
+            match drained {
+                Some(summary) => {
+                    self.hachifont_signature = summary.signature.clone();
+                    self.hachifont_items = summary.fonts.clone();
+                    *HACHIFONT_CACHE.lock().unwrap() = Some(summary);
+                }
+                None => {
+                    self.hachifont_result = Some(result);
+                }
+            }
+        }
+
+        if self.hachifont_result.is_none()
+            && self.hachifont_last_stat.elapsed() >= HACHIFONT_STAT_INTERVAL {
+            self.hachifont_last_stat = Instant::now();
+            let signature = stat_hachifonts(&Hachimi::instance().game.data_dir);
+            if signature != self.hachifont_signature {
+                self.spawn_hachifont_scan();
+            }
         }
     }
 
@@ -5144,6 +5252,41 @@ impl ConfigEditor {
                 if res.lost_focus() && config.meta_index_url.trim().is_empty() {
                     config.meta_index_url = hachimi::Config::default().meta_index_url;
                 }
+            }
+
+            if should_show_option(search, &t!("config_editor.custom_font_file")) {
+                ui.label(t!("config_editor.custom_font_file"));
+                if self.hachifont_items.is_empty() {
+                    ui.add_enabled_ui(false, |ui| {
+                        egui::ComboBox::new(ui.id().with("custom_font_file"), "")
+                            .selected_text(t!("config_editor.custom_font_none_found"))
+                            .wrap_mode(egui::TextWrapMode::Wrap)
+                            .show_ui(ui, |_| {});
+                    });
+                } else {
+                    let selected_text = {
+                        let selected = config.custom_font_file.get_or_insert_default();
+                        if selected.is_empty() {
+                            t!("default").into_owned()
+                        } else {
+                            selected.clone()
+                        }
+                    };
+                    egui::ComboBox::new(ui.id().with("custom_font_file"), "")
+                        .wrap_mode(egui::TextWrapMode::Wrap)
+                        .selected_text(selected_text)
+                        .show_ui(ui, |ui| {
+                            let selected = config.custom_font_file.get_or_insert_default();
+                            ui.selectable_value(selected, String::new(), t!("default"));
+                            for name in self.hachifont_items.iter() {
+                                ui.selectable_value(selected, name.clone(), name.clone());
+                            }
+                        });
+                    if config.custom_font_file.as_deref() == Some("") {
+                        config.custom_font_file = None;
+                    }
+                }
+                ui.end_row();
             }
 
             if should_show_option(search, &t!("config_editor.gui_scale")) {
@@ -6543,6 +6686,7 @@ impl Window for ConfigEditor {
         {
             config.windows.menu_open_key = global_handle.windows.menu_open_key;
         }
+        self.poll_hachifonts();
         let mut reset_clicked = false;
         let mut save_clicked = false;
 

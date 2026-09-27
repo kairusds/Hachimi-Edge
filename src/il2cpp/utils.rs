@@ -1,4 +1,4 @@
-use std::{collections::HashSet, io::Write, path::{Path, PathBuf}, sync::Mutex};
+use std::{collections::HashSet, fs, io::{Cursor, Read, Write}, path::{Path, PathBuf}, sync::Mutex};
 
 use once_cell::sync::Lazy;
 
@@ -250,4 +250,80 @@ pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
         }
     }
     options
+}
+
+const FONT_PATH_ENTRY: &str = "font_path.txt";
+#[cfg(target_os = "android")]
+const INCLUDE_ENTRY: &str = "includes_android";
+#[cfg(target_os = "windows")]
+const INCLUDE_ENTRY: &str = "includes_win";
+const MAX_FONT_PATH_BYTES: u64 = 4096;
+const MAX_BUNDLE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+const BUNDLE_MAGICS: [&[u8]; 4] = [b"UnityFS", b"UnityRaw", b"UnityWeb", b"UnityArchive"];
+
+pub fn read_font_pack(path: &Path) -> Result<(Vec<u8>, String), String> {
+    let data = fs::read(path).map_err(|e| format!("failed to open: {e}"))?;
+    read_font_pack_data(&data)
+}
+
+fn read_font_pack_data(data: &[u8]) -> Result<(Vec<u8>, String), String> {
+    if data.is_empty() {
+        return Err("file is empty".to_owned());
+    }
+    let mut archive = zip::ZipArchive::new(Cursor::new(data))
+        .map_err(|e| format!("invalid zip file: {e}"))?;
+
+    let font_path_entry = archive.file_names()
+        .find(|name| name.eq_ignore_ascii_case(FONT_PATH_ENTRY))
+        .ok_or_else(|| format!("missing {FONT_PATH_ENTRY}"))?
+        .to_owned();
+    let bundle_entry = archive.file_names()
+        .find(|name| name.eq_ignore_ascii_case(INCLUDE_ENTRY))
+        .ok_or_else(|| format!("missing {INCLUDE_ENTRY}"))?
+        .to_owned();
+
+    let mut content = Vec::new();
+    {
+        let mut font_path = archive.by_name(&font_path_entry)
+            .map_err(|e| format!("failed to read {FONT_PATH_ENTRY}: {e}"))?;
+        if font_path.size() > MAX_FONT_PATH_BYTES {
+            return Err(format!("{FONT_PATH_ENTRY} is too large"));
+        }
+        font_path.by_ref().take(MAX_FONT_PATH_BYTES + 1).read_to_end(&mut content)
+            .map_err(|e| format!("failed to read {FONT_PATH_ENTRY}: {e}"))?;
+    }
+    if content.len() as u64 > MAX_FONT_PATH_BYTES {
+        return Err(format!("{FONT_PATH_ENTRY} is too large"));
+    }
+    let text = String::from_utf8(content)
+        .map_err(|_| format!("{FONT_PATH_ENTRY} is not valid UTF-8"))?;
+    let text = text.trim();
+    let text = text.strip_prefix('\u{feff}').map_or(text, str::trim);
+    if text.is_empty() {
+        return Err(format!("{FONT_PATH_ENTRY} is empty"));
+    }
+    if text.chars().any(char::is_control) {
+        return Err(format!("{FONT_PATH_ENTRY} contains control characters"));
+    }
+    let asset_path = text.replace('\\', "/").to_lowercase();
+
+    let mut bundle = archive.by_name(&bundle_entry)
+        .map_err(|e| format!("failed to read asset bundle entry {bundle_entry}: {e}"))?;
+    if bundle.size() == 0 {
+        return Err(format!("asset bundle entry {bundle_entry} is empty"));
+    }
+    if bundle.size() > MAX_BUNDLE_BYTES {
+        return Err(format!("asset bundle entry {bundle_entry} is too large"));
+    }
+    let mut bytes = Vec::new();
+    bundle.by_ref().take(MAX_BUNDLE_BYTES + 1).read_to_end(&mut bytes)
+        .map_err(|e| format!("failed to read asset bundle entry {bundle_entry}: {e}"))?;
+    if bytes.len() as u64 > MAX_BUNDLE_BYTES {
+        return Err(format!("asset bundle entry {bundle_entry} is too large"));
+    }
+    if !BUNDLE_MAGICS.iter().any(|m| bytes.starts_with(m)) {
+        return Err(format!("asset bundle entry {bundle_entry} is not a Unity AssetBundle"));
+    }
+
+    Ok((bytes, asset_path))
 }
