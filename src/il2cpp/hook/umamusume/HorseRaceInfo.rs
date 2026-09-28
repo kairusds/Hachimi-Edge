@@ -97,14 +97,14 @@ pub fn is_start_dash_instance(race_manager: *mut Il2CppObject) -> bool {
 
 pub fn is_finished() -> bool {
     let race_manager = RaceManager::instance();
-    if race_manager.is_null() { return false; }
+    if race_manager.is_null() { return true; }
 
     let horse_manager = RaceManager::get__horseManager(race_manager);
-    if horse_manager.is_null() { return false; }
+    if horse_manager.is_null() { return true; }
 
     match player_horse_info(horse_manager) {
         Some(player_info) => IsFinished(player_info),
-        None => false,
+        None => true,
     }
 }
 
