@@ -46,6 +46,12 @@ fall: "Outono"
 winter: "Inverno"
 cherry_blossom: "Cerejeiras"
 ordinal: "%{n}%{suffix}"
+low: "Baixa"
+medium: "Média"
+high: "Alta"
+circle: "Circular"
+hard: "Dura"
+soft: "Suave"
 
 menu:
   check_for_updates: "\uf0aa Buscar atualizações"
@@ -159,6 +165,20 @@ config_editor:
     Se não deseja isso, clique em OK e DESABILITE esta opção.
   ipv4_only: "Usar apenas IPv4 (ureq)"
   meta_index_url: "URL dos metadados das traduções"
+  custom_font_file: "Fonte personalizada"
+  custom_font_none_found: "Nenhum pacote .hachifont encontrado"
+  custom_font_file_warning: >-
+    Fontes personalizadas podem não funcionar bem com repositórios de tradução.
+    As traduções são feitas pensando em uma fonte específica, então uma fonte personalizada pode
+    causar espaçamento irregular entre as linhas, texto transbordando ou sendo cortado. Se os textos
+    parecerem estranhos, você pode voltar para a fonte padrão aqui.
+  shadow_distance: "Distância das sombras"
+  soft_shadows: "Sombras suaves"
+  soft_shadow_quality: "Qualidade das sombras suaves"
+  shadow_depth_bias: "Ajuste da profundidade das sombras"
+  shadow_normal_bias: "Ajuste da normal das sombras"
+  force_chara_shadows: "Forçar sombras nas personagens"
+  story_shadow_type: "Tipo de sombra nas histórias"
   debug_mode: "Modo de depuração"
   enable_file_logging: "Habilitar arquivo de registro"
   apply_atlas_workaround: "Solução temporária para arquivos de Atlas"
