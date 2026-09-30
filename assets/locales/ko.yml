@@ -39,6 +39,12 @@ save_changes: "변경 사항을 저장할까요?"
 back: "뒤"
 portrait: "Portrait"
 landscape: "Landscape"
+low: "저"
+medium: "중"
+high: "고"
+circle: "서클"
+hard: "어려움"
+soft: "쉬움"
 
 menu:
   check_for_updates: "\uf0aa 업데이트 확인"
@@ -148,6 +154,11 @@ config_editor:
     즉 이후에는 클라이언트를 뜯어 직접 config.json을 txt편집기를 이용해 편집하지 않는 이상 고급 설정을 바꾸실수 없습니다.
   ipv4_only: "IP6 비활성"
   meta_index_url: "번역 파일 배포 목록 출처"
+  custom_font_file: "폰트 변경"
+  custom_font_file_warning: >-
+    번역 파일 배포와 충돌할수 있습니다.
+    먼역은 특정한 폰트를 감안하고 만듭니다, 즉 줄바꿈 오류, 넘침, 깨짐등을 유발할수 있습니다,그 경우에는 여기를 눌러 기본값으로 되돌리세요.
+  custom_font_none_found: ".hachifont 파일이 없음"
   debug_mode: "오류 수정 모드"
   enable_file_logging: "로그 파일 기록 키기"
   apply_atlas_workaround: "tl workaround 키기"
@@ -235,6 +246,15 @@ config_editor:
   skill_info_dialog: "커스텀 스킬 설명"
   homescreen_bgseason: "육성 화면 계절"
   shadow_resolution: "Shadow Resolution"
+  shadow_distance: "그림자 길이"
+  soft_shadows: "부드러운 그림자"
+  soft_shadow_quality: "품질"
+  shadow_depth_bias: "그림자 길이 Bias"
+  shadow_normal_bias: 그림자 Normal Bias"
+  shadow_depth_bias: "Shadow Depth Bias"
+  shadow_normal_bias: "Shadow Normal Bias"
+  force_chara_shadows: "강제로 그림자 만들기"
+  story_shadow_type: "그림자 형태"
   hide_now_loading: "로딩 화면 미표시"
   ui_loading_show_orientation_guide: "now loading창 가이드 숨기기"
   replace_to_builtin_font: "기본 폰트 사용"
