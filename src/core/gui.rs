@@ -42,10 +42,12 @@ use crate::il2cpp::{
             RaceDefine::{HorsePhase, LaneType},
             SimulateEventType,
             SkillManager,
+            StoryTimelineBg3DClipData::ShadowType3d,
             TemptationMode,
             SceneManager as UmaSceneManager
         },
-        UnityEngine_CoreModule::{Application, Texture::AnisoLevel}
+        UnityEngine_CoreModule::{Application, Texture::AnisoLevel},
+        Unity_RenderPipelines_Universal_Runtime::SoftShadowQuality
     },
     symbols::{IList, Thread, Array},
     types::{Il2CppObject, Il2CppString}
@@ -700,6 +702,11 @@ impl RaceStatHud {
         }
 
         if !RaceHorseManagerBase::is_race_active() {
+            return false;
+        }
+
+        if Hachimi::instance().game.region == Region::Global
+            && HorseRaceInfo::is_finished() {
             return false;
         }
 
@@ -3162,6 +3169,15 @@ impl Gui {
             return false;
         }
 
+        if !UmaSceneManager::is_race_scene_family() {
+            return false;
+        }
+        let race_manager = RaceManager::instance();
+        if race_manager.is_null()
+            || RaceManager::get__horseManager(race_manager).is_null() {
+            return false;
+        }
+
         let race_info = RaceManager::get_RaceInfo();
         if !race_info.is_null() && RaceInfo::get_IsStoryRace(race_info) {
             return false;
@@ -3294,6 +3310,15 @@ impl Gui {
     }
 
     fn race_playback_button_showing() -> bool {
+        if !UmaSceneManager::is_race_scene_family() {
+            return false;
+        }
+        let race_manager = RaceManager::instance();
+        if race_manager.is_null()
+            || RaceManager::get__horseManager(race_manager).is_null() {
+            return false;
+        }
+
         Hachimi::instance().config.load().race_playback_button && RaceHorseManagerBase::is_race_active()
         && !HorseRaceInfo::is_start_dash()
         && !HorseRaceInfo::is_finished()
@@ -4256,7 +4281,9 @@ impl Gui {
             !Self::race_slider_showing() &&
             !Self::race_playback_button_showing() &&
             !free_camera::has_overlay_message() &&
-            !RaceStatHud::elements_showing() && !RaceStatHud::is_active()
+            !RaceStatHud::elements_showing() && !RaceStatHud::is_active() &&
+            !IS_CONSUMING_INPUT.load(atomic::Ordering::Acquire) &&
+            !GUI_INPUT_ACTIVE.load(atomic::Ordering::Acquire)
         }
         #[cfg(target_os = "android")]
         {
@@ -4265,7 +4292,8 @@ impl Gui {
             !IS_LIVE_SCENE.load(atomic::Ordering::Acquire) &&
             !Self::race_slider_showing() &&
             !Self::race_playback_button_showing() &&
-            !RaceStatHud::elements_showing() && !RaceStatHud::is_active()
+            !RaceStatHud::elements_showing() && !RaceStatHud::is_active() &&
+            !IS_CONSUMING_INPUT.load(atomic::Ordering::Acquire)
         }
     }
 
@@ -5274,7 +5302,7 @@ impl ConfigEditor {
                     };
                     egui::ComboBox::new(ui.id().with("custom_font_file"), "")
                         .wrap_mode(egui::TextWrapMode::Wrap)
-                        .selected_text(selected_text)
+                        .selected_text(selected_text.as_str())
                         .show_ui(ui, |ui| {
                             let selected = config.custom_font_file.get_or_insert_default();
                             ui.selectable_value(selected, String::new(), t!("default"));
@@ -5284,6 +5312,22 @@ impl ConfigEditor {
                         });
                     if config.custom_font_file.as_deref() == Some("") {
                         config.custom_font_file = None;
+                    }
+                    if !config.custom_font_file_warning
+                        && config.custom_font_file.as_deref().is_some_and(|v| !v.is_empty())
+                        && config.custom_font_file.as_deref() != Some(selected_text.as_str())
+                    {
+                        config.custom_font_file_warning = true;
+                        thread::spawn(|| {
+                            Gui::instance().unwrap()
+                            .lock().unwrap()
+                            .show_window(Box::new(SimpleOkDialog::new(
+                                &t!("warning"),
+                                &t!("config_editor.custom_font_file_warning"),
+                                false,
+                                || {}
+                            )));
+                        });
                     }
                 }
                 ui.end_row();
@@ -5656,6 +5700,57 @@ impl ConfigEditor {
                     (ShadowResolution::_4096, "4K")
                 ]);
                 ui.end_row();
+            }
+
+            if Hachimi::instance().game.region == Region::Japan {
+                if should_show_option(search, &t!("config_editor.shadow_distance")) {
+                    ui.label(t!("config_editor.shadow_distance"));
+                    ui.add(egui::Slider::new(&mut config.shadow_distance, 0.0..=1000.0).step_by(10.0));
+                    ui.end_row();
+                }
+
+                if should_show_option(search, &t!("config_editor.soft_shadows")) {
+                    ui.label(t!("config_editor.soft_shadows"));
+                    ui.checkbox(&mut config.soft_shadows, "");
+                    ui.end_row();
+                }
+
+                if should_show_option(search, &t!("config_editor.soft_shadow_quality")) {
+                    ui.label(t!("config_editor.soft_shadow_quality"));
+                    Gui::run_combo(ui, "soft_shadow_quality", &mut config.soft_shadow_quality, &[
+                        (SoftShadowQuality::UsePipelineSettings, &t!("default")),
+                        (SoftShadowQuality::Low, &t!("low")),
+                        (SoftShadowQuality::Medium, &t!("medium")),
+                        (SoftShadowQuality::High, &t!("high"))
+                    ]);
+                    ui.end_row();
+                }
+
+                if should_show_option(search, &t!("config_editor.shadow_depth_bias")) {
+                    Self::option_slider(ui, &t!("config_editor.shadow_depth_bias"), &mut config.shadow_depth_bias, 0.0..=5.0);
+                }
+
+                if should_show_option(search, &t!("config_editor.shadow_normal_bias")) {
+                    Self::option_slider(ui, &t!("config_editor.shadow_normal_bias"), &mut config.shadow_normal_bias, 0.0..=10.0);
+                }
+
+                if should_show_option(search, &t!("config_editor.force_chara_shadows")) {
+                    ui.label(t!("config_editor.force_chara_shadows"));
+                    ui.checkbox(&mut config.force_chara_shadows, "");
+                    ui.end_row();
+                }
+
+                if should_show_option(search, &t!("config_editor.story_shadow_type")) {
+                    ui.label(t!("config_editor.story_shadow_type"));
+                    Gui::run_combo(ui, "story_shadow_type", &mut config.story_shadow_type, &[
+                        (ShadowType3d::Default, &t!("default")),
+                        (ShadowType3d::None, "None"),
+                        (ShadowType3d::CircleShadow, &t!("circle")),
+                        (ShadowType3d::HardShadow, &t!("hard")),
+                        (ShadowType3d::SoftShadow, &t!("soft"))
+                    ]);
+                    ui.end_row();
+                }
             }
 
             if should_show_option(search, &t!("config_editor.graphics_quality")) {
@@ -6917,6 +7012,13 @@ impl Window for ConfigEditor {
 
         open &= open2;
         if !open {
+            if self.config.custom_font_file_warning {
+                let mut live = (**Hachimi::instance().config.load()).clone();
+                if !live.custom_font_file_warning {
+                    live.custom_font_file_warning = true;
+                    let _ = Hachimi::instance().save_and_reload_config(live);
+                }
+            }
             let config_locale = Hachimi::instance().config.load().language.locale_str();
             if config_locale != &*rust_i18n::locale() {
                 rust_i18n::set_locale(config_locale);

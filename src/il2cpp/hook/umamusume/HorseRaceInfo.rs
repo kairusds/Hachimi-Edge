@@ -6,7 +6,7 @@ use crate::{
     }
 };
 
-use super::{RaceDefine, RaceManager, RaceHorseManagerBase};
+use super::{RaceDefine, RaceInfo, RaceManager, RaceHorseManagerBase};
 
 def_field_value_accessors!(get__position, set__position, POSITION_FIELD, Vector3_t);
 def_field_value_accessors!(get__rotationOnLane, set__rotationOnLane, ROTATION_ON_LANE_FIELD, Quaternion_t);
@@ -97,15 +97,29 @@ pub fn is_start_dash_instance(race_manager: *mut Il2CppObject) -> bool {
 
 pub fn is_finished() -> bool {
     let race_manager = RaceManager::instance();
-    if race_manager.is_null() { return false; }
+    if race_manager.is_null() { return true; }
 
     let horse_manager = RaceManager::get__horseManager(race_manager);
-    if horse_manager.is_null() { return false; }
+    if horse_manager.is_null() { return true; }
 
     match player_horse_info(horse_manager) {
-        Some(player_info) => IsFinished(player_info),
-        None => false,
+        Some(player_info) => IsFinished(player_info) || reached_course_end(player_info),
+        None => true,
     }
+}
+
+fn reached_course_end(player_info: *mut Il2CppObject) -> bool {
+    let race_info = RaceManager::get_RaceInfo();
+    if race_info.is_null() { return false; }
+
+    let course_distance = if Hachimi::instance().game.region == Region::Global {
+        RaceInfo::get_CourseDistance(race_info) as f32
+    } else {
+        (RaceInfo::get_CourseOnlyDistance(race_info) + RaceInfo::get_RunUpDistance(race_info)) as f32
+    };
+    if course_distance <= 0.0 { return false; }
+
+    get__distance(player_info) >= course_distance
 }
 
 pub fn init(umamusume: *const Il2CppImage) {

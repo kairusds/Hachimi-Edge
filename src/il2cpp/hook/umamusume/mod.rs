@@ -77,6 +77,10 @@ pub mod ImageCommon;
 pub mod Notification;
 mod TimeUtil;
 pub mod CameraData;
+pub mod CascadeShadow;
+mod CascadeShadowForRace;
+pub mod GallopRenderer;
+pub mod StoryTimelineBg3DClipData;
 pub mod DialogManager;
 pub mod PartsCharaMessageBase;
 pub mod SceneManager;
@@ -202,6 +206,7 @@ pub fn init() {
     StoryTimelineBlockData::init(image);
     StoryTimelineTrackData::init(image);
     StoryTimelineTextClipData::init(image);
+    StoryTimelineBg3DClipData::init(image);
     GallopUtil::init(image);
     UIManager::init(image);
     GraphicSettings::init(image);
@@ -318,6 +323,9 @@ pub fn init() {
     SkillManager::init(image);
     SkillBase::init(image);
     CameraData::init(image);
+    CascadeShadow::init(image);
+    CascadeShadowForRace::init(image);
+    GallopRenderer::init(image);
     TweenAnimationTimelineComponent::init(image);
     TweenAnimationTimelineData::init(image);
     TweenAnimationTimelineSheetData::init(image);
