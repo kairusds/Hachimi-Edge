@@ -33,6 +33,8 @@ pub fn get_ScreenEffectTrackList(this: *mut Il2CppObject) -> *mut Il2CppObject {
     get_field_object_value(this, unsafe { SCREENEFFECTTRACKLIST_FIELD })
 }
 
+def_field_object_accessors!(get get_Bg3DTrack, BG3DTRACK_FIELD, Il2CppObject);
+
 // Specialization
 pub fn get_text_clip(this: *mut Il2CppObject) -> Option<*mut Il2CppObject> {
     let text_track = get_TextTrack(this);
@@ -60,5 +62,6 @@ pub fn init(umamusume: *const Il2CppImage) {
         BLOCKLENGTH_FIELD = get_field_from_name(StoryTimelineBlockData, c"BlockLength");
         CHARACTERTRACKLIST_FIELD = get_field_from_name(StoryTimelineBlockData, c"CharacterTrackList");
         SCREENEFFECTTRACKLIST_FIELD = get_field_from_name(StoryTimelineBlockData, c"ScreenEffectTrackList");
+        BG3DTRACK_FIELD = get_field_from_name(StoryTimelineBlockData, c"Bg3DTrack");
     }
 }

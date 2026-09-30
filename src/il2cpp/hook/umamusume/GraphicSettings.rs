@@ -1,19 +1,24 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{core::Hachimi, il2cpp::{symbols::{get_method_addr}, types::*}};
+use crate::{core::{game::Region, Hachimi}, il2cpp::{symbols::{SingletonLike, get_field_from_name, get_method_addr}, types::*}};
 
 use super::{LowResolutionCamera, SingleModeStartResultCharaViewer};
 
-#[cfg(target_os = "windows")]
+#[derive(Default, Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[repr(i32)]
+pub enum ModelShadowType {
+    #[default]
+    None = 0,
+    Normal = 1
+}
+
 static mut CLASS: *mut Il2CppClass = 0 as _;
-#[cfg(target_os = "windows")]
 pub fn class() -> *mut Il2CppClass {
     unsafe { CLASS }
 }
 
-#[cfg(target_os = "windows")]
 pub fn instance() -> *mut Il2CppObject {
-    let Some(singleton) = crate::il2cpp::symbols::SingletonLike::new(class()) else {
+    let Some(singleton) = SingletonLike::new(class()) else {
         return 0 as _;
     };
     singleton.instance()
@@ -78,9 +83,12 @@ pub enum MsaaQuality {
     _8x = 8
 }
 
+def_field_value_accessors!(set set__isMSAA, ISMSAA_FIELD, bool);
+
 type get_IsMSAAFn = extern "C" fn(this: *mut Il2CppObject) -> bool;
 pub extern "C" fn get_IsMSAA(this: *mut Il2CppObject) -> bool {
     if Hachimi::instance().config.load().msaa != MsaaQuality::Disabled {
+        set__isMSAA(this, true);
         return true;
     }
     get_orig_fn!(get_IsMSAA, get_IsMSAAFn)(this)
@@ -119,6 +127,14 @@ extern "C" fn ApplyGraphicsQuality(this: *mut Il2CppObject, quality: GraphicsQua
     get_orig_fn!(ApplyGraphicsQuality, ApplyGraphicsQualityFn)(this, quality, force);
 }
 
+type GetModelShadowTypeFn = extern "C" fn(this: *mut Il2CppObject) -> ModelShadowType;
+extern "C" fn GetModelShadowType(this: *mut Il2CppObject) -> ModelShadowType {
+    if Hachimi::instance().config.load().force_chara_shadows {
+        return ModelShadowType::Normal;
+    }
+    get_orig_fn!(GetModelShadowType, GetModelShadowTypeFn)(this)
+}
+
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, GraphicSettings);
 
@@ -142,9 +158,18 @@ pub fn init(umamusume: *const Il2CppImage) {
     new_hook!(SetResolutionScale2D_addr, set_ResolutionScale2D);
     new_hook!(Get3DAntiAliasingLevel_addr, Get3DAntiAliasingLevel);
 
-    #[cfg(target_os = "windows")]
+    if Hachimi::instance().game.region == Region::Japan {
+        let GetModelShadowType_addr = get_method_addr(GraphicSettings, c"GetModelShadowType", 0);
+        new_hook!(GetModelShadowType_addr, GetModelShadowType);
+    }
+
     unsafe {
         CLASS = GraphicSettings;
+        ISMSAA_FIELD = get_field_from_name(GraphicSettings, c"_isMSAA");
+    }
+
+    #[cfg(target_os = "windows")]
+    unsafe {
         UPDATE3DRENDERTEXTURE_ADDR = get_method_addr(GraphicSettings, c"Update3DRenderTexture", 0);
     }
 }
