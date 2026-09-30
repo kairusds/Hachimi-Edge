@@ -30,6 +30,11 @@ reset: "I-reset"
 spring: "Tagsibol"
 summer: "Tag-init"
 fall: "Taglagas"
+low: "Mababa"
+high: "Mataas"
+circle: "Bilog"
+soft: "Malambot"
+hard: "Matigas"
 
 menu:
   check_for_updates: "\uf0aa Tignan kung may update"
@@ -128,8 +133,8 @@ config_editor:
   restore_defaults: "I-restore sa mga default"
   disable_overlay: "I-disable ang overlay (GUI)"
   disable_overlay_warning: >-
-    Idi-disable nito ang Hachimi overlay pagkatapos mo i-restart ang laro.
-    na nangangahulugan na HINDI mo maa-access ang Config Editor pagkatpos nito.
+    Idi-disable nito ang Hachimi overlay pagkatapos mong i-restart ang laro,
+    at HINDI mo na maa-access ang Config Editor pagkatpos nito.
     Kapag hindi ito sinasadya, isara ang dialog na ito at I-DISABLE ang opsyon.
   ipv4_only: "I-disable ang IPv6 sa Updater"
   meta_index_url: "URL ng Translation Metadata"
@@ -170,7 +175,6 @@ config_editor:
     Pinapayagan ng opsyong ito ang isang shortcut key sa pag-toggle ng game UI.
     Para sa Android, maaari mong i-triple tap ang top-right ng screen.
     Para sa PC/Android na may keyboard, ito ang Insert key at maaaring i-configure sa GUI o config.
-  discord_rpc: "Discord RPC"
   menu_open_key: "Hotkey ng pagbukas ng menu"
   menu_open_key_set: "Itakda"
   live_vocals_swap: "Pagpalit ng Vocals sa Live Theater"
@@ -221,8 +225,21 @@ config_editor:
   disable_factor_name_translation: "I-disable ang pag-translate ng pangalan ng sparks"
   old_config_editor: "Gamitin ang lumang config editor"
   race_stat_hud_opacity_scale: "Opacity ng Race Stat HUD"
-  race_stat_hud_persist_clones: "Panatilihin ang mga clone sa Race Stat Hud"
-  race_stat_hud_persist_selected_index: "I-save ang (mga) piniling character sa Race Stat Hud"
+  race_stat_hud_persist_clones: "Panatilihin ang mga clone sa Race Stat HUD"
+  race_stat_hud_persist_selected_index: "I-save ang (mga) piniling character sa Race Stat HUD"
+  custom_font_file: "Custom na font"
+  custom_font_none_found: "Walang nahanap na .hachifont font pack"
+  custom_font_file_warning: >-
+    Maaaring hindi gumana nang mabuti ang mga custom na font pack sa
+    mga translation repo.
+    Ginagawa ang mga translation repo na may sariling font, kaya
+    maaari itong humatong sa kakaibang line spacing, pag-overflow ng
+    text o pag-clip. Kung kakaiba o sira ang text, maaari kang
+    bumalik sa default na font dito.
+  shadow_distance: "Distansya ng shadow"
+  soft_shadows_quality: "Kalidad ng soft shadows"
+  force_chara_shadows: "Pilitin ang pagpakita ng shadow sa character"
+  story_shadow_type: "Uri ng shadow sa kwento"
 
 
 free_camera:
