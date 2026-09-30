@@ -45,6 +45,12 @@ fall: "秋"
 winter: "冬"
 cherry_blossom: "樱"
 ordinal: "第%{n}名"
+low: "低"
+medium: "中"
+high: "高"
+circle: "圆形"
+hard: "硬"
+soft: "软"
 
 menu:
   check_for_updates: "\uf0aa 检查更新"
@@ -152,6 +158,13 @@ config_editor:
     如非本意，请关闭此窗口并禁用此选项。
   meta_index_url: "翻译 Meta URL"
   custom_font_file: "自定义字体"
+  custom_font_none_found: "未找到.hachifont字体包"
+  custom_font_file_warning: >-
+    自定义字体可能无法与翻译仓库良好兼容。
+    翻译是按特定字体设计的，因此自定义字体可能会导致
+    行距异常、文本溢出或裁剪。如果文本看起来奇怪，
+    你可以在这里切换回默认字体。
+  custom_font_file: "自定义字体"
   custom_font_none_found: "未找到 .hachifont 字体包"
   debug_mode: "调试模式"
   enable_file_logging: "记录日志"
@@ -241,6 +254,13 @@ config_editor:
   skill_info_dialog: "自定义技能信息弹窗"
   homescreen_bgseason: "主界面背景季节"
   shadow_resolution: "阴影分辨率"
+  shadow_distance: "阴影距离"
+  soft_shadows: "柔和阴影"
+  soft_shadow_quality: "柔和阴影质量"
+  shadow_depth_bias: "阴影深度偏差"
+  shadow_normal_bias: "阴影法线偏差"
+  force_chara_shadows: "强制角色阴影"
+  story_shadow_type: "剧情阴影类型"
   hide_now_loading: "隐藏加载画面画面"
   ui_loading_show_orientation_guide: "隐藏加载画面方向提示"
   replace_to_builtin_font: "使用游戏默认字体"

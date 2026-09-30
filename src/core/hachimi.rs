@@ -784,6 +784,20 @@ pub struct Config {
     pub shadow_resolution: crate::il2cpp::hook::umamusume::CameraData::ShadowResolution,
     #[serde(default)]
     pub graphics_quality: crate::il2cpp::hook::umamusume::GraphicSettings::GraphicsQuality,
+    #[serde(default)]
+    pub shadow_distance: f32,
+    #[serde(default)]
+    pub soft_shadows: bool,
+    #[serde(default)]
+    pub soft_shadow_quality: crate::il2cpp::hook::Unity_RenderPipelines_Universal_Runtime::UniversalRenderPipelineAsset::SoftShadowQuality,
+    #[serde(default)]
+    pub shadow_depth_bias: Option<f32>,
+    #[serde(default)]
+    pub shadow_normal_bias: Option<f32>,
+    #[serde(default)]
+    pub force_chara_shadows: bool,
+    #[serde(default)]
+    pub story_shadow_type: crate::il2cpp::hook::umamusume::StoryTimelineBg3DClipData::ShadowType3d,
     #[serde(default = "Config::default_story_choice_auto_select_delay")]
     pub story_choice_auto_select_delay: f32,
     #[serde(default = "Config::default_story_tcps_multiplier")]
@@ -891,6 +905,8 @@ pub struct Config {
     #[serde(default)]
     pub replace_to_builtin_font: bool,
     pub custom_font_file: Option<String>,
+    #[serde(default)]
+    pub custom_font_file_warning: bool,
     #[serde(default)]
     pub disabled_hooks: FnvHashSet<String>,
 
