@@ -46,6 +46,12 @@ fall: "Осень"
 winter: "Зима"
 cherry_blossom: "Сакура"
 ordinal: "%{n}-я"
+low: "Низкое"
+medium: "Среднее"
+high: "Высокое"
+circle: "Круглые"
+hard: "Жёсткие"
+soft: "Мягкие"
 
 menu:
   check_for_updates: "\uf0aa Проверить обновления"
@@ -152,6 +158,13 @@ config_editor:
     Если вы этого не хотите, закройте это окно и ВЫКЛЮЧИТЕ данную опцию.
   ipv4_only: "Только IPv4-запросы"
   meta_index_url: "Мета-URL переводов"
+  custom_font_file: "Пользовательский шрифт"
+  custom_font_none_found: "Файлов .hachifont не найдено"
+  custom_font_file_warning: >-
+    Пользовательские шрифты могут работать некорректно с репозиториями переводов.
+    Переводы создаются с учётом конкретного шрифта, поэтому другие шрифты могут привести
+    к странным межстрочным интервалам, выходу текста за границы или его обрезанию.
+    Если текст выглядит корявым, вы можете переключиться обратно на шрифт по умолчанию.
   debug_mode: "Режим отладки"
   enable_file_logging: "Включить журналирование в файл"
   apply_atlas_workaround: "Применять обход для перевода атласов"
@@ -261,6 +274,13 @@ config_editor:
   skill_info_dialog: "Кастомное окно свойств навыков"
   homescreen_bgseason: "Время года на домашнем экране"
   shadow_resolution: "Разрешение теней"
+  shadow_distance: "Дальность теней"
+  soft_shadows: "Мягкие тени"
+  soft_shadow_quality: "Качество мягких теней"
+  shadow_depth_bias: "Смещение глубины теней"
+  shadow_normal_bias: "Смещение нормалей теней"
+  force_chara_shadows: "Принудительные тени персонажей"
+  story_shadow_type: "Тип теней в сюжетах"
   hide_now_loading: "Скрыть экран загрузки"
   ui_loading_show_orientation_guide: "Скрыть подсказку ориентации на экране загрузки"
   replace_to_builtin_font: "Использовать шрифт игры по умолчанию"
