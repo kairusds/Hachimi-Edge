@@ -16,6 +16,8 @@ use super::Director;
 // use std::sync::atomic::{AtomicBool, Ordering};
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
+use super::GraphicSettings::{self, MsaaQuality};
+
 static mut CLASS: *mut Il2CppClass = 0 as _;
 pub fn class() -> *mut Il2CppClass {
     unsafe { CLASS }
@@ -88,8 +90,9 @@ fn init_game_opts() {
 pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
     // GAME_INITIALIZED.store(true, Ordering::Relaxed);
-    Hachimi::instance().init_skill_info();
-    Hachimi::instance().init_skill_data_desc();
+    let hachimi = Hachimi::instance();
+    hachimi.init_skill_info();
+    hachimi.init_skill_data_desc();
     init_game_opts();
 
     #[cfg(target_os = "android")]
@@ -97,8 +100,14 @@ pub fn on_game_initialized() {
     #[cfg(target_os = "windows")]
     super::UIManager::apply_ui_scale();
 
+    if Hachimi::instance().config.load().msaa != MsaaQuality::Disabled {
+        let graphic_settings = GraphicSettings::instance();
+        if !graphic_settings.is_null() {
+            GraphicSettings::set__isMSAA(graphic_settings, true);
+        }
+    }
+
     // Invoke plugin callbacks
-    let hachimi = Hachimi::instance();
     let callbacks = hachimi.plugin_init_callbacks.lock().unwrap();
     for (callback, userdata) in callbacks.iter() {
         let callback_ptr = *callback;

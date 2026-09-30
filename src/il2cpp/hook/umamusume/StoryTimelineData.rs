@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use widestring::Utf16Str;
 
 use crate::{
-    core::{ext::Utf16StringExt, utils, Hachimi, SugoiClient}, 
+    core::{ext::Utf16StringExt, game::Region, utils, Hachimi, SugoiClient},
     il2cpp::{
-        ext::{Il2CppStringExt, StringExt}, hook::{umamusume::{StoryTimelineCharaTrackData, StoryTimelineClipData}, UnityEngine_AssetBundleModule::AssetBundle::ASSET_PATH_PREFIX}, symbols::{get_field_from_name, get_field_object_value, get_field_value, set_field_object_value, set_field_value, IList}, types::*
+        ext::{Il2CppStringExt, Il2CppObjectExt, StringExt}, hook::{umamusume::{StoryTimelineBg3DClipData, StoryTimelineCharaTrackData, StoryTimelineClipData}, UnityEngine_AssetBundleModule::AssetBundle::ASSET_PATH_PREFIX}, symbols::{get_field_from_name, get_field_object_value, get_field_value, set_field_object_value, set_field_value, IList}, types::*
     }
 };
 
@@ -108,6 +108,8 @@ pub fn on_LoadAsset(_bundle: *mut Il2CppObject, this: *mut Il2CppObject, name: &
         tcps = (tcps * tcps_mult).round();
         set_TypewriteCountPerSecond(this, tcps as i32);
     }
+
+    rewrite_story_shadow_types(this);
 
     let base_path = name[ASSET_PATH_PREFIX.len()..].path_basename();
     let dict_path = base_path.to_string() + ".json";
@@ -290,6 +292,43 @@ pub fn on_LoadAsset(_bundle: *mut Il2CppObject, this: *mut Il2CppObject, name: &
 
 fn get_typewrite_length(text_len: usize, tcps: f32) -> i32 {
     (text_len as f32 / tcps * 30.0).round() as i32 // len / cps * fps
+}
+
+fn rewrite_story_shadow_types(this: *mut Il2CppObject) {
+    let hachimi = Hachimi::instance();
+    if hachimi.game.region != Region::Japan {
+        return;
+    }
+    let shadow_type = hachimi.config.load().story_shadow_type;
+    if !shadow_type.is_enabled() {
+        return;
+    }
+
+    let Some(block_list) = IList::new(get_BlockList(this)) else {
+        return;
+    };
+
+    let mut rewritten = 0;
+    for block_data in block_list.iter() {
+        let bg3d_track = StoryTimelineBlockData::get_Bg3DTrack(block_data);
+        if bg3d_track.is_null() {
+            continue;
+        }
+        let Some(clip_list) = IList::<*mut Il2CppObject>::new(StoryTimelineTrackData::get_ClipList(bg3d_track)) else {
+            continue;
+        };
+        for clip_data in clip_list.iter() {
+            if unsafe { (*clip_data).klass() } != StoryTimelineBg3DClipData::class() {
+                continue;
+            }
+            StoryTimelineBg3DClipData::set_ShadowType(clip_data, shadow_type);
+            rewritten += 1;
+        }
+    }
+
+    if rewritten > 0 {
+        debug!("rewrote shadow type of {} Bg3D clips to {:?}", rewritten, shadow_type);
+    }
 }
 
 fn adjust_clips_length_with_tcps(this: *mut Il2CppObject, tcps: f32) {

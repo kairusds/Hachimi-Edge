@@ -46,6 +46,12 @@ fall: "Autumn"
 winter: "Winter"
 cherry_blossom: "Sakura"
 ordinal: "%{n}%{suffix}"
+low: "Low"
+medium: "Medium"
+high: "High"
+circle: "Circle"
+hard: "Hard"
+soft: "Soft"
 
 menu:
   check_for_updates: "\uf0aa Check for updates"
@@ -166,6 +172,11 @@ config_editor:
   meta_index_url: "Translations Meta URL"
   custom_font_file: "Custom font"
   custom_font_none_found: "No .hachifont packs found"
+  custom_font_file_warning: >-
+    Custom fonts may not work well with translation repos.
+    Translations are made with a specific font in mind, so a custom font can 
+    cause odd line spacing, text overflowing, or clipping. If the texts look weird,
+    you can switch back to the default font here.
   debug_mode: "Debug mode"
   enable_file_logging: "Enable file logging"
   apply_atlas_workaround: "Apply TL Atlas Workaround"
@@ -277,6 +288,13 @@ config_editor:
   skill_info_dialog: "Custom skill info dialog"
   homescreen_bgseason: "Homescreen Background Season"
   shadow_resolution: "Shadow Resolution"
+  shadow_distance: "Shadow Distance"
+  soft_shadows: "Soft Shadows"
+  soft_shadow_quality: "Soft Shadow Quality"
+  shadow_depth_bias: "Shadow Depth Bias"
+  shadow_normal_bias: "Shadow Normal Bias"
+  force_chara_shadows: "Force Character Shadows"
+  story_shadow_type: "Story Shadow Type"
   hide_now_loading: "Hide Now Loading screen"
   ui_loading_show_orientation_guide: "Hide now loading orientation guide"
   replace_to_builtin_font: "Use default game font"
