@@ -775,6 +775,7 @@ impl Updater {
                 if let Err(e) = self.clone().run_internal() {
                     error!("{}", e);
                     self.progress.store(Arc::new(None));
+                    Hachimi::instance().load_localized_data();
                     if let Some(mutex) = Gui::instance() {
                         mutex.lock().unwrap().show_notification(&t!("notification.update_failed", reason = e.to_string()));
                     }
@@ -818,7 +819,10 @@ impl Updater {
         let hachimi = Hachimi::instance();
         hachimi.localized_data.store(Arc::new(LocalizedData::default()));
 
-        let localized_data_dir = hachimi.get_active_tl_dir().expect("Active TL repo directory not set.");
+        let localized_data_dir = match hachimi.get_active_tl_dir() {
+            Some(v) => v,
+            None => return Err(Error::RuntimeError("Active TL repo directory not set.".to_owned()))
+        };
         let disk_check_path = localized_data_dir.parent().unwrap_or(Path::new("."));
         check_available_disk_space(disk_check_path, update_info.size as u64)?;
 
@@ -859,7 +863,10 @@ impl Updater {
             index_etag: update_info.index_etag.clone(),
             files: cached_files.lock().unwrap().clone()
         };
-        let repo_id = hachimi.config.load().selected_tl_repo_id.expect("TL repo ID not set after update");
+        let repo_id = match hachimi.config.load().selected_tl_repo_id {
+            Some(v) => v,
+            None => return Err(Error::RuntimeError("TL repo ID not set after update".to_owned()))
+        };
         let cache_path = Self::get_repo_cache_path(repo_id);
         utils::write_json_file(&repo_cache, &cache_path)?;
 
@@ -924,20 +931,36 @@ impl Updater {
                             if let Some(parent) = Path::new(&file_path).parent() {
                                 Self::create_dir(parent, false)?;
                             }
-                            let mut file = fs::File::create(&file_path)?;
-                            let res = job.agent.get(&url).call()?;
+                            let mut part_path = file_path.clone().into_os_string();
+                            part_path.push(".part");
+                            let part_path = PathBuf::from(part_path);
 
-                            http::download_file_buffered(res, &mut file, &mut job.buffer, |bytes| {
-                                job.hasher.update(bytes);
-                                let prev_size = current_bytes_clone.fetch_add(bytes.len(), atomic::Ordering::Relaxed);
-                                store_progress(&updater.progress, &updater.last_progress_ms, prev_size + bytes.len(), total_size, UpdatePhase::Downloading);
-                            })?;
+                            let download = (|| -> Result<(), Error> {
+                                let mut file = fs::File::create(&part_path)?;
+                                let res = job.agent.get(&url).call()?;
+
+                                http::download_file_buffered(res, &mut file, &mut job.buffer, |bytes| {
+                                    job.hasher.update(bytes);
+                                    let prev_size = current_bytes_clone.fetch_add(bytes.len(), atomic::Ordering::Relaxed);
+                                    store_progress(&updater.progress, &updater.last_progress_ms, prev_size + bytes.len(), total_size, UpdatePhase::Downloading);
+                                })
+                            })();
 
                             let hash = job.hasher.finalize().to_hex().to_string();
+                            job.hasher.reset();
+
+                            if let Err(e) = download {
+                                let _ = fs::remove_file(&part_path);
+                                return Err(e);
+                            }
                             if hash != repo_file.hash {
+                                let _ = fs::remove_file(&part_path);
                                 return Err(Error::FileHashMismatch(file_path.to_str().unwrap_or("").to_string()));
                             }
-                            job.hasher.reset();
+                            if let Err(e) = fs::rename(&part_path, &file_path) {
+                                let _ = fs::remove_file(&part_path);
+                                return Err(e.into());
+                            }
                             Ok(hash)
                         })();
 
@@ -1109,7 +1132,11 @@ impl Updater {
                                 }
                             }
 
-                            let mut out_file = match fs::File::create(&path) {
+                            let mut part_path = path.clone().into_os_string();
+                            part_path.push(".part");
+                            let part_path = PathBuf::from(part_path);
+
+                            let mut out_file = match fs::File::create(&part_path) {
                                 Ok(file) => file,
                                 Err(_) => {
                                     non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::Relaxed);
@@ -1117,12 +1144,14 @@ impl Updater {
                                 }
                             };
 
+                            let mut entry_ok = true;
                             loop {
                                 match zip_entry.read(&mut buffer) {
                                     Ok(0) => break,
                                     Ok(read_bytes) => {
                                         let data_slice = &buffer[..read_bytes];
                                         if out_file.write_all(data_slice).is_err() {
+                                            let _ = fs::remove_file(&part_path);
                                             *fatal_error_clone.lock().unwrap() = Some(Error::OutOfDiskSpace);
                                             stop_signal_clone.store(true, atomic::Ordering::Relaxed);
                                             return;
@@ -1133,21 +1162,33 @@ impl Updater {
                                     }
                                     Err(_) => {
                                         non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::Relaxed);
+                                        entry_ok = false;
                                         break;
                                     }
                                 }
                             }
 
                             let hash = hasher.finalize().to_hex().to_string();
+                            hasher.reset();
+
+                            if !entry_ok {
+                                let _ = fs::remove_file(&part_path);
+                                continue;
+                            }
                             if hash != repo_file.hash {
                                 let path_str = path.to_str().unwrap_or("").to_string();
+                                let _ = fs::remove_file(&part_path);
                                 *fatal_error_clone.lock().unwrap() = Some(Error::FileHashMismatch(path_str));
                                 stop_signal_clone.store(true, atomic::Ordering::Relaxed);
                                 return;
                             }
+                            if fs::rename(&part_path, &path).is_err() {
+                                let _ = fs::remove_file(&part_path);
+                                non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::Relaxed);
+                                continue;
+                            }
 
                             cached_files_clone.lock().unwrap().insert(repo_file.path.clone(), hash);
-                            hasher.reset();
                         }
                     }).unwrap();
                 handles.push(handle);
