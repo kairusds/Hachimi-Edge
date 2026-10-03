@@ -114,6 +114,12 @@ pub fn replace_texture_with_diff_ex<P1: AsRef<Path>, P2: AsRef<Path>>(
 
     let Some((mut pixels, diff_info)) = load_rgba_png_file(&diff_path) else {
         error!("Failed to load texture diff: {}", diff_path.as_ref().display());
+        if fs::remove_file(&diff_path).is_ok() {
+            warn!("Removed corrupted texture diff, it will be re-downloaded on the next update: {}", diff_path.as_ref().display());
+        }
+        if allow_fallback {
+            return Texture2D::load_image_file(texture, &path, mark_non_readable);
+        }
         return false;
     };
 
