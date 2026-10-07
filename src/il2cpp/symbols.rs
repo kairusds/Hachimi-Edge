@@ -219,10 +219,18 @@ pub fn get_static_field_value<T: Default>(field: *mut FieldInfo) -> T {
     value
 }
 
+pub fn set_static_field_value<T>(field: *mut FieldInfo, value: T) {
+    il2cpp_field_static_set_value(field, std::ptr::from_ref(&value) as _);
+}
+
 pub fn get_static_field_object_value<T>(field: *mut FieldInfo) -> *mut T {
     let mut value = null_mut();
     il2cpp_field_static_get_value(field, unsafe { std::mem::transmute(&mut value) });
     value
+}
+
+pub fn set_static_field_object_value<T>(field: *mut FieldInfo, value: *const T) {
+    il2cpp_field_static_set_value(field, value as _);
 }
 
 pub unsafe fn unbox<T: Copy>(obj: *mut Il2CppObject) -> T {
@@ -747,6 +755,9 @@ impl<K, V> Dictionary<K, V> {
 
 impl<K: PartialEq, V> Dictionary<K, V> {
     pub fn find_entry(&self, key: &K) -> Option<&'static mut Il2CppDictionaryEntry<K, V>> {
+        if self.this.is_null() || unsafe { (*self.this).entries.is_null() } {
+            return None;
+        }
         for entry in unsafe { self.entries().as_slice().iter_mut() } {
             if entry.key == *key {
                 // freaky lifetime erasure

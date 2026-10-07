@@ -54,7 +54,7 @@ jobs:
               --title "Automated Security Patch" \
               --body "RUSTSEC IDS: $PR_IDS" \
               --head auto-security-fix \
-              --base main
+              --base main || true
           else
             echo "No vulnerabilities found. Everything is clean."
           fi

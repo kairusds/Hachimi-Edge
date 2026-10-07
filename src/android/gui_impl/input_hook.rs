@@ -10,7 +10,10 @@ use jni::{
 use crate::{
     android::utils::{BACK_BUTTON_PRESSED, IS_IME_VISIBLE, get_activity, get_screen_dimensions},
     core::{gui, Error, Gui, Hachimi},
-    il2cpp::symbols::Thread
+    il2cpp::{
+        hook::umamusume::RaceManagerReplayBase,
+        symbols::Thread
+    }
 };
 
 use super::keymap;
@@ -149,16 +152,35 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
                     }
                 }
 
-                if pressed && key_code == Hachimi::instance().config.load().android.menu_open_key {
-                    let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
-                        return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
-                    };
-                    gui.toggle_menu();
-                }
+                if !Gui::is_egui_typing_atomic() {
+                    if pressed && key_code == Hachimi::instance().config.load().android.menu_open_key {
+                        let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
+                            return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
+                        };
+                        gui.toggle_menu();
+                    }
 
-                if Hachimi::instance().config.load().hide_ingame_ui_hotkey && pressed
-                    && key_code == Hachimi::instance().config.load().android.hide_ingame_ui_hotkey_bind {
-                    Thread::main_thread().schedule(Gui::toggle_game_ui);
+                    if Hachimi::instance().config.load().hide_ingame_ui_hotkey && pressed
+                        && key_code == Hachimi::instance().config.load().android.hide_ingame_ui_hotkey_bind {
+                        Thread::main_thread().schedule(Gui::toggle_game_ui);
+                    }
+
+                    if pressed && key_code == Hachimi::instance().config.load().android.race_stat_hud_toggle_key
+                        && Hachimi::instance().config.load().race_stat_hud {
+                        Thread::main_thread().schedule(gui::toggle_race_stat_hud);
+                    }
+
+                    if pressed && Hachimi::instance().config.load().race_stat_hud {
+                        if let Some(i) = Hachimi::instance().config.load().race_stat_hud_clones.iter()
+                            .position(|c| c.toggle_key == Some(key_code)) {
+                            gui::toggle_race_stat_hud_clone(i);
+                        }
+                    }
+
+                    if pressed && key_code == Hachimi::instance().config.load().android.race_playback_key
+                        && Hachimi::instance().config.load().race_playback_key_enable {
+                        Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
+                    }
                 }
 
                 if pressed && key_code == keymap::KEYCODE_BACK {
@@ -280,7 +302,7 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
             return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event, extra_param);
         }
 
-        let mut capture = false;
+        let capture;
 
         {
             let Some(mut gui) = Gui::instance().map(|m| m.lock().unwrap()) else {
@@ -292,11 +314,7 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
 
             match action_masked {
                 ACTION_DOWN | ACTION_POINTER_DOWN | ACTION_SCROLL => {
-                    if let Some(layer) = gui.context.layer_id_at(pos) {
-                        if layer.order != egui::Order::Background {
-                            capture = true;
-                        }
-                    }
+                    capture = is_pos_over_gui(&gui.context, pos);
                     POINTER_CAPTURED.store(capture, Ordering::Release);
                 }
                 ACTION_MOVE | ACTION_HOVER_MOVE => {
@@ -387,6 +405,14 @@ fn get_ppp(mut env: JNIEnv, gui: &Gui) -> f32 {
     let view_main_axis_size = if view_width < view_height { view_width } else { view_height };
 
     gui.context.zoom_factor() * (view_main_axis_size as f32 / gui.prev_main_axis_size as f32)
+}
+
+fn is_pos_over_gui(context: &egui::Context, pos: egui::Pos2) -> bool {
+    match context.layer_id_at(pos) {
+        Some(layer) if layer.order != egui::Order::Background => true,
+        Some(_) => context.viewport(|vp| !vp.prev_pass.unused_rect.contains(pos)),
+        None => false,
+    }
 }
 
 fn get_view(mut env: JNIEnv<'_>) -> Option<JObject<'_>> {

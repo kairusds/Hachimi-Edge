@@ -1,11 +1,31 @@
-use std::ptr::null_mut;
-
+use std::{
+    ptr::null_mut,
+    sync::RwLock
+};
 use crate::il2cpp::{
     api::{il2cpp_class_get_type, il2cpp_type_get_object},
     ext::StringExt, hook::mscorlib::Enum, symbols::IEnumerable, types::*
 };
+use once_cell::sync::Lazy;
+use fnv::FnvHashMap;
 
 static mut TEXTID_TYPE_OBJECT: *mut Il2CppObject = null_mut();
+
+static TEXTID_NAME_ID_CACHE: Lazy<RwLock<FnvHashMap<String, i32>>> =  Lazy::new(|| RwLock::new(FnvHashMap::default()));
+
+// Mandatory for using get_from_name()
+pub fn cache_name_id(name: &str) {
+    if TEXTID_NAME_ID_CACHE.read().unwrap().contains_key(name) {
+        return;
+    }
+    let id = from_name(name);
+    TEXTID_NAME_ID_CACHE.write().unwrap().insert(name.to_string(), id);
+}
+
+// Thread-safe alternative to from_name()
+pub fn get_from_name(name: &str) -> Option<i32> {
+    TEXTID_NAME_ID_CACHE.read().unwrap().get(name).copied()
+}
 
 pub fn get_name(value: i32) -> *const Il2CppString {
     let text_id = Enum::ToObject(unsafe { TEXTID_TYPE_OBJECT }, value);

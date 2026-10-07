@@ -1,8 +1,9 @@
 use std::sync::Mutex;
 use fnv::FnvHashMap;
 use once_cell::sync::Lazy;
-use crate::core::sugoi_client::SugoiClient;
-use crate::il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::{UnityEngine_TextRenderingModule::TextAnchor, UnityEngine_CoreModule::Object}, symbols::get_method_addr, types::*};
+use crate::core::sugoi_client::{SugoiClient, StringInfo};
+use crate::il2cpp::symbols::GCHandle;
+use crate::il2cpp::{ext::{Il2CppStringExt, StringExt}, hook::UnityEngine_TextRenderingModule::TextAnchor, symbols::get_method_addr, types::*};
 
 static mut GET_LINESPACING_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_lineSpacing, GET_LINESPACING_ADDR, f32, this: *mut Il2CppObject);
@@ -52,6 +53,9 @@ impl_addr_wrapper_fn!(set_best_fit_max_size, SET_BEST_FIT_MAX_SIZE_ADDR, (), thi
 static mut GET_PREFERRED_WIDTH_ADDR: usize = 0;
 impl_addr_wrapper_fn!(get_preferredWidth, GET_PREFERRED_WIDTH_ADDR, f32, this: *mut Il2CppObject);
 
+static mut ASSIGNDEFAULTFONT_ADDR: usize = 0;
+impl_addr_wrapper_fn!(AssignDefaultFont, ASSIGNDEFAULTFONT_ADDR, (), this: *mut Il2CppObject);
+
 pub fn set_best_fit_downscale(this: *mut Il2CppObject) {
     let cur_size = get_fontSize(this);
     set_best_fit_min_size(this, cur_size.min(10));
@@ -59,7 +63,7 @@ pub fn set_best_fit_downscale(this: *mut Il2CppObject) {
     set_best_fit(this, true);
 }
 
-pub static ACTIVE_TEXT_COMPONENTS: Lazy<Mutex<FnvHashMap<usize, String>>> = Lazy::new(|| {
+pub static ACTIVE_TEXT_COMPONENTS: Lazy<Mutex<FnvHashMap<usize, StringInfo>>> = Lazy::new(|| {
     Mutex::new(FnvHashMap::default())
 });
 
@@ -75,8 +79,12 @@ pub extern "C" fn set_text_hook(this: *mut Il2CppObject, value: *mut Il2CppStrin
     }
 
     let orig_str = unsafe { (*value).as_utf16str().to_string() };
+    let str_info = StringInfo {
+        str_handle: GCHandle::new_weak_ref(this, false),
+        str: orig_str.clone()
+    };
 
-    ACTIVE_TEXT_COMPONENTS.lock().unwrap().insert(this as usize, orig_str.clone());
+    ACTIVE_TEXT_COMPONENTS.lock().unwrap().insert(this as usize, str_info);
 
     if let Some(trans) = SugoiClient::instance().get_cached(&orig_str) {
         return get_orig_fn!(set_text_hook, SetTextFn)(this, trans.to_il2cpp_string());
@@ -90,13 +98,13 @@ pub fn apply_translations(completed: &[(String, String)]) {
     {
         let mut tracker = ACTIVE_TEXT_COMPONENTS.lock().unwrap();
 
-        tracker.retain(|&ptr, _| Object::op_Implicit(ptr as *mut Il2CppObject));
+        tracker.retain(|_, info| !info.object().is_null());
 
         for (orig, trans) in completed {
             let unity_string = trans.to_il2cpp_string();
 
             for (&ptr, saved_orig) in tracker.iter() {
-                if saved_orig == orig {
+                if &saved_orig.str == orig {
                     updates_to_apply.push((ptr, unity_string));
                 }
             }
@@ -104,9 +112,7 @@ pub fn apply_translations(completed: &[(String, String)]) {
     }
 
     for (ptr, unity_string) in updates_to_apply {
-        if Object::op_Implicit(ptr as *mut Il2CppObject) {
-            get_orig_fn!(set_text_hook, SetTextFn)(ptr as *mut Il2CppObject, unity_string);
-        }
+        get_orig_fn!(set_text_hook, SetTextFn)(ptr as *mut Il2CppObject, unity_string);
     }
 }
 
@@ -133,5 +139,6 @@ pub fn init(UnityEngine_UI: *const Il2CppImage) {
         SET_BEST_FIT_ADDR = get_method_addr(Text, c"set_resizeTextForBestFit", 1);
         SET_BEST_FIT_MIN_SIZE_ADDR = get_method_addr(Text, c"set_resizeTextMinSize", 1);
         SET_BEST_FIT_MAX_SIZE_ADDR = get_method_addr(Text, c"set_resizeTextMaxSize", 1);
+        ASSIGNDEFAULTFONT_ADDR = get_method_addr(Text, c"AssignDefaultFont", 0);
     }
 }

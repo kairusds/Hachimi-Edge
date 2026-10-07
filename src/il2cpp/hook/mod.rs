@@ -57,12 +57,67 @@ macro_rules! find_nested_class_or_return {
     )
 }
 
+// shorter ver of doing impl_addr_wrapper_fn!()
+macro_rules! def_method_wrapper_fn {
+    ($name:tt, $addr:tt, $ret:ty, $($v:ident: $t:ty),*) => {
+        static mut $addr: usize = 0;
+        pub fn $name($($v: $t),*) -> $ret {
+            let orig_fn: extern "C" fn($($v: $t),*) -> $ret = unsafe { std::mem::transmute($addr) };
+            orig_fn($($v),*)
+        }
+    };
+}
+
 macro_rules! impl_addr_wrapper_fn {
     ($name:tt, $addr:tt, $ret:ty, $($v:ident: $t:ty),*) => {
         pub fn $name($($v: $t),*) -> $ret {
             let orig_fn: extern "C" fn($($v: $t),*) -> $ret = unsafe { std::mem::transmute($addr) };
             orig_fn($($v),*)
         }
+    };
+}
+
+macro_rules! impl_enum_eq {
+    // impl_enum_eq!(Enum, T)
+    ($enum_ty:ty, $target_ty:ty) => {
+        impl PartialEq<$enum_ty> for $target_ty {
+            fn eq(&self, other: &$enum_ty) -> bool {
+                *self == *other as $target_ty
+            }
+        }
+
+        impl PartialEq<$target_ty> for $enum_ty {
+            fn eq(&self, other: &$target_ty) -> bool {
+                *self as $target_ty == *other
+            }
+        }
+    };
+
+    // Defaults T to i32 if no second arg
+    ($enum_ty:ty) => {
+        impl_enum_eq!($enum_ty, i32);
+    };
+}
+
+macro_rules! impl_enum_ord {
+    // impl_enum_ord!(Enum, T)
+    ($enum_ty:ty, $target_ty:ty) => {
+        impl std::cmp::PartialOrd<$target_ty> for $enum_ty {
+            fn partial_cmp(&self, other: &$target_ty) -> Option<std::cmp::Ordering> {
+                (*self as $target_ty).partial_cmp(other)
+            }
+        }
+
+        impl std::cmp::PartialOrd<$enum_ty> for $target_ty {
+            fn partial_cmp(&self, other: &$enum_ty) -> Option<std::cmp::Ordering> {
+                self.partial_cmp(&(*other as $target_ty))
+            }
+        }
+    };
+
+    // Defaults T to i32 if no second arg
+    ($enum_ty:ty) => {
+        impl_enum_ord!($enum_ty, i32);
     };
 }
 
@@ -129,6 +184,8 @@ pub mod Unity_TextMeshPro;
 
 #[cfg(target_os = "windows")]
 pub mod UnityEngine_InputLegacyModule;
+#[cfg(target_os = "windows")]
+pub mod Unity_InputSystem;
 
 pub mod LibNative_Runtime;
 pub mod umamusume;
@@ -159,7 +216,10 @@ pub fn init() {
     Unity_TextMeshPro::init();
 
     #[cfg(target_os = "windows")]
-    UnityEngine_InputLegacyModule::init();
+    {
+        UnityEngine_InputLegacyModule::init();
+        Unity_InputSystem::init();
+    }
 
     // Umamusume
     LibNative_Runtime::init();

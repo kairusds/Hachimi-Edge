@@ -1,9 +1,11 @@
-use std::{sync::{Arc, Mutex}};
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use rust_i18n::t;
 use serde::Deserialize;
 
 use crate::core::{gui::{NotificationGuard, SimpleYesNoDialog}, hachimi::{REPO_PATH, CODEBERG_API, GITHUB_API}, http, Error, Gui, Hachimi};
+
+const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Default)]
 pub struct Updater {
@@ -35,11 +37,18 @@ impl Updater {
         };
         let _guard = checking_notif_id.map(NotificationGuard);
 
-        let latest = match http::get_json::<Release>(&format!("{}/{}/releases/latest", GITHUB_API, REPO_PATH)) {
+        let latest = match http::get_json_with_timeout::<Release>(
+            &format!("{}/{}/releases/latest", GITHUB_API, REPO_PATH), UPDATE_CHECK_TIMEOUT
+        ) {
             Ok(res) => res,
             Err(e) => {
                 warn!("GitHub update check failed, trying Codeberg: {}", e);
-                http::get_json::<Release>(&format!("{}/{}/releases/latest", CODEBERG_API, REPO_PATH))?
+                if let Some(mutex) = Gui::instance() {
+                    mutex.lock().unwrap().show_notification(&t!("notification.github_update_unreachable"));
+                }
+                http::get_json_with_timeout::<Release>(
+                    &format!("{}/{}/releases/latest", CODEBERG_API, REPO_PATH), UPDATE_CHECK_TIMEOUT
+                )?
             }
         };
 
@@ -113,12 +122,11 @@ impl Updater {
         }
         #[cfg(target_os = "android")]
         {
-            use crate::{android::utils, core::hachimi::{UMAPATCHER_INSTALL_URL, UMAPATCHER_PACKAGE_NAME}};
-            utils::open_app_or_fallback(
-                UMAPATCHER_PACKAGE_NAME,
-                &format!("{}.MainActivity", UMAPATCHER_PACKAGE_NAME.replace(".edge", "")),
-                UMAPATCHER_INSTALL_URL
-            );
+            use crate::{
+                core::hachimi::UMAPATCHER_UPDATER_DEEPLINK,
+                il2cpp::{ext::StringExt, hook::UnityEngine_CoreModule::Application}
+            };
+            Application::OpenURL(UMAPATCHER_UPDATER_DEEPLINK.to_il2cpp_string());
         }
     }
 
@@ -129,11 +137,11 @@ impl Updater {
         };
         self.new_update.store(Arc::new(None));
 
-        use crate::windows::{main::DLL_HMODULE, utils};
+        use crate::windows::{main::DLL_HMODULE, utils::{self, get_module_file_name}};
         use windows::{
             core::{HSTRING, PCWSTR},
             Win32::{
-                Foundation::{MAX_PATH, WPARAM, LPARAM}, System::LibraryLoader::GetModuleFileNameW,
+                Foundation::{WPARAM, LPARAM},
                 UI::{Shell::ShellExecuteW, WindowsAndMessaging::{PostMessageW, SW_NORMAL, WM_CLOSE}}
             }
         };
@@ -164,9 +172,7 @@ impl Updater {
         }
 
         // Launch the installer
-        let mut slice = [0u16; MAX_PATH as usize];
-        let length = unsafe { GetModuleFileNameW(Some(DLL_HMODULE), &mut slice) } as usize;
-        let hachimi_path_str = unsafe { widestring::Utf16Str::from_slice_unchecked(&slice[..length]) };
+        let hachimi_path_str = unsafe { get_module_file_name(DLL_HMODULE) };
         let game_dir = utils::get_game_dir();
         unsafe {
             ShellExecuteW(
@@ -177,7 +183,7 @@ impl Updater {
                     "install --install-dir \"{}\" --target \"{}\" --sleep 1000 --prompt-for-game-exit --launch-game -- {}",
                     game_dir.display(), hachimi_path_str, std::env::args().skip(1).collect::<Vec<String>>().join(" ")
                 )),
-                PCWSTR::from_raw(slice.as_ptr()),
+                PCWSTR::from_raw(hachimi_path_str.as_ptr()),
                 SW_NORMAL
             );
 

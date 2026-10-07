@@ -1,10 +1,8 @@
-hachimi: "Hachimi Edge"
-
 windows:
   menu_open_key: "Kanang arrow"
 
 android:
-  menu_open_key: "Vol Up + Vol Down\n\uf25a o i-tap nang tatlong beses ang top-left ng screen"
+  menu_open_key: "Vol Up + Vol Down\n\uf25a o i-tap nang tatlong beses\nang kaliwang itaas na bahagi ng screen"
 
 splash_sub: "\uf015 Pindutin ang %{open_key_str} para buksan ang menu."
 loading_label: "Naglo-load..."
@@ -22,12 +20,21 @@ enable: "I-enable"
 info: "Impormasyon"
 warning: "Babala"
 confirm_dialog_title: "Kumpirmahin"
-soft_restart_confirm_content: "Gusto mo ba talaga i-soft restart ang laro?"
+soft_restart_confirm_content: "Gusto mo bang i-soft restart ang laro?"
 in_game_browser_confirm_content: "Gusto mo bang buksan ang in-game na browser?"
 remove: "Tanggalin"
 edit: "I-edit"
 add: "Magdagdag"
 save_changes: "I-save ang mga pagbabago?"
+reset: "I-reset"
+spring: "Tagsibol"
+summer: "Tag-init"
+fall: "Taglagas"
+low: "Mababa"
+high: "Mataas"
+circle: "Bilog"
+soft: "Malambot"
+hard: "Matigas"
 
 menu:
   check_for_updates: "\uf0aa Tignan kung may update"
@@ -48,7 +55,6 @@ menu:
   soft_restart: "\uf021 I-soft restart"
   open_in_game_browser: "\uf0ac Buksan ang in-game na browser"
   toggle_game_ui: "\uf06e I-toggle ang game UI"
-  discord_rpc: "Discord RPC"
   edit_excludes: "\uf040 I-edit ang Excludes"
   change_translation_repo: "\uf0c1 Baguhin ang Translation Repo"
 
@@ -70,6 +76,12 @@ notification:
   menu_open_key_set: "Itinakda ang hotkey ng pagbukas sa %{key}"
   ipc_softreset_exec: "Na-execute ng IPC remote ang soft-reset"
   atlas_workaround_reset: "Nabago ang mga atlas file. Na-disable ang workaround."
+  freeform_window_disabled_landscape: "Na-disable ang freeform window dahil aktibo ang landscape mode."
+  free_camera_unavailable_live: "Hindi available ang Free Camera sa concert na ito dahil sa kilalang isyu."
+  recommended_ui_scale_applied: "Nilapat ang recommended na UI scale"
+  github_update_unreachable: "Hindi makakonekta sa GitHub, sinusubukan ang Codeberg..."
+  tl_repo_folder_missing: "Nawawala ang translation data folder. Pakitignan kung may update para ibalik sila."
+  tl_repo_changed: "Binago ang translation repo. Na-reload ang localized data."
 
 first_time_setup:
   title: "First Time Setup"
@@ -88,6 +100,10 @@ first_time_setup:
   select_translation_repo: "Pumili ng translations repo:"
   no_compatible_repo: "Walang mga repo na compatible sa game version na ito."
   skip_translation: "Laktawan ang translations"
+  common_settings_heading: "Mga Karaniwang Settings"
+  common_settings_content: >-
+    Ito ang ilan sa mga karaniwang ginagamit na setting na baka gusto
+    mong i-configure. Maaari mo silang palitan mamaya sa Config Editor.
   complete_heading: "Tapos na!"
   complete_content: >-
     Pindutin ang "Tapos na" para i-save ang configuration.
@@ -117,11 +133,11 @@ config_editor:
   restore_defaults: "I-restore sa mga default"
   disable_overlay: "I-disable ang overlay (GUI)"
   disable_overlay_warning: >-
-    Idi-disable nito ang Hachimi overlay pagkatapos mo i-restart ang laro.
-    na nangangahulugan na HINDI mo maa-access ang Config Editor pagkatpos nito.
+    Idi-disable nito ang Hachimi overlay pagkatapos mong i-restart ang laro,
+    at HINDI mo na maa-access ang Config Editor pagkatpos nito.
     Kapag hindi ito sinasadya, isara ang dialog na ito at I-DISABLE ang opsyon.
-  ipv4_only: "IPv4 na ureq lamang"
-  meta_index_url: "URL ng Translation Meta"
+  ipv4_only: "I-disable ang IPv6 sa Updater"
+  meta_index_url: "URL ng Translation Metadata"
   enable_file_logging: "I-enable ang logging sa file"
   apply_atlas_workaround: "I-apply ang TL atlas workaround"
   skip_first_time_setup: "Laktawan ang first-time setup"
@@ -137,11 +153,12 @@ config_editor:
     Toolkit. Kung walang tumatakbong server, walang karagdagang pag-translate ang mangyayari at maaaring
     maapektuhan ang gameplay. Paki-disable ang opsyong ito kung wala kang available na translation server.
   auto_translate_ui: "Awtomatikong i-translate ang UI (BAKA MASIRA ANG MGA UI)"
+  target_fps_unfocused: "Target FPS kung hindi aktibo ang window"
   virtual_resolution_multiplier: "Multiplier ng virtual resolution"
   ui_scale: "Laki ng UI"
   gui_scale: "Laki ng Overlay"
   gui_landscape_ratio: "Overlay scale ratio sa landscape"
-  ui_animation_scale: "Biliis ng UI animation"
+  ui_animation_scale: "Bilis ng UI animation"
   graphics_quality: "Kalidad ng graphics"
   full_screen_mode_exclusive: "Eksklusibo"
   block_minimize_in_full_screen: "I-block ang pag-minimize sa full screen"
@@ -158,10 +175,9 @@ config_editor:
     Pinapayagan ng opsyong ito ang isang shortcut key sa pag-toggle ng game UI.
     Para sa Android, maaari mong i-triple tap ang top-right ng screen.
     Para sa PC/Android na may keyboard, ito ang Insert key at maaaring i-configure sa GUI o config.
-  discord_rpc: "Discord RPC"
   menu_open_key: "Hotkey ng pagbukas ng menu"
   menu_open_key_set: "Itakda"
-  live_vocals_swap: "Pagpalit ng Vocals sa Live"
+  live_vocals_swap: "Pagpalit ng Vocals sa Live Theater"
   skill_info_dialog: "Custom na dialog ng skill info"
   homescreen_bgseason: "Panahon ng Homescreen Background"
   shadow_resolution: "Resolution ng Shadows"
@@ -170,6 +186,7 @@ config_editor:
   tl_auto_updater_interval: "Pagitan ng auto updater"
   taskbar_show_progress_on_download: "Progress sa taskbar kapag nagda-download"
   taskbar_show_progress_on_connecting: "Progress sa taskbar kapag kumokonekta"
+  taskbar_show_progress_on_schedule_book: "Progress sa taskbar kapag ginagamit ang Trainer's Agenda"
   hide_ingame_ui_hotkey_bind: "Keybind sa pagtago ng game UI"
   live_playback_loop: "I-loop ang mga Live Performance"
   champions_live_show_text: "I-override ang Champions Meeting Live Text"
@@ -184,10 +201,128 @@ config_editor:
   caption_outline_size: "Laki ng outline"
   enable_smtc: "Paganahin ang Windows Media Controls"
   hide_now_loading: "Itago ang \"Now Loading\" na screen"
-  ui_loading_show_orientation_guide: "Itago ang oryentasyon sa loading screen"
+  ui_loading_show_orientation_guide: "Itago ang tagubilin ng oryentasyon sa loading screen"
   replace_to_builtin_font: "Gamitin ang default na font ng laro"
   custom_title_name: "Pasadyang Window Title"
-  live_slider_always_show: "Palaging ipakita ang Live Slider"
+  recommended_ui_scale: "Ilapat ang recommended na UI scale"
+  ingame_webview: "Buksan ang mga link ng Umamusume (balita, tulong, gacha, atbp.) sa webview"
+  trainer_live_landscape: "Pilitin ang landscape mode sa concert na \"Meni Shuki Rush!\""
+  force_orientation_mode: "Pilitin ang orientation mode"
+  live_slider_always_show: "Palaging ipakita ang slider sa Live Concert"
+  race_stad_hud_toggle_button: "Race Stat HUD - Ipakita ang toggle button"
+  race_stat_hud_toggle_key: "Race Stat HUD - Keybind sa pag-toggle"
+  race_stat_hud_landscapeui_portrait: "I-adjust ang Race Stat HUD para sa Landscape UI"
+  race_stat_hud_draggable: "Gawing draggable ang Race Stat HUD"
+  race_stat_hud_draggable_save: "I-save ang posisyon ng na-drag na Race Stat HUD"
+  race_stat_hud_resizable: "Gawing resizable ang Race Stat HUD"
+  disable_tap_effect: "I-disable ang particle effect sa pag-tap"
+  race_playback_slider: "Ipakita ang slider sa Playback ng Karera"
+  race_playback_button: "Playback ng karera - Ipakita ang pause/resume button"
+  race_playback_key_enable: "I-enable ang keybind sa pag-pause/resume ng playback sa karera"
+  race_playback_key: "Key sa pag-pause/resume ng playback sa karera"
+  race_playback_slider_always: "Palaging ipakita ang slider sa Playback ng Karera"
+  skill_data_desc: "Gawing skill data ang paglalarawan ng kasanayan"
+  disable_factor_name_translation: "I-disable ang pag-translate ng pangalan ng sparks"
+  old_config_editor: "Gamitin ang lumang config editor"
+  race_stat_hud_opacity_scale: "Opacity ng Race Stat HUD"
+  race_stat_hud_persist_clones: "Panatilihin ang mga clone sa Race Stat HUD"
+  race_stat_hud_persist_selected_index: "I-save ang (mga) piniling character sa Race Stat HUD"
+  custom_font_file: "Custom na font"
+  custom_font_none_found: "Walang nahanap na .hachifont font pack"
+  custom_font_file_warning: >-
+    Maaaring hindi gumana nang mabuti ang mga custom na font pack sa
+    mga translation repo.
+    Ginagawa ang mga translation repo na may sariling font, kaya
+    maaari itong humatong sa kakaibang line spacing, pag-overflow ng
+    text o pag-clip. Kung kakaiba o sira ang text, maaari kang
+    bumalik sa default na font dito.
+  shadow_distance: "Distansya ng shadow"
+  soft_shadows_quality: "Kalidad ng soft shadows"
+  force_chara_shadows: "Pilitin ang pagpakita ng shadow sa character"
+  story_shadow_type: "Uri ng shadow sa kwento"
+
+
+free_camera:
+  settings_title: "Mga Setting sa Free Camera"
+  section_general: "Pangkalahatan"
+  section_race: "Karera"
+  section_keybinds: "Mga keybind sa Windows"
+  remove_camera_effects: "Tanggalin ang camera effects"
+  live_remove_screen_effects: "Tanggalin ang screen effects"
+  live_disable_character_teleport: "I-disable ang pag-teleport sa character"
+  live_force_all_characters_visible: "Palaging ipakita ang lahat ng mga character"
+  show_overlay: "Ipakita ang switch overlay"
+  selfie_use_head_transform: "Gamitin ang selfie stick sa mode na \"Sundan ang Character\""
+  mode_selfie_stick: "Sundan ang Character"
+  mouse_speed: "Bilis ng mouse"
+  live_fov: "FOV sa Concert"
+  race_fov: "FOV sa Karera"
+  key_move_forward: "Lumipat padiretso"
+  key_move_back: "Lumipat paatras"
+  key_move_left: "Lumipat sa kaliwa"
+  key_move_right: "Lumipat sa kanan"
+  key_move_down: "Bumaba"
+  key_move_up: "Tumaas"
+  key_look_up: "Tumingin sa taas"
+  key_look_down: "Tumingin sa baba"
+  key_look_left: "Tumingin sa kaliwa"
+  key_look_right: "Tumingin sa kanan"
+  key_fov_increase: "Itaas ang FOV"
+  key_fov_decrease: "Ibaba ang FOV"
+  key_target_previous: "Nakaraang target"
+  key_target_next: "Susunod na target"
+  key_part_previous: "Nakaraang bahagi ng katawan"
+  key_part_next: "Susunod na bahagi ng katawan"
+  key_reset: "I-reset ang camera position"
+  key_reverse: "Baliktaran ang follow camera perspective (harapan <-> likuran)"
+  cheatsheet_title: "Cheatsheet sa Free Camera"
+
+  cheatsheet_contents: |
+    # Cheatsheet sa Free Camera
+    Gumagana lang ang feature na ito sa **Mga Karera** or **Live Concerts**.
+
+    Ang default na bahagi ng katawan ay ang **Face**.
+
+    Ang default na target ay **Place01**.
+
+    ## Mouse Controls
+    * **Hold Right Click + Drag:** Tumingin
+    * **Scroll Wheel Up / Down:** Itaas o ibaba ang FOV
+
+    ---
+
+    ## Gamepad Controls (Xbox / PlayStation)
+
+    ### **Paggalaw at Anggulo ng Camera**
+    * **Left Joystick:** Lumipat nang pakaliwa / pakanan / diretso / paatras
+    * **Right Joystick:** Tumingin nang pakaliwa / pakanan / pataas / pababa
+    * **Right Trigger (RT / R2):** Lumipat pataas
+    * **Left Trigger (LT / L2):** Lumipat pababa
+    * **Right Shoulder / Bumper (RB / R1):** Itaas ang FOV
+    * **Left Shoulder / Bumper (LB / L1):** Ibaba ang FOV
+
+    ---
+
+    ### Action Buttons
+    * **Y** (Triangle): I-reset ang camera position
+    * **X** (Square): Cycle camera mode
+    * **B** (Circle): Baliktaran ang follow camera perspective *(front <-> back, Follow Camera lang)*
+    * **A** (Cross): I-pause / i-resume ang concert
+
+    ---
+
+    ### D-Pad Controls (Hindi available sa Free Move)
+    * **D-Pad Right:** Susunod na target *(Follow Camera at First Person)*
+    * **D-Pad Left:** Nakaraang target *(Follow Camera at First Person)*
+    * **D-Pad Up:** Susunod na bahagi ng katawan *(Follow Camera lang)*
+    * **D-Pad Down:** Nakaraang bahagi ng katawan *(Follow Camera lang)*
+
+ingame_webview_dialog:
+  open_browser: "Buksan ang Browser"
+  title:
+    notice: "Abiso"
+    general: "In-game na Browser"
+    help: "Tulong"
 
 excludes_editor:
   no_paths_available: "Walang available na path na maaring i-exclude"
@@ -200,7 +335,7 @@ change_translation_repo:
   browse_repositories: "Mag-browse ng Mga Repository"
   active: "Aktibo"
   confirm_remove: "Gusto mo bang tanggalin ang \"%{name}\"?"
-  cannot_remove_active: "Hindi maaaring burahin ang kasalukuyang aktibong repo. Mag-switch muna sa ibang repo."
+  cannot_remove_active: "Hindi maaaring burahin ang kasalukuyang aktibong repo. Magpalit muna sa ibang repo."
   removing: "Tinatanggal ang translation repo..."
   remove_in_progress: "Hindi mabura ang repo. May ginagawa pang pagtanggal."
 
@@ -216,7 +351,7 @@ translation_repo_info:
   links: "Mga Link"
 
 theme_editor:
-  title: "Editor ng GUI Theme"
+  title: "Editor ng Tema sa GUI"
   ui_accent_color: "Kulay ng Accent"
   ui_window_fill: "Kulay ng Window Background"
   ui_panel_fill: "Kulay ng Panel Background"
@@ -231,8 +366,8 @@ set_keybind:
 
 tl_update_dialog:
   title: "May bagong update"
-  content: "May bagong update sa translations (%{size}). Gusto mo ba ito i-download?"
-  content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}) sa halip."
+  content: "May bagong update sa translations (%{size}). Gusto mo ba itong i-download?"
+  content_zip_warning: "May bagong update sa translations (%{changed_size}). Ida-download ng update na ito ang buong archive (%{download_size}). Gusto mo ba itong i-download?"
   show_changelog: "Ipakita ang Mga Pagbabago"
   changelog_title: "Mga Pagbabago"
   changelog_fetch_failed: "Hindi makuha ang changelog"
@@ -241,13 +376,12 @@ tl_update_dialog:
 update_prompt_dialog:
   title: "May bagong update"
   content: |
-    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    May bagong update na available para sa Hachimi Edge (%{version}). Gusto mo ba ito i-install?
     Ire-restart ang laro para ma-apply ang update.
   android_content: |
-    May bagong update na available para sa Hachimi (%{version}). Gusto mo ba ito i-install?
+    May bagong update na available para sa Hachimi Edge (%{version}).
 
-    Pindutin ang "Oo" para buksan ang UmaPatcher Edge at i-patch muli ang laro.
-    (Hindi kailangang i-download muli ang laro o APK, kailangan mo lang mag-patch muli tulad ng dati mong ginamit na method dahil palaging dina-download ng UmaPatcher Edge ang pinakabagong version ng Hachimi Edge.)
+    Gusto mo bang buksan ang UmaPatcher Edge para simulan ang updater?
 
 updating_dialog:
   title: "Ina-update..."
@@ -260,3 +394,40 @@ steam_overlay_conflict_dialog:
     huwag pansinin ang mensaheng ito at pindutin ang "Hindi". Kung hindi ito gumana, pindutin ang "Oo" para pansamantalang i-disable
     ang Hachimi overlay. Isasara nito ang laro, at sa susunod na magsimula ang laro, hindi na ipapakita ang Hachimi overlay at
     makakabili ka na. Pagkatapos nito, maaari mong i-restart muli ang laro para i-enable ulit ang Hachimi overlay.
+
+race_stat_hud:
+  open_race_mechanics_confirm: "Gusto mo bang buksan ang browser para ipakita ang dokumentasyon tungkol sa Race Mechanics? (Ingles lang)"
+  speed: "Bilis"
+  min_speed: "Min. na Bilis"
+  phase: "Bahagi"
+  order: "Posisyon"
+  distance: "Distansya"
+  lane: "Linya"
+  start_delay: "Delay ng Pagsimula"
+  finish: "Tapos"
+  used_skills: "Ginamit na Skills"
+  unused_skills: "Di Ginamit na Skills"
+  autoscroll: "Awtomatikong mag-scroll"
+  phase_start: "Simula"
+  phase_middle: "Gitna"
+  phase_end: "Huli"
+  phase_last: "Huling Pag-agos"
+  phase_finished: "Tapos"
+  lane_inner: "Paloob"
+  lane_middle: "Gitna"
+  lane_outer: "Panlabas"
+  lane_outermost: "Kalayuan"
+  good_start: "Mabuting Pagkasimula"
+  bad_start: "Late na Pagkasimula"
+  rushed: "Nagmamadali"
+  compete_fight: "Lumalaban"
+  compete_top: "Kompetisyon sa Pangunguna"
+  last_spurt: "Huling Pag-agos"
+  run_at_full_speed: "Punong Bilis"
+  conserve_release: "Ilabas"
+  stamina_limit_break: "Pagkalagpas ng Stamina Limit"
+  stamina_keep: "Pagpapanatili ng Stamina"
+  compete_before_spurt: "Lumalaban Bago Umagos"
+  secure_lead: "Panatilin ang Pangunguna"
+  clog: "Hinarangan"
+

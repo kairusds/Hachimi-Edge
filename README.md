@@ -8,7 +8,8 @@ English | [简体中文](README-zh_cn.md) | [繁體中文](README-zh_tw.md)
 
 Game enhancement and translation mod for UM:PD.
 
-<img height="400" src="assets/screenshot.jpg">
+<img width="100%" height="100%" src="assets/screenshot-1.png">
+<img width="100%" height="100%" src="assets/screenshot-2.png">
 
 # ⚠️ Please don't link to this repo or Hachimi's website
 We understand that you want to help people install Hachimi and have a better experience playing the game. However, this project is inherently against the game's TOS and The Game Developer most definitely wants it gone if they were ever to learn about it.

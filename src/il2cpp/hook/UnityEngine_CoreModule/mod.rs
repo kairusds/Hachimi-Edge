@@ -14,15 +14,20 @@ pub mod Component;
 pub mod UnityAction;
 #[cfg(target_os = "android")]
 pub mod TouchScreenKeyboard;
+
 #[cfg(target_os = "android")]
-pub mod TouchScreenKeyboardType;
+#[path = "TouchScreenKeyboardType.rs"]
+mod touch_screen_keyboard_type;
+#[cfg(target_os = "android")]
+pub use touch_screen_keyboard_type::TouchScreenKeyboardType;
+
 pub mod RectTransform;
 pub mod Transform;
 pub mod RectOffset;
-
+pub mod Camera;
+pub mod Shader;
 #[cfg(target_os = "windows")]
 pub mod QualitySettings;
-#[cfg(target_os = "windows")]
 pub mod Screen;
 pub mod SceneManager;
 pub mod Scene;
@@ -33,6 +38,7 @@ pub const TextureFormat_RGBA32: i32 = 4;
 
 pub const FullScreenMode_ExclusiveFullScreen: i32 = 0;
 pub const FullScreenMode_FullScreenWindow: i32 = 1;
+pub const FullScreenMode_Windowed: i32 = 3;
 
 pub fn init() {
     get_assembly_image_or_return!(image, "UnityEngine.CoreModule.dll");
@@ -56,15 +62,17 @@ pub fn init() {
     RectOffset::init(image);
     SceneManager::init(image);
     Scene::init(image);
+    Camera::init(image);
+    Shader::init(image);
+    Screen::init(image);
+
     #[cfg(target_os = "android")]
     {
         TouchScreenKeyboard::init(image);
-        TouchScreenKeyboardType::init(image);
     }
 
     #[cfg(target_os = "windows")]
     {
         QualitySettings::init(image);
-        Screen::init(image);
     }
 }

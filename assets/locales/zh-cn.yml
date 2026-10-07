@@ -35,6 +35,23 @@ edit: "编辑"
 remove: "移除"
 add: "添加"
 save_changes: "保存更改？"
+back: "返回"
+portrait: "竖屏"
+landscape: "横屏"
+reset: "重置"
+spring: "春"
+summer: "夏"
+fall: "秋"
+winter: "冬"
+cherry_blossom: "樱"
+ordinal: "第%{n}名"
+low: "低"
+medium: "中"
+high: "高"
+circle: "圆形"
+hard: "硬"
+soft: "软"
+
 menu:
   check_for_updates: "\uf0aa 检查更新"
   fps_text: "帧率: %{fps}"
@@ -65,6 +82,8 @@ menu:
   change_translation_repo: "\uf0c1 更换翻译仓库"
 
 notification:
+  free_camera_unavailable_live: "自由视角在本 Live 中存在已知问题，在此 Live 中将不会启用自由视角。"
+  freeform_window_disabled_landscape: "检测到横屏模式，自由窗口已自动关闭。"
   saved_localize_dump: "已保存到 localize_dump.json"
   config_reloaded: "配置已重新加载"
   config_saved: "配置已保存"
@@ -81,6 +100,8 @@ notification:
   atlas_workaround_reset: "检测到 Atlas 文件更新: 已重新应用 Atlas 翻译..."
   tl_repo_changed: "翻译仓库已更换，本地化数据已重新加载。"
   tl_repo_folder_missing: "翻译数据文件夹缺失。请检查更新以恢复翻译。"
+  recommended_ui_scale_applied: "已应用推荐的 UI 缩放比例"
+  github_update_unreachable: "无法连接 GitHub，正在尝试使用 Codeberg..."
 
 first_time_setup:
   title: "初始化设置"
@@ -97,6 +118,10 @@ first_time_setup:
   select_translation_repo: "选择翻译仓库："
   no_compatible_repo: "没有与此游戏版本兼容的翻译仓库。"
   skip_translation: "跳过翻译设置。"
+  common_settings_heading: "常用设置"
+  common_settings_content: >-
+    以下是一些您可能需要配置的常用设置。
+    您之后可以随时在配置编辑器中更改这些设置。
   complete_heading: "全部完成！"
   complete_content: >-
     点击「完成」以保存配置。
@@ -131,8 +156,16 @@ config_editor:
     此选项将在游戏重启后禁用Hachimi的GUI，
     您将无法再访问配置编辑器。
     如非本意，请关闭此窗口并禁用此选项。
-  ipv4_only: "仅使用 IPv4 ureq"
   meta_index_url: "翻译 Meta URL"
+  custom_font_file: "自定义字体"
+  custom_font_none_found: "未找到.hachifont字体包"
+  custom_font_file_warning: >-
+    自定义字体可能无法与翻译仓库良好兼容。
+    翻译是按特定字体设计的，因此自定义字体可能会导致
+    行距异常、文本溢出或裁剪。如果文本看起来奇怪，
+    你可以在这里切换回默认字体。
+  custom_font_file: "自定义字体"
+  custom_font_none_found: "未找到 .hachifont 字体包"
   debug_mode: "调试模式"
   enable_file_logging: "记录日志"
   apply_atlas_workaround: "应用翻译 Atlas 修复"
@@ -160,6 +193,7 @@ config_editor:
   taskbar_show_progress_on_download: "下载时任务栏显示进度"
   taskbar_show_progress_on_connecting: "连接时任务栏显示进度"
   target_fps: "目标帧率"
+  target_fps_unfocused: "游戏后台时目标 FPS"
   virtual_resolution_multiplier: "分辨率缩放倍数"
   ui_scale: "界面缩放比例"
   gui_scale: "覆盖层缩放"
@@ -168,6 +202,9 @@ config_editor:
   graphics_quality: "图形质量"
   vsync: "垂直同步"
   auto_full_screen: "自动全屏"
+  freeform_window: "自由窗口"
+  freeform_ui_scale_auto: "自由窗口下自动缩放界面"
+  freeform_ui_scale_auto_ratio: "自动界面缩放系数"
   full_screen_mode: "全屏模式"
   full_screen_mode_exclusive: "独占全屏"
   full_screen_mode_borderless: "无边框窗口"
@@ -180,9 +217,11 @@ config_editor:
   story_choice_auto_select_delay: "剧情选项自动选择延迟"
   story_text_speed_multiplier: "剧情文本速度倍率"
   force_allow_dynamic_camera: "强制启用动态镜头"
-  live_theater_allow_same_chara: "在 LIVE 剧场中 允许设置多个相同角色"
+  free_camera: "自由视角"
+  live_theater_allow_same_chara: "在 Live 剧场中允许设置多个相同角色"
   physics_update_mode: "物理引擎更新模式"
   disable_skill_name_translation: "禁用技能名称翻译"
+  disable_factor_name_translation: "禁用因子名称翻译"
   cyspring_mono_uncap_frame_scale: "恢复旧版 CySpring 物理行为"
   hide_ingame_ui_hotkey: "隐藏游戏内 UI 快捷键"
   hide_ingame_ui_hotkey_info: >-
@@ -215,10 +254,42 @@ config_editor:
   skill_info_dialog: "自定义技能信息弹窗"
   homescreen_bgseason: "主界面背景季节"
   shadow_resolution: "阴影分辨率"
+  shadow_distance: "阴影距离"
+  soft_shadows: "柔和阴影"
+  soft_shadow_quality: "柔和阴影质量"
+  shadow_depth_bias: "阴影深度偏差"
+  shadow_normal_bias: "阴影法线偏差"
+  force_chara_shadows: "强制角色阴影"
+  story_shadow_type: "剧情阴影类型"
   hide_now_loading: "隐藏加载画面画面"
   ui_loading_show_orientation_guide: "隐藏加载画面方向提示"
   replace_to_builtin_font: "使用游戏默认字体"
   custom_title_name: "自定义窗口标题"
+  ingame_webview: "在游戏内浏览器中打开公告等内置网页"
+  recommended_ui_scale: "应用推荐的界面缩放比例"
+  trainer_live_landscape: "在竖屏 Live 中强制使用横屏模式"
+  force_orientation_mode: "屏幕方向锁定模式"
+  taskbar_show_progress_on_schedule_book: "训练员手册执行时在任务栏显示进度"
+  race_stat_hud: "比赛实时状态 HUD"
+  race_stat_hud_toggle_button: "比赛实时状态 HUD 切换按钮"
+  race_stat_hud_toggle_key: "比赛实时状态 HUD 切换快捷键"
+  race_stat_hud_landscapeui_portrait: "比赛实时状态 HUD 横屏 UI 游戏视图"
+  race_stat_hud_draggable: "比赛实时状态 HUD 可拖动"
+  race_stat_hud_draggable_save: "比赛实时状态 HUD 保存拖动位置"
+  race_stat_hud_resizable: "比赛实时状态 HUD 可调整大小"
+  race_stat_hud_width_scale: "比赛实时状态 HUD 宽度缩放"
+  race_stat_hud_height_scale: "比赛实时状态 HUD 高度缩放"
+  race_stat_hud_opacity_scale: "比赛实时状态 HUD 不透明度"
+  race_stat_hud_persist_clones: "比赛实时状态 HUD 双开"
+  race_stat_hud_persist_selected_index: "比赛实时状态 HUD 记忆上次选择的角色"
+  disable_tap_effect: "禁用点击效果"
+  race_playback_slider: "比赛回放进度条"
+  race_playback_slider_always: "始终显示比赛回放进度条"
+  race_playback_button: "比赛回放暂停/继续按钮"
+  race_playback_key_enable: "启用比赛回放暂停/继续快捷键"
+  race_playback_key: "比赛回放暂停/继续快捷键"
+  skill_data_desc: "显示技能详细数据"
+  old_config_editor: "使用旧版配置编辑器"
 
 theme_editor:
   title: "覆盖层主题编辑器"
@@ -233,6 +304,160 @@ set_keybind:
   title: "设置按键绑定"
   press_any_key: "按下任意按键…"
   bound_key: "已绑定按键：%{key}"
+
+race_stat_hud:
+  open_race_mechanics_confirm: "是否打开浏览器查看比赛机制文档？（仅英文）"
+  stats: "属性"
+  speed: "速度"
+  accel: "加速度"
+  min_speed: "最低速度"
+  stamina: "耐力"
+  phase: "阶段"
+  order: "名次"
+  distance: "距离"
+  lane: "赛道"
+  start_delay: "慢起步"
+  finish: "完赛"
+  used_skills: "已使用技能"
+  unused_skills: "未使用技能"
+  autoscroll: "自动滚动"
+  phase_runup: "助跑"
+  phase_start: "序盘"
+  phase_middle: "中盘"
+  phase_end: "终盘"
+  phase_last: "最后冲刺"
+  phase_finished: "已完赛"
+  lane_inner: "内道"
+  lane_middle: "中道"
+  lane_outer: "外道"
+  lane_outermost: "最外道"
+  temptation_sashi: "差马"
+  temptation_senko: "先行"
+  temptation_nige: "逃马"
+  temptation_boost: "追马"
+  good_start: "出闸良好"
+  bad_start: "出闸不佳"
+  start_dash: "起步冲刺"
+  clog: "受阻"
+  rushed: "抢位"
+  compete_fight: "对决"
+  compete_top: "领跑竞争"
+  last_spurt: "最后冲刺"
+  run_at_full_speed: "全速冲刺"
+  conserve_release: "释放"
+  stamina_limit_break: "耐力突破"
+  stamina_keep: "耐力维持"
+  compete_before_spurt: "冲刺前竞争"
+  secure_lead: "确保领先"
+
+free_camera:
+  settings_title: "自由视角设置"
+  section_general: "通用"
+  section_live: "Live 剧场"
+  section_race: "比赛"
+  section_keybinds: "Windows 按键绑定"
+  remove_camera_effects: "移除镜头效果"
+  live_remove_screen_effects: "去除屏幕光效"
+  live_disable_character_teleport: "禁用角色瞬移"
+  live_force_all_characters_visible: "使所有角色始终可见"
+  show_overlay: "显示切换提示"
+  selfie_use_head_transform: "跟随角色自拍杆模式"
+  mode: "模式"
+  mode_free: "自由移动"
+  mode_first_person: "第一人称"
+  mode_selfie_stick: "跟随角色"
+  live_move_step: "Live 移动步长"
+  race_move_step: "比赛移动步长"
+  look_step: "视角步长"
+  mouse_speed: "鼠标速度"
+  live_fov: "Live 视野"
+  race_fov: "比赛视野"
+  gamepad_deadzone: "手柄死区"
+  gamepad_move_speed: "手柄移动速度"
+  gamepad_look_speed: "手柄视角速度"
+  live_target_position: "Live 目标位置"
+  live_target_part: "Live 目标部位"
+  live_selfie_horizontal_stabilization: "Live 跟随角色水平防抖范围"
+  live_selfie_vertical_stabilization: "Live 跟随角色垂直防抖范围"
+  live_follow_offset: "Live 跟随偏移"
+  live_follow_lookat_offset: "Live 注视偏移"
+  live_follow_smooth: "平滑 Live 跟随"
+  live_follow_smooth_lookat_step: "Live 注视平滑"
+  live_follow_smooth_pos_step: "Live 位置平滑"
+  live_first_person_offset: "Live 第一人称偏移"
+  race_target_index: "比赛目标编号（-1 = 自动）"
+  race_follow_offset: "比赛跟随偏移"
+  race_follow_distance: "比赛跟随距离"
+  race_first_person_lookat_offset: "比赛注视偏移"
+  overlay_mode: "模式：%{mode}"
+  overlay_target: "目标：%{target}"
+  overlay_part: "部位：%{part}"
+  target_auto: "自动"
+  target_gate: "闸位 %{index}"
+  key_move_forward: "向前移动"
+  key_move_back: "向后移动"
+  key_move_left: "向左移动"
+  key_move_right: "向右移动"
+  key_move_down: "向下移动"
+  key_move_up: "向上移动"
+  key_look_up: "向上看"
+  key_look_down: "向下看"
+  key_look_left: "向左看"
+  key_look_right: "向右看"
+  key_fov_increase: "增大视野"
+  key_fov_decrease: "减小视野"
+  key_follow_offset_up: "跟随偏移向上"
+  key_follow_offset_down: "跟随偏移向下"
+  key_follow_offset_left: "跟随偏移向左"
+  key_follow_offset_right: "跟随偏移向右"
+  key_target_previous: "上一个目标"
+  key_target_next: "下一个目标"
+  key_part_previous: "上一个 Live 部位"
+  key_part_next: "下一个 Live 部位"
+  key_reset: "重置"
+  key_cycle_mode: "切换模式"
+  key_reverse: "反向"
+  settings_title: "自由视角设置"
+  cheatsheet_title: "自由视角快捷指南"
+  cheatsheet_contents: |
+    # 自由视角快捷指南
+    本功能仅在 **比赛** 或 **Live 舞台** 中生效。
+
+    默认跟随部位为 **头部**。
+
+    在比赛中默认跟随 **1号闸位**。
+
+    ## 鼠标操作
+    * **按住右键并拖动：** 旋转视角
+    * **滚轮向上 / 向下：** 调整FOV
+
+    ---
+
+    ## 手柄操作 (Xbox / PlayStation)
+
+    ### **移动与视角**
+    * **左摇杆：** 移动
+    * **右摇杆：** 旋转视角
+    * **右扳机键 (RT / R2)：** 上升
+    * **左扳机键 (LT / L2)：** 下降
+    * **右侧肩键 (RB / R1)：** 减小FOV
+    * **左侧肩键 (LB / L1)：** 增大FOV
+
+    ---
+
+    ### 功能按键
+    * **Y键** (三角)：重置相机位置
+    * **X键** (方块)：切换相机模式
+    * **B键** (圆圈)：翻转跟随视角方向 *(前 <-> 后，仅跟随角色模式)*
+    * **A键** (叉号)：暂停 Live
+
+    ---
+
+    ### 十字键控制 (自由移动模式下不可用)
+    * **十字键-左：** 上一个目标 *(仅跟随角色与第一人称)*
+    * **十字键-右：** 下一个目标 *(仅跟随角色与第一人称)*
+    * **十字键-上：** 下一个部位 *(仅跟随角色)*
+    * **十字键-下：** 上一个部位 *(仅跟随角色)*
 
 excludes_editor:
   title: "排除项编辑器"
@@ -279,10 +504,9 @@ update_prompt_dialog:
     发现新的 Hachimi 更新 (%{version})，是否立即安装？
     安装完成后游戏将自动重启。
   android_content: |
-    检测到 Hachimi Edge 的新版本 (%{version})。是否更新？
-
-    点击“是”将跳转至 UmaPatcher Edge，在其中重新为当前游戏补丁以更新 Hachimi。
-    (无需重新下载完整游戏文件或 APK，重新为当前游戏版本的 APK 补丁并安装即可，UmaPatcher Edge 将自动下载最新版本的 Hachimi Edge。)
+    检测到 Hachimi Edge 的新版本 (%{version})。
+    
+    是否要打开 UmaPatcher Edge 以开始更新？
 
 updating_dialog:
   title: "更新中"
@@ -296,6 +520,14 @@ steam_overlay_conflict_dialog:
     如果您无法进行内购，请按「是」以临时禁用 Hachimi GUI 并关闭游戏。
     在下次启动游戏时，Hachimi GUI 将被禁用，此时您可以正常进行内购操作。
     购买完成后，请重启游戏以重新启用 Hachimi GUI。
+
+ingame_webview_dialog:
+  open_browser: "在浏览器中打开"
+  title:
+    notice: "通知"
+    general: "游戏内浏览器"
+    gacha: "卡池"
+    help: "帮助"
 
 key_names:
   left: "左方向键"
@@ -362,3 +594,569 @@ key_names:
   numpad_divide: "小键盘/"
   numpad_decimal: "小键盘."
   unknown: "%{code} 键"
+
+skill_data_desc:
+  group:
+    duration: "</b><color=#d6cb00>持续%{v}秒</color><b>"
+    immediate: "</b><color=#d6cb00>立即发动</color><b>"
+    long_negative: "</b><color=#d6cb00>持续500秒</color><b>"
+    indefinite: "</b><color=#d6cb00>常时发动</color><b>"
+    cd: "<color=#d6cb00>（冷却%{v}秒）</color>"
+    when: " <color=#29b39e>发动条件</color>："
+    after: " <color=#29b39e>附加条件</color>："
+  sep:
+    or: " / "
+    and: " & "
+    star: " × "
+    to: "对于"
+  effect:
+    name:
+      speed_stat: "</b><color=#03befc>速度属性</color><b>"
+      stamina_stat: "</b><color=#03befc>耐力属性</color><b>"
+      power_stat: "</b><color=#03befc>力量属性</color><b>"
+      guts_stat: "</b><color=#03befc>毅力属性</color><b>"
+      wit_stat: "</b><color=#03befc>智力属性</color><b>"
+      field_of_view: "</b><color=#03befc>视野</color><b>"
+      current_hp: "</b><color=#03befc>当前体力</color><b>"
+      rushed_time: "</b><color=#03befc>焦躁时间</color><b>"
+      delay_start: "</b><color=#03befc>延迟起步</color><b>"
+      current_speed: "</b><color=#03befc>当前速度</color><b>"
+      current_speed_natural_decel: "</b><color=#03befc>当前速度（自然减速）</color><b>"
+      target_speed: "</b><color=#03befc>目标速度</color><b>"
+      lane_movement_speed: "</b><color=#03befc>变道速度</color><b>"
+      rushed_chance: "</b><color=#03befc>焦躁概率</color><b>"
+      acceleration: "</b><color=#03befc>加速度</color><b>"
+      all_stats: "</b><color=#03befc>全属性</color><b>"
+      target_lane: "</b><color=#03befc>目标赛道</color><b>"
+      activate_rare_skill: "</b><color=#03befc>发动稀有技能</color><b>"
+      special: "</b><color=#03befc>特殊</color><b>"
+      event_specific: "</b><color=#03befc>事件专用</color><b>"
+    unit:
+      stat: ""
+      deg: "°"
+      percent: "%"
+      second: "s"
+      mps: "m/s"
+      mps2: "m/s²"
+    fixed:
+      aggressive_strategy: "切换为极具攻击性的跑法"
+      debuff_immunity: "免疫减益"
+      sympathy_all: "对所有人发动共鸣"
+      loh_stat: "属性提升{0}%，巅峰状态概率{1}%"
+    start_reaction:
+      "4000": "起跑反应时间-60%"
+      "9000": "起跑反应时间-10%"
+      "15000": "起跑反应时间+50%"
+    usage19_suffix: " 若距领头马≥20米则+0.1"
+  star:
+    activate:
+      "1": "在以下期间超越"
+      "2": "在以下期间发动技能（最多3个）"
+      "3": "在以下期间发动技能（最多2个）"
+    usage:
+      "2": "</b>技能数量<b>"
+      "3": "</b>队伍速度<b>"
+      "4": "</b>队伍耐力<b>"
+      "5": "</b>队伍力量<b>"
+      "6": "</b>队伍毅力<b>"
+      "7": "</b>队伍智力<b>"
+      "8": "</b>随机<b>"
+      "10": "</b>获胜场数<b>"
+      "11": "</b>最终弯道超越次数<b>"
+      "12": "</b>粉丝数<b>"
+      "13": "</b>最高属性<b>"
+      "14": "</b>绿色技能数量<b>"
+      "20": "</b>最长被堵时间（侧面、中段）<b>"
+      "22": "</b>最终速度属性（高）<b>"
+      "23": "</b>最终速度属性<b>"
+      "24": "</b>海外适性总等级<b>"
+      "25": "</b>最大领先差距<b>"
+      "26": "</b>H.A.F获胜数<b>"
+      "27": "</b>料理点数<b>"
+      "28": "</b>研究总等级<b>"
+      "30": "</b>粉丝喜爱度<b>"
+      "31": "</b>培养点数<b>"
+      "32": "</b>温泉等级<b>"
+      "34": "</b>与领头马的距离（无详情）<b>"
+      "35": "</b>比赛距离类型<b>"
+      "36": "</b>比赛距离类型<b>"
+      "37": "</b>DREAMS队伍排名<b>"
+      "40": "</b>总兴奋点数<b>"
+  target:
+    all_in_fov: "视野内所有人"
+    leading: "%{v}领头"
+    all_ahead: "所有前方"
+    closest_ahead: "%{v}最近的前方"
+    all_behind: "所有后方"
+    closest_behind: "%{v}最近的后方"
+    team: "队伍"
+    style:
+      "1": "逃马"
+      "2": "先行"
+      "3": "差马"
+      "4": "追马"
+    random_rushed_ahead: "%{v}随机前方焦躁"
+    random_rushed_behind: "%{v}随机后方焦躁"
+    style_rushed:
+      "1": "逃马（焦躁）"
+      "2": "先行（焦躁）"
+      "3": "差马（焦躁）"
+      "4": "追马（焦躁）"
+    suzuka: "无声铃鹿"
+    random_recovery_users: "%{v}随机回复技能使用者"
+    unknown: "未知"
+  cond:
+    negate: "非%{v}"
+    order_rate:
+      gt: "在后﹤%{v}%名内"
+      ge: "在后%{v}%名"
+      le: "在前%{v}%名"
+      lt: "在前%{v}%名内"
+    corner:
+      straight: "在直道上"
+      corner: "在第%{v}弯道"
+      any: "在弯道上"
+      not: "不在第%{v}弯道"
+    phase:
+      name:
+        "0": "序盘"
+        "1": "中盘"
+        "2": "终盘"
+        "3": "终直"
+      le: "%{v}或更早"
+      ge: "%{v}或更晚"
+    ground_condition:
+      name:
+        "1": "良"
+        "2": "稍重"
+        "3": "重"
+        "4": "不良"
+      eq: "场地状态%{v}"
+      ne: "场地状态非%{v}"
+      le: "场地状态%{v}或更好"
+      ge: "场地状态%{v}或更差"
+    track_id:
+      jra: "在JRA赛场"
+      any: "在任意赛场"
+      at: "在%{v}"
+      not_at: "不在%{v}"
+    track_name:
+      "10001": "札幌赛场"
+      "10002": "函馆赛场"
+      "10003": "新潟赛场"
+      "10004": "福岛赛场"
+      "10005": "中山赛场"
+      "10006": "东京赛场"
+      "10007": "中京赛场"
+      "10008": "京都赛场"
+      "10009": "阪神赛场"
+      "10010": "小仓赛场"
+      "10101": "大井赛场"
+      "10103": "川崎赛场"
+      "10104": "船桥赛场"
+      "10105": "盛冈赛场"
+      "10201": "隆尚赛场"
+      "10202": "圣塔安妮塔公园赛场"
+      "10203": "德尔玛赛场"
+    same_skill_horse_count:
+      unique: "只有你拥有此技能"
+      count: "%{v}名赛马娘拥有此技能"
+    near_infront_count:
+      none: "正前方无人"
+      count: "%{v}名对手在正前方"
+    furlong: "%{v}浪"
+    used_skill:
+      "203781": "使用了技能 冲动"
+      "203061": "使用了技能 无二"
+      "203071": "使用了技能 无三"
+      "202051": "使用了技能 爆领"
+      "120221": "使用了技能 丽影飞驰！拉面道"
+      template: "使用了技能 %{v}"
+    used_skill_detail_one:
+      "204452": "使用了技能 圣女试炼（Lv1）"
+      template: "使用了技能 %{v}（Lv1）"
+    popularity_top:
+      any: "人气第一的赛马娘发动了技能"
+      count: "人气第一的赛马娘发动了技能%{v}"
+    enum:
+      distance_type:
+        eq:
+          "1": "短距离"
+          "2": "英里"
+          "3": "中距离"
+          "4": "长距离"
+      ground_type:
+        eq:
+          "1": "草地"
+          "2": "泥地"
+      is_abroad:
+        eq:
+          "0": "非海外"
+          "1": "海外"
+      is_activate_other_skill_detail:
+        eq:
+          "1": "发动了发动条件1"
+          "2": "发动了发动条件2"
+      is_badstart:
+        eq:
+          "0": "起步尚佳"
+          "1": "出迟"
+      is_basis_distance:
+        eq:
+          "0": "非根干距离"
+          "1": "根干距离"
+      is_finalcorner:
+        eq:
+          "0": "非最终弯道/直道"
+          "1": "最终弯道/直道"
+      is_goodstart:
+        eq:
+          "0": "起步不佳"
+          "1": "起步良好"
+      is_move_lane:
+        eq:
+          "1": "向内侧栏移动"
+          "2": "向外侧栏移动"
+      is_other_character_activate_advantage_skill:
+        eq:
+          "9": "对手使用了 +当前体力 技能"
+          "22": "对手使用了 +当前速度（自然减速）技能"
+          "27": "对手使用了 +目标速度 技能"
+          "31": "对手使用了 +加速度 技能"
+      is_temptation:
+        eq:
+          "0": "未焦躁"
+          "1": "焦躁中"
+      motivation:
+        eq:
+          "4": "好调"
+          "5": "绝好调"
+        ge:
+          "4": "好调以上"
+          "5": "绝好调以上"
+        le:
+          "4": "好调以下"
+          "5": "绝好调以下"
+      phase_corner_random:
+        eq:
+          "1": "中盘弯道（随机处）"
+          "2": "终盘弯道（随机处）"
+      phase_first_half_straight_random:
+        eq:
+          "1": "中盘前半直道（随机处）"
+          "2": "终盘前半直道（随机处）"
+      phase_firsthalf:
+        eq:
+          "1": "中盘前半"
+          "3": "终直前半"
+      phase_firsthalf_random:
+        eq:
+          "0": "序盘前半（随机处）"
+          "1": "中盘前半（随机处）"
+          "2": "终盘前半（随机处）"
+          "3": "终直前半（随机处）"
+      phase_laterhalf:
+        eq:
+          "0": "序盘后半"
+          "1": "中盘后半"
+          "2": "终盘后半"
+      phase_laterhalf_random:
+        eq:
+          "0": "序盘后半（随机处）"
+          "1": "中盘后半（随机处）"
+          "2": "终盘后半（随机处）"
+      phase_latter_half_straight_random:
+        eq:
+          "1": "中盘后半直道（随机处）"
+          "2": "终盘后半直道（随机处）"
+      phase_random:
+        eq:
+          "0": "序盘（随机处）"
+          "1": "中盘（随机处）"
+          "2": "终盘（随机处）"
+          "3": "终直（随机处）"
+      phase_straight_random:
+        eq:
+          "1": "中盘直道（随机处）"
+          "2": "终盘直道（随机处）"
+      rotation:
+        eq:
+          "1": "顺时针赛道"
+          "2": "逆时针赛道"
+      running_style:
+        eq:
+          "1": "逃马"
+          "2": "先行"
+          "3": "差马"
+          "4": "追马"
+      season:
+        eq:
+          "1": "春天"
+          "2": "夏天"
+          "3": "秋天"
+          "4": "冬天"
+          "5": "樱花季"
+      slope:
+        eq:
+          "0": "平地"
+          "1": "上坡"
+          "2": "下坡"
+      weather:
+        eq:
+          "1": "晴"
+          "2": "阴"
+          "3": "雨"
+          "4": "雪"
+    fixed:
+      all_corner_random:
+        eq: "任意弯道"
+      always:
+        eq: "始终"
+      blocked_front:
+        eq: "被堵（前方）"
+      change_order_onetime:
+        gt: "被超越"
+        lt: "超越"
+      down_slope_random:
+        eq: "下坡"
+      grade:
+        eq: "G1比赛"
+      is_activate_any_skill:
+        eq: "使用了任意技能"
+      is_activate_heal_skill:
+        eq: "回复体力"
+      is_behind_in:
+        eq: "后方对手更靠近内侧栏"
+      is_dirtgrade:
+        eq: "交流赛"
+        ne: "非交流赛"
+      is_exist_chara_id:
+        eq: "无声铃鹿在场"
+      is_exist_skill_id:
+        eq: "技能 共鸣 在场"
+      is_finalcorner_laterhalf:
+        eq: "最终弯道/直道（后半）"
+      is_finalcorner_random:
+        eq: "最终弯道（随机）"
+      is_hp_empty_onetime:
+        eq: "体力耗尽"
+      is_last_straight:
+        eq: "在最终直道上"
+      is_last_straight_onetime:
+        eq: "到达最终直道"
+      is_lastspurt:
+        eq: "正在最终冲刺中"
+      is_overtake:
+        eq: "正在超越他人"
+      is_surrounded:
+        eq: "被包围"
+      is_tight_track:
+        eq: "赛道狭窄"
+      lane_type:
+        eq: "内道"
+      last_straight_random:
+        eq: "最终直道（随机）"
+      lastspurt:
+        eq: "冲刺阶段耐力良好"
+      order_rate_in20_continue:
+        eq: "保持在前20%名"
+      order_rate_in40_continue:
+        eq: "保持在前40%名"
+      order_rate_in50_continue:
+        eq: "保持在前50%名"
+      order_rate_in80_continue:
+        eq: "保持在前80%名"
+      order_rate_out20_continue:
+        eq: "保持在后80%名"
+      order_rate_out40_continue:
+        eq: "保持在后40%名"
+      order_rate_out50_continue:
+        eq: "保持在后50%名"
+      order_rate_out70_continue:
+        eq: "保持在后30%名"
+      phase_firstquarter:
+        eq: "终盘前四分之一"
+      phase_firstquarter_random:
+        eq: "终盘前四分之一（随机）"
+      phase_laterhalf:
+        le: "中盘后半或更早"
+      run_at_full_speed_random:
+        eq: "达到最高速度（随机）"
+      running_style_equal_popularity_one:
+        eq: "与人气第一相同跑法"
+      straight_front_type:
+        eq: "在背面直道上"
+      straight_random:
+        eq: "直道（随机）"
+      time:
+        eq: "夜晚"
+      up_slope_random:
+        eq: "上坡"
+      up_slope_random_later_half:
+        eq: "上坡（后半）"
+    template:
+      accumulatetime:
+        ge: "经过%{v}秒"
+      activate_count_all:
+        ge: "使用≥%{v}个技能"
+        le: "使用≤%{v}个技能"
+      activate_count_all_team:
+        ge: "队伍使用≥%{v}个技能"
+      activate_count_end_after:
+        ge: "使用≥%{v}个技能（从终盘起）"
+      activate_count_heal:
+        ge: "回复体力%{v}次以上"
+      activate_count_later_half:
+        ge: "使用≥%{v}个技能（后半）"
+      activate_count_middle:
+        eq: "使用%{v}个技能（中盘）"
+        ge: "使用≥%{v}个技能（中盘）"
+      activate_count_start:
+        ge: "使用≥%{v}个技能（序盘）"
+      base_guts:
+        ge: "基础毅力≥%{v}"
+        lt: "基础毅力﹤%{v}"
+      base_power:
+        ge: "基础力量≥%{v}"
+        lt: "基础力量﹤%{v}"
+      base_speed:
+        ge: "基础速度≥%{v}"
+      base_stamina:
+        ge: "基础耐力≥%{v}"
+        lt: "基础耐力﹤%{v}"
+      base_wiz:
+        ge: "基础智力≥%{v}"
+        lt: "基础智力﹤%{v}"
+      bashin_diff_behind:
+        ge: "领先≥%{v}马身"
+        le: "领先≤%{v}马身"
+      bashin_diff_infront:
+        le: "落后≤%{v}马身"
+      behind_near_lane_time:
+        ge: "对手近距离在后%{v}秒"
+      behind_near_lane_time_set1:
+        ge: "对手在后%{v}秒"
+      blocked_all_continuetime:
+        ge: "被堵（前方和侧面）≥%{v}秒"
+      blocked_front_continuetime:
+        ge: "被堵（前方）≥%{v}秒"
+      blocked_side_continuetime:
+        ge: "被堵（侧面）≥%{v}秒"
+      change_order_up_end_after:
+        ge: "终盘超越%{v}次"
+      change_order_up_finalcorner_after:
+        ge: "最终弯道后超越%{v}次"
+      change_order_up_middle:
+        ge: "中盘超越%{v}次"
+      compete_fight_count:
+        gt: "多于%{v}次较量"
+      corner_count:
+        eq: "%{v}个弯道"
+      corner_random:
+        eq: "第%{v}弯道（随机处）"
+      course_distance:
+        eq: "比赛距离%{v}米"
+        ge: "比赛距离≥%{v}米"
+        gt: "比赛距离﹥%{v}米"
+        le: "比赛距离≤%{v}米"
+        lt: "比赛距离﹤%{v}米"
+        ne: "比赛距离≠%{v}米"
+      distance_diff_rate:
+        ge: "距领头马≥%{v}%"
+        le: "距领头马≤%{v}%"
+      distance_diff_top:
+        ge: "距第一名≥%{v}米"
+        gt: "距第一名﹥%{v}米"
+        le: "距第一名≤%{v}米"
+      distance_rate:
+        ge: "比赛距离%{v}%后"
+        le: "比赛距离%{v}%前"
+      distance_rate_after_random:
+        eq: "比赛距离%{v}%后（随机）"
+      fan_count:
+        ge: "粉丝数≥%{v}"
+      hp_per:
+        ge: "体力≥%{v}%"
+        le: "体力≤%{v}%"
+      infront_near_lane_time:
+        ge: "对手近距离在前%{v}秒"
+      near_count:
+        eq: "恰好%{v}名附近对手"
+        ge: "%{v}名以上附近对手"
+      near_infront_count:
+        ge: "%{v}名以上附近前方对手"
+      order:
+        eq: "处于第%{v}位"
+        ge: "处于第≥%{v}位"
+        le: "处于第≤%{v}位"
+      overtake_target_no_order_up_time:
+        ge: "有超越的目标≥%{v}秒"
+      overtake_target_time:
+        ge: "成为超越目标≥%{v}秒"
+      popularity:
+        eq: "人气第%{v}"
+        ge: "人气≥第%{v}"
+        le: "人气≤第%{v}"
+        lt: "人气﹤第%{v}"
+      post_number:
+        eq: "闸位%{v}"
+        ge: "闸位≥%{v}"
+        le: "闸位≤%{v}"
+      random_lot:
+        eq: "随机概率%{v}%"
+      remain_distance:
+        eq: "剩余距离%{v}米"
+        ge: "剩余距离≥%{v}米"
+        le: "剩余距离≤%{v}米"
+      remain_distance_viewer_id:
+        ge: "剩余≥%{v}米（玩家角色）"
+        le: "剩余≤%{v}米（玩家角色）"
+      running_style_count_nige_otherself:
+        ge: "%{v}名以上其他逃马"
+      running_style_count_oikomi_otherself:
+        ge: "%{v}名以上其他追马"
+      running_style_count_same:
+        le: "≤%{v}名相同跑法"
+      running_style_count_same_rate:
+        ge: "≥%{v}%相同跑法"
+      running_style_count_sashi_otherself:
+        ge: "%{v}名以上其他差马"
+      running_style_count_senko_otherself:
+        ge: "%{v}名以上其他先行"
+      running_style_temptation_count_nige:
+        ge: "%{v}名以上焦躁逃马（含自身）"
+      running_style_temptation_count_oikomi:
+        ge: "%{v}名以上焦躁追马（含自身）"
+      running_style_temptation_count_sashi:
+        ge: "%{v}名以上焦躁差马（含自身）"
+      running_style_temptation_count_senko:
+        ge: "%{v}名以上焦躁先行（含自身）"
+      running_style_temptation_opponent_count_nige:
+        ge: "%{v}名以上焦躁逃马"
+      running_style_temptation_opponent_count_oikomi:
+        ge: "%{v}名以上焦躁追马"
+      running_style_temptation_opponent_count_sashi:
+        ge: "%{v}名以上焦躁差马"
+      running_style_temptation_opponent_count_senko:
+        ge: "%{v}名以上焦躁先行"
+      same_skill_horse_count:
+        ge: "%{v}名以上赛马娘拥有此技能"
+      succession_skill_count:
+        eq: "拥有%{v}个继承技能"
+        ge: "拥有≥%{v}个继承技能"
+        le: "拥有≤%{v}个继承技能"
+      temptation_count:
+        eq: "焦躁%{v}次"
+      temptation_count_behind:
+        ge: "≥%{v}次焦躁（后方）"
+      temptation_count_infront:
+        ge: "≥%{v}次焦躁（前方）"
+      temptation_opponent_count_behind:
+        ge: "≥%{v}次焦躁（后方）"
+      temptation_opponent_count_infront:
+        ge: "≥%{v}次焦躁（前方）"
+      visiblehorse:
+        ge: "视野内≥%{v}名对手"
+        le: "可见赛马娘≤%{v}"
+      distance_diff_top_float:
+        le: "距第一名≤%{v}米"

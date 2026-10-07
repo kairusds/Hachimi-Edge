@@ -1,5 +1,4 @@
 use std::sync::atomic::{self, AtomicBool};
-
 use crate::{
     core::{Hachimi, game::Region},
     il2cpp::{
@@ -7,6 +6,7 @@ use crate::{
         types::*
     }
 };
+use super::SceneDefine::{ViewId, SceneId};
 
 static SPLASH_SHOWN: AtomicBool = AtomicBool::new(false);
 pub fn is_splash_shown() -> bool {
@@ -36,14 +36,48 @@ def_field_object_accessors!(get_PhotoLibraryObject, set_PhotoLibraryObject, PHOT
 static mut GETCURRENTVIEWID_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetCurrentViewId, GETCURRENTVIEWID_ADDR, i32, this: *mut Il2CppObject);
 
+static mut GETCURRENTSCENEID_ADDR: usize = 0;
+impl_addr_wrapper_fn!(GetCurrentSceneId, GETCURRENTSCENEID_ADDR, SceneId, this: *mut Il2CppObject);
+
+static SCENE_ID_CACHE: atomic::AtomicI32 = atomic::AtomicI32::new(0);
+
+type AlterUpdateFn = extern "C" fn(this: *mut Il2CppObject);
+extern "C" fn AlterUpdate(this: *mut Il2CppObject) {
+    get_orig_fn!(AlterUpdate, AlterUpdateFn)(this);
+    SCENE_ID_CACHE.store(GetCurrentSceneId(this) as i32, atomic::Ordering::Release);
+}
+
+pub fn current_scene_id() -> SceneId {
+    unsafe { std::mem::transmute(SCENE_ID_CACHE.load(atomic::Ordering::Acquire)) }
+}
+
+pub fn is_race_scene_family() -> bool {
+    let id = current_scene_id();
+    matches!(
+        id,
+        SceneId::Race
+        | SceneId::DailyRace
+        | SceneId::LegendRace
+        | SceneId::TeamStadium
+        | SceneId::Champions
+        | SceneId::ChallengeMatch
+        | SceneId::RoomMatch
+        | SceneId::PracticeRace
+        | SceneId::TrainingChallenge
+        | SceneId::Heroes
+        | SceneId::UltimateRace
+    )
+}
+
 static mut GETCURRENTVIEWCONTROLLER_ADDR: usize = 0;
 impl_addr_wrapper_fn!(GetCurrentViewController, GETCURRENTVIEWCONTROLLER_ADDR, *mut Il2CppObject, this: *mut Il2CppObject);
 
 fn ChangeViewCommon(next_view_id: i32) {
-    if next_view_id == 1 { // ViewId.Splash
+    if next_view_id == ViewId::Splash {
         SPLASH_SHOWN.store(true, atomic::Ordering::Release);
+        debug!("SPLASH_SHOWN: {}", SPLASH_SHOWN.load(atomic::Ordering::Acquire));
     }
-    if next_view_id == 100 && !HOME_INIT.swap(true, atomic::Ordering::AcqRel) { // ViewId.Home
+    if next_view_id == ViewId::Home && !HOME_INIT.swap(true, atomic::Ordering::AcqRel) {
         #[cfg(target_os = "windows")]
         {
             use crate::windows::{smtc, wnd_hook::get_target_hwnd};
@@ -51,8 +85,8 @@ fn ChangeViewCommon(next_view_id: i32) {
                 smtc::init(get_target_hwnd());
             }
         }
-        info!("HOME_INIT: {}", is_home_init());
     }
+    debug!("next_view_id = {}", next_view_id);
 }
 
 type ChangeViewJpfn = extern "C" fn(
@@ -96,6 +130,7 @@ pub fn init(umamusume: *const Il2CppImage) {
     unsafe {
         CLASS = SceneManager;
         GETCURRENTVIEWID_ADDR = get_method_addr(SceneManager, c"GetCurrentViewId", 0);
+        GETCURRENTSCENEID_ADDR = get_method_addr(SceneManager, c"GetCurrentSceneId", 0);
         PHOTOCHECKOBJECT_FIELD = get_field_from_name(SceneManager, c"PhotoCheckObject");
         PHOTOLIBRARYOBJECT_FIELD = get_field_from_name(SceneManager, c"PhotoLibraryObject");
 
@@ -123,4 +158,7 @@ pub fn init(umamusume: *const Il2CppImage) {
         let ChangeView_addr = get_method_addr(SceneManager, c"ChangeView", 5);
         new_hook!(ChangeView_addr, ChangeViewOther);
     }
+
+    let AlterUpdate_addr = get_method_addr(SceneManager, c"AlterUpdate", 0);
+    new_hook!(AlterUpdate_addr, AlterUpdate);
 }
