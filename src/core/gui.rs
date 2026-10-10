@@ -7676,7 +7676,7 @@ impl ThemeEditorWindow {
     }
 }
 
-pub(super) fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32) {
+pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32) {
     ui.add(
         egui::ProgressBar::new(progress)
         .desired_height(4.0 * get_scale(ui.ctx()))
@@ -7684,7 +7684,7 @@ pub(super) fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32) {
     );
 }
 
-pub(super) fn tab_bar(ui: &mut egui::Ui, id: &str, contents: impl FnOnce(&mut egui::Ui)) {
+pub fn tab_bar(ui: &mut egui::Ui, id: &str, contents: impl FnOnce(&mut egui::Ui)) {
     egui::ScrollArea::horizontal()
     .id_salt(id)
     .show(ui, |ui| {
@@ -7702,7 +7702,7 @@ pub(super) fn tab_bar(ui: &mut egui::Ui, id: &str, contents: impl FnOnce(&mut eg
     });
 }
 
-pub(super) fn theme_color_row(ui: &mut egui::Ui, label: &str, color: &mut egui::Color32) -> bool {
+pub fn theme_color_row(ui: &mut egui::Ui, label: &str, color: &mut egui::Color32) -> bool {
     let mut changed = false;
 
     ui.columns(2, |cols| {
