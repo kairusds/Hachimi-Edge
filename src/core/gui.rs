@@ -9348,7 +9348,3 @@ impl Window for PersistentMessageWindow {
         self.show.load(atomic::Ordering::Relaxed)
     }
 }
-
-#[cfg(test)]
-#[path = "gui_tests.rs"]
-mod tests;

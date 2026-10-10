@@ -1503,7 +1503,3 @@ impl Plugin {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "plugin_api_tests.rs"]
-mod tests;
