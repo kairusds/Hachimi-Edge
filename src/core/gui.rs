@@ -110,6 +110,15 @@ pub fn request_notification(request: NotificationRequest) {
     }
 }
 
+fn take_notification_requests() -> Vec<NotificationRequest> {
+    if let Ok(mut queue) = NOTIFICATION_REQUESTS.lock() {
+        std::mem::take(&mut *queue)
+    }
+    else {
+        Vec::new()
+    }
+}
+
 static PREV_MENU_WIDTH: Mutex<f32> = Mutex::new(200.0);
 static REQUESTED_WIDTH: Mutex<Option<f32>> = Mutex::new(None);
 
@@ -2396,7 +2405,6 @@ static DISABLED_GAME_UIS: Lazy<Mutex<FnvHashSet<SendPtr>>> =
 static PLUGIN_MENU_ITEMS: Lazy<Mutex<Vec<PluginMenuItem>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PLUGIN_MENU_SECTIONS: Lazy<Mutex<Vec<PluginMenuSection>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PLUGIN_MENU_ICONS: Lazy<Mutex<HashMap<String, PluginMenuIcon>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-static PLUGIN_NOTIFICATIONS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PLUGIN_WINDOWS_TO_SHOW: Lazy<Mutex<Vec<PluginWindow>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PLUGIN_WINDOWS_TO_CLOSE: Lazy<Mutex<Vec<i32>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
@@ -2485,7 +2493,7 @@ pub fn register_plugin_menu_icon(label: String, uri: String, bytes: Vec<u8>) -> 
 }
 
 pub fn enqueue_plugin_notification(message: String) {
-    PLUGIN_NOTIFICATIONS.lock().unwrap().push(message);
+    request_notification(NotificationRequest::Custom(message));
 }
 
 fn get_plugin_menu_items() -> Vec<PluginMenuItem> {
@@ -2498,11 +2506,6 @@ fn get_plugin_menu_sections() -> Vec<PluginMenuSection> {
 
 fn get_plugin_menu_icon(label: &str) -> Option<PluginMenuIcon> {
     PLUGIN_MENU_ICONS.lock().unwrap().get(label).cloned()
-}
-
-fn drain_plugin_notifications() -> Vec<String> {
-    let mut notifications = PLUGIN_NOTIFICATIONS.lock().unwrap();
-    std::mem::take(&mut *notifications)
 }
 
 impl Window for PluginWindow {
@@ -2994,13 +2997,7 @@ impl Gui {
     }
 
     fn process_notification_requests(&mut self) {
-        let requests = if let Ok(mut queue) = NOTIFICATION_REQUESTS.lock() {
-            std::mem::take(&mut *queue)
-        } else {
-            Vec::new()
-        };
-
-        for req in requests {
+        for req in take_notification_requests() {
             match req {
                 NotificationRequest::ConfigLoadError => {
                     self.show_notification(&t!("notification.config_error"));
@@ -3423,12 +3420,12 @@ impl Gui {
 
         self.process_plugin_windows();
         self.run_windows();
+        self.process_notification_requests();
         self.run_notifications();
         #[cfg(target_os = "windows")]
         self.run_free_camera_overlay();
 
         if self.splash_visible { self.run_splash(); }
-        self.process_notification_requests();
 
         #[cfg(target_os = "windows")]
         {
@@ -3912,10 +3909,6 @@ impl Gui {
             }
         }
 
-        for message in drain_plugin_notifications() {
-            self.show_notification(&message);
-        }
-
         if !self.show_menu {
             if let Some(time) = self.menu_anim_time {
                 if time.elapsed().as_secs_f32() >= self.context.style().animation_time {
@@ -4206,11 +4199,7 @@ impl Gui {
                         ui.label(t!("tl_updater.title"));
                     });
                 });
-                ui.add(
-                    egui::ProgressBar::new(ratio)
-                    .desired_height(4.0 * scale)
-                    .desired_width(ui.available_width())
-                );
+                progress_bar(ui, ratio, ui.available_width());
                 if matches!(progress.phase, tl_repo::UpdatePhase::Downloading | tl_repo::UpdatePhase::Extracting) {
                     self.update_progress_text.clear();
                     if progress.total > 0 {
@@ -4273,6 +4262,9 @@ impl Gui {
     }
 
     pub fn is_empty(&self) -> bool {
+        if NOTIFICATION_REQUESTS.lock().map(|queue| !queue.is_empty()).unwrap_or(false) {
+            return false;
+        }
         #[cfg(target_os = "windows")]
         {
             !self.splash_visible && !self.menu_visible && !self.update_progress_visible &&
@@ -6823,24 +6815,12 @@ impl Window for ConfigEditor {
                         ui.add_space(4.0);
 
                         if self.search_term.is_empty() {
-                            egui::ScrollArea::horizontal()
-                            .id_salt("tabs_scroll")
-                            .show(ui, |ui| {
-                                ui.horizontal(|ui| {
-                                    let style = ui.style_mut();
-                                    style.spacing.button_padding = egui::vec2(8.0, 5.0);
-                                    style.spacing.item_spacing = egui::Vec2::ZERO;
-                                    let widgets = &mut style.visuals.widgets;
-                                    widgets.inactive.corner_radius = egui::CornerRadius::ZERO;
-                                    widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
-                                    widgets.active.corner_radius = egui::CornerRadius::ZERO;
-
-                                    for (tab, label) in ConfigEditorTab::display_list() {
-                                        if ui.selectable_label(self.current_tab == tab, label.as_ref()).clicked() {
-                                            self.current_tab = tab;
-                                        }
+                            tab_bar(ui, "tabs_scroll", |ui| {
+                                for (tab, label) in ConfigEditorTab::display_list() {
+                                    if ui.selectable_label(self.current_tab == tab, label.as_ref()).clicked() {
+                                        self.current_tab = tab;
                                     }
-                                });
+                                }
                             });
                         }
 
@@ -7696,7 +7676,33 @@ impl ThemeEditorWindow {
     }
 }
 
-fn theme_color_row(ui: &mut egui::Ui, label: &str, color: &mut egui::Color32) -> bool {
+pub(super) fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32) {
+    ui.add(
+        egui::ProgressBar::new(progress)
+        .desired_height(4.0 * get_scale(ui.ctx()))
+        .desired_width(width)
+    );
+}
+
+pub(super) fn tab_bar(ui: &mut egui::Ui, id: &str, contents: impl FnOnce(&mut egui::Ui)) {
+    egui::ScrollArea::horizontal()
+    .id_salt(id)
+    .show(ui, |ui| {
+        ui.horizontal(|ui| {
+            let style = ui.style_mut();
+            style.spacing.button_padding = egui::vec2(8.0, 5.0);
+            style.spacing.item_spacing = egui::Vec2::ZERO;
+            let widgets = &mut style.visuals.widgets;
+            widgets.inactive.corner_radius = egui::CornerRadius::ZERO;
+            widgets.hovered.corner_radius = egui::CornerRadius::ZERO;
+            widgets.active.corner_radius = egui::CornerRadius::ZERO;
+
+            contents(ui);
+        });
+    });
+}
+
+pub(super) fn theme_color_row(ui: &mut egui::Ui, label: &str, color: &mut egui::Color32) -> bool {
     let mut changed = false;
 
     ui.columns(2, |cols| {
@@ -9342,3 +9348,7 @@ impl Window for PersistentMessageWindow {
         self.show.load(atomic::Ordering::Relaxed)
     }
 }
+
+#[cfg(test)]
+#[path = "gui_tests.rs"]
+mod tests;
