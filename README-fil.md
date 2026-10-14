@@ -11,16 +11,9 @@ Game enhancement at translation mod para sa UM:PD.
 <img width="100%" height="100%" src="assets/screenshot-1.png">
 <img width="100%" height="100%" src="assets/screenshot-2.png">
 
-# ⚠️ Huwag mag-link sa repo na ito o sa Hachimi Edge website
+# ⚠️ Babala
 
-Naiintindihan namin na gusto mong tulungan ang iba na i-install ang Hachimi at magkaroon ng mas-magandang karanasan sa paglalaro. Pero labis na nilalabag ng proyektong ito ang ToS ng laro at alam namin na gusto ng game developer na mawala na ang proyektong ito kapag malaman nila.
-
-Habang okay lang ang pag-share sa self-managed na chat services at pribadong pagmemensahe, hinihingi namin sa iyo na huwag magbahagi ng mga link papunta sa proyektong ito o sa mga tool na may kinalaman sa proyektong ito sa mga pampublikong website, lalo na sa Facebook.
-
-O i-share mo na lang sila at sirain ito para sa maraming Hachimi users. Ikaw na bahala.
-
-### Kung gusto mo pa rin ibahagi
-Gawin mo lang gagawin mo, pero hinihiling namin na subukan mong itago ang pangalan ng laro bilang "UMPD" o "honse game" sa halip ng aktual na pangalan, para iwasan ang pag-index ng mga search engine sa proyektong ito.
+Labis na nilalabag ng mod na ito ang ToS ng laro. Magbahagi lang ng mga link o impormasyon tungkol dito sa isang responsableng paraan, para maiwasan ang atensyon mula sa mga developer.
 
 # Features
 - **Mataas na kalidad na translations:** May kasamang advanced na translation features ang Hachimi na nakakatulong sa pagiging-natural ng translations (plural forms, ordinal number, atbp.) at pag-iwas ng jank sa UI. Sinusuportahan rin nito ang pag-translate ng game components; walang kinakailangang manwal na pag-patch ng assets!
@@ -44,7 +37,7 @@ Gawin mo lang gagawin mo, pero hinihiling namin na subukan mong itago ang pangal
 - **Cross-platform:** Dinisenyo para maging portable, na may support sa Windows at Android.
 
 # Installation
-Tignan ang ["Magsimula"](https://hachimi.noccu.art/fil/docs/hachimi/getting-started.html) na pahina.
+Tignan ang ["Getting Started"](https://hachimi.noccu.art/docs/hachimi/getting-started.html) page (ginagawa pa rin ang dokumentasyon sa wikang Filipino).
 
 # Espesyal na pasasalamat
 Ang mga proyektong ito ang naging batayan sa pag-develop ng Hachimi; kung wala ang mga ito, hindi sana umiral ang Hachimi sa kasalukuyang anyo nito:
