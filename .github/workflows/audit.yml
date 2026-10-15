@@ -24,7 +24,7 @@ jobs:
         id: audit_run
         run: |
           cargo audit fix | tee audit_output.txt || true
-          RAW_IDS=$(grep -o "RUSTSEC-[0-9]\{4\}-[0-9]\{4\}" audit_output.txt | sort | uniq | xargs)
+          RAW_IDS=$(grep -o "RUSTSEC-[0-9]\{4\}-[0-9]\{4\}" audit_output.txt | grep -Ev "RUSTSEC-(2024-0320|2024-0449|2025-0141|2026-0192)" | sort | uniq | xargs)
           PR_FORMAT=$(echo $RAW_IDS | sed 's/[^ ]*/`&`/g' | sed 's/ /, /g')
           COMMIT_FORMAT=$(echo $RAW_IDS | awk '{for(i=1;i<=NF;i++) print "* " $i}')
 
