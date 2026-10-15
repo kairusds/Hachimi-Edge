@@ -715,7 +715,7 @@ impl RaceStatHud {
         }
 
         if Hachimi::instance().game.region == Region::Global
-            && HorseRaceInfo::is_finished() {
+            && HorseRaceInfo::is_finished_cached() {
             return false;
         }
 
@@ -3161,8 +3161,8 @@ impl Gui {
 
         if !config.race_playback_slider
             || !RaceHorseManagerBase::is_race_active()
-            || (HorseRaceInfo::is_start_dash() && !is_dragging)
-            || HorseRaceInfo::is_finished() {
+            || (HorseRaceInfo::is_start_dash_cached() && !is_dragging)
+            || HorseRaceInfo::is_finished_cached() {
             return false;
         }
 
@@ -3317,8 +3317,8 @@ impl Gui {
         }
 
         Hachimi::instance().config.load().race_playback_button && RaceHorseManagerBase::is_race_active()
-        && !HorseRaceInfo::is_start_dash()
-        && !HorseRaceInfo::is_finished()
+        && !HorseRaceInfo::is_start_dash_cached()
+        && !HorseRaceInfo::is_finished_cached()
     }
 
     fn run_race_playback_button(ctx: &egui::Context) {
@@ -3342,7 +3342,7 @@ impl Gui {
         let game_view = screen;
 
         let paused = RaceManagerReplayBase::IsPaused(race_manager);
-        let interactable = !RaceManagerReplayBase::playback_gated(race_manager);
+        let interactable = !RaceManagerReplayBase::playback_gated_cached();
 
         let btn_size = 24.0 * scale;
         let margin = 12.0 * scale;

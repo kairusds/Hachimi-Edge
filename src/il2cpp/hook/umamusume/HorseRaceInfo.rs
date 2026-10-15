@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use crate::{
     core::{Hachimi, game::Region},
     il2cpp::{
@@ -120,6 +122,27 @@ fn reached_course_end(player_info: *mut Il2CppObject) -> bool {
     if course_distance <= 0.0 { return false; }
 
     get__distance(player_info) >= course_distance
+}
+
+static RACE_FINISHED_CACHE: AtomicBool = AtomicBool::new(true);
+static RACE_START_DASH_CACHE: AtomicBool = AtomicBool::new(false);
+
+pub fn refresh_race_state_cache() {
+    if !RaceHorseManagerBase::is_race_active() {
+        RACE_FINISHED_CACHE.store(true, Ordering::Release);
+        RACE_START_DASH_CACHE.store(false, Ordering::Release);
+        return;
+    }
+    RACE_FINISHED_CACHE.store(is_finished(), Ordering::Release);
+    RACE_START_DASH_CACHE.store(is_start_dash(), Ordering::Release);
+}
+
+pub fn is_finished_cached() -> bool {
+    RACE_FINISHED_CACHE.load(Ordering::Acquire)
+}
+
+pub fn is_start_dash_cached() -> bool {
+    RACE_START_DASH_CACHE.load(Ordering::Acquire)
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
