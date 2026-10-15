@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use crate::{
     core::{Hachimi, game::Region, gui, utils::{clear_il2cpp_list, race_seek_seh, race_seek_stage}},
     il2cpp::{
@@ -185,6 +185,24 @@ pub fn playback_gated(race_manager: *mut Il2CppObject) -> bool {
     HorseRaceInfo::is_start_dash() ||
     get_IsPlayingCutIn(race_manager) ||
     HorseRaceInfo::is_start_dash_instance(race_manager)
+}
+
+static PLAYBACK_GATED_CACHE: AtomicBool = AtomicBool::new(false);
+
+pub fn refresh_playback_gated_cache() {
+    if !RaceHorseManagerBase::is_race_active() {
+        PLAYBACK_GATED_CACHE.store(false, Ordering::Release);
+        return;
+    }
+    let race_manager = RaceManager::instance();
+    PLAYBACK_GATED_CACHE.store(
+        !race_manager.is_null() && playback_gated(race_manager),
+        Ordering::Release
+    );
+}
+
+pub fn playback_gated_cached() -> bool {
+    PLAYBACK_GATED_CACHE.load(Ordering::Acquire)
 }
 
 pub fn toggle_playback() {
