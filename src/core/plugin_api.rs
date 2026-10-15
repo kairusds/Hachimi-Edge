@@ -393,6 +393,27 @@ unsafe extern "C" fn gui_ui_checkbox(
     changed
 }
 
+unsafe extern "C" fn gui_ui_slider_u32(
+    ui: *mut c_void,
+    text: *const c_char,
+    value: *mut u32,
+    minimum: u32,
+    maximum: u32
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if value.is_null() || minimum > maximum { return false; }
+    let mut current = *value;
+    let changed = ui.add(
+        egui::Slider::new(&mut current, minimum..=maximum)
+            .text(cstr_or_empty(text))
+            .step_by(1.0),
+    ).changed();
+    if changed {
+        *value = current;
+    }
+    changed
+}
+
 unsafe extern "C" fn gui_ui_text_edit_singleline(
     ui: *mut c_void,
     buffer: *mut c_char,
@@ -432,6 +453,325 @@ unsafe extern "C" fn gui_ui_text_edit_singleline(
         bytes[..copy_len].copy_from_slice(&src[..copy_len]);
     }
 
+    changed
+}
+
+unsafe extern "C" fn gui_ui_slider_i32(
+    ui: *mut c_void,
+    text: *const c_char,
+    value: *mut i32,
+    minimum: i32,
+    maximum: i32
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if value.is_null() || minimum > maximum { return false; }
+    let mut current = *value;
+    let changed = ui.add(
+        egui::Slider::new(&mut current, minimum..=maximum)
+            .text(cstr_or_empty(text))
+            .step_by(1.0),
+    ).changed();
+    if changed {
+        *value = current;
+    }
+    changed
+}
+
+unsafe extern "C" fn gui_ui_slider_f32(
+    ui: *mut c_void,
+    text: *const c_char,
+    value: *mut f32,
+    minimum: f32,
+    maximum: f32
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if value.is_null() || !minimum.is_finite() || !maximum.is_finite() || minimum > maximum {
+        return false;
+    }
+    let mut current = *value;
+    if !current.is_finite() { return false; }
+    let changed = ui.add(
+        egui::Slider::new(&mut current, minimum..=maximum)
+            .text(cstr_or_empty(text)),
+    ).changed();
+    if changed {
+        *value = current;
+    }
+    changed
+}
+
+unsafe extern "C" fn gui_ui_drag_value_i32(
+    ui: *mut c_void,
+    value: *mut i32,
+    minimum: i32,
+    maximum: i32,
+    speed: f32
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if value.is_null() || minimum > maximum || !speed.is_finite() || speed <= 0.0 {
+        return false;
+    }
+    let mut current = *value;
+    let response = ui.add(egui::DragValue::new(&mut current).range(minimum..=maximum).speed(speed));
+    #[cfg(target_os = "android")]
+    gui::handle_android_keyboard(&response, &mut current);
+    let changed = response.changed() || current != *value;
+    if changed {
+        *value = current.clamp(minimum, maximum);
+    }
+    changed
+}
+
+unsafe extern "C" fn gui_ui_drag_value_f32(
+    ui: *mut c_void,
+    value: *mut f32,
+    minimum: f32,
+    maximum: f32,
+    speed: f32
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if value.is_null() || !minimum.is_finite() || !maximum.is_finite() || minimum > maximum
+        || !speed.is_finite() || speed <= 0.0
+    {
+        return false;
+    }
+    let mut current = *value;
+    if !current.is_finite() { return false; }
+    let response = ui.add(egui::DragValue::new(&mut current).range(minimum..=maximum).speed(speed));
+    #[cfg(target_os = "android")]
+    gui::handle_android_keyboard(&response, &mut current);
+    if !current.is_finite() { return false; }
+    let changed = response.changed() || current != *value;
+    if changed {
+        *value = current.clamp(minimum, maximum);
+    }
+    changed
+}
+
+unsafe extern "C" fn gui_ui_enabled(
+    ui: *mut c_void,
+    enabled: bool,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    ui.add_enabled_ui(enabled, |ui| {
+        callback(ui as *mut _ as *mut c_void, userdata);
+    });
+    true
+}
+
+unsafe extern "C" fn gui_ui_progress_bar(
+    ui: *mut c_void,
+    progress: f32,
+    width: f32
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if !progress.is_finite() || !width.is_finite() || width < 0.0 { return false; }
+    let width = if width > 0.0 { width } else { ui.available_width() };
+    gui::progress_bar(ui, progress, width);
+    true
+}
+
+unsafe fn gui_image(
+    ui: &egui::Ui,
+    id: *const c_char,
+    bytes: *const u8,
+    bytes_len: usize,
+    width: f32,
+    height: f32
+) -> Option<egui::Image<'static>> {
+    if bytes.is_null() || bytes_len == 0 || !width.is_finite() || width <= 0.0
+        || !height.is_finite() || height <= 0.0
+    {
+        return None;
+    }
+    let id = ui.make_persistent_id(cstr_or_empty(id));
+    let uri = format!("bytes://plugin-image/{}.png", id.value());
+    let bytes = std::slice::from_raw_parts(bytes, bytes_len).to_vec();
+    Some(egui::Image::from_bytes(uri, bytes).fit_to_exact_size(egui::vec2(width, height)))
+}
+
+unsafe extern "C" fn gui_ui_image(
+    ui: *mut c_void,
+    id: *const c_char,
+    bytes: *const u8,
+    bytes_len: usize,
+    width: f32,
+    height: f32
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(image) = gui_image(ui, id, bytes, bytes_len, width, height) else { return false; };
+    ui.add(image);
+    true
+}
+
+unsafe extern "C" fn gui_ui_scroll_area(
+    ui: *mut c_void,
+    id: *const c_char,
+    horizontal: bool,
+    vertical: bool,
+    max_width: f32,
+    max_height: f32,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    if (!horizontal && !vertical) || !max_width.is_finite() || max_width <= 0.0
+        || !max_height.is_finite() || max_height <= 0.0
+    {
+        return false;
+    }
+    egui::ScrollArea::new([horizontal, vertical])
+        .id_salt(cstr_or_empty(id))
+        .max_width(max_width)
+        .max_height(max_height)
+        .show(ui, |ui| {
+            callback(ui as *mut _ as *mut c_void, userdata);
+        });
+    true
+}
+
+unsafe extern "C" fn gui_ui_vertical(
+    ui: *mut c_void,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    ui.vertical(|ui| {
+        callback(ui as *mut _ as *mut c_void, userdata);
+    });
+    true
+}
+
+unsafe extern "C" fn gui_ui_horizontal_wrapped(
+    ui: *mut c_void,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    ui.horizontal_wrapped(|ui| {
+        callback(ui as *mut _ as *mut c_void, userdata);
+    });
+    true
+}
+
+unsafe extern "C" fn gui_ui_group(
+    ui: *mut c_void,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    ui.group(|ui| {
+        callback(ui as *mut _ as *mut c_void, userdata);
+    });
+    true
+}
+
+unsafe extern "C" fn gui_ui_add_space(ui: *mut c_void, amount: f32) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if !amount.is_finite() || amount < 0.0 { return false; }
+    ui.add_space(amount);
+    true
+}
+
+unsafe extern "C" fn gui_ui_with_layout(
+    ui: *mut c_void,
+    vertical: bool,
+    alignment: i32,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    let alignment = match alignment {
+        0 => Align::Min,
+        1 => Align::Center,
+        2 => Align::Max,
+        _ => return false,
+    };
+    let layout = if vertical {
+        egui::Layout::top_down(alignment)
+    }
+    else {
+        egui::Layout::left_to_right(alignment)
+    };
+    ui.with_layout(layout, |ui| {
+        callback(ui as *mut _ as *mut c_void, userdata);
+    });
+    true
+}
+
+unsafe extern "C" fn gui_ui_collapsing_header(
+    ui: *mut c_void,
+    id: *const c_char,
+    text: *const c_char,
+    default_open: bool,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    egui::CollapsingHeader::new(cstr_or_empty(text))
+        .id_salt(cstr_or_empty(id))
+        .default_open(default_open)
+        .show(ui, |ui| {
+            callback(ui as *mut _ as *mut c_void, userdata);
+        });
+    true
+}
+
+unsafe extern "C" fn gui_ui_tabs(
+    ui: *mut c_void,
+    id: *const c_char,
+    selected_index: *mut i32,
+    items: *const *const c_char,
+    item_count: usize,
+    callback: Option<GuiUiCallback>,
+    userdata: *mut c_void
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    let Some(callback) = callback else { return false; };
+    if selected_index.is_null() || items.is_null() || item_count == 0 || item_count > i32::MAX as usize {
+        return false;
+    }
+    let labels = std::slice::from_raw_parts(items, item_count);
+    let original_index = *selected_index;
+    let mut current = original_index.clamp(0, item_count as i32 - 1);
+    ui.push_id(cstr_or_empty(id), |ui| {
+        gui::tab_bar(ui, "tabs_scroll", |ui| {
+            for (index, label) in labels.iter().enumerate() {
+                ui.push_id(index, |ui| {
+                    if ui.selectable_label(current == index as i32, cstr_or_empty(*label)).clicked() {
+                        current = index as i32;
+                    }
+                });
+            }
+        });
+        *selected_index = current;
+        callback(ui as *mut _ as *mut c_void, userdata);
+    });
+    current != original_index
+}
+
+unsafe extern "C" fn gui_ui_color_edit(
+    ui: *mut c_void,
+    text: *const c_char,
+    rgba: *mut u8
+) -> bool {
+    let Some(ui) = ui_from_ptr(ui) else { return false; };
+    if rgba.is_null() { return false; }
+    let bytes = std::slice::from_raw_parts_mut(rgba, 4);
+    let mut current = egui::Color32::from_rgba_unmultiplied(bytes[0], bytes[1], bytes[2], bytes[3]);
+    let changed = gui::theme_color_row(ui, cstr_or_empty(text), &mut current);
+    if changed {
+        bytes.copy_from_slice(&current.to_srgba_unmultiplied());
+    }
     changed
 }
 
@@ -1094,6 +1434,23 @@ pub extern "C" fn hachimi_get_api(name: *const c_char) -> *mut c_void {
         "gui_ui_button" => gui_ui_button as *mut c_void,
         "gui_ui_small_button" => gui_ui_small_button as *mut c_void,
         "gui_ui_checkbox" => gui_ui_checkbox as *mut c_void,
+        "gui_ui_slider_u32" => gui_ui_slider_u32 as *mut c_void,
+        "gui_ui_slider_i32" => gui_ui_slider_i32 as *mut c_void,
+        "gui_ui_slider_f32" => gui_ui_slider_f32 as *mut c_void,
+        "gui_ui_drag_value_i32" => gui_ui_drag_value_i32 as *mut c_void,
+        "gui_ui_drag_value_f32" => gui_ui_drag_value_f32 as *mut c_void,
+        "gui_ui_enabled" => gui_ui_enabled as *mut c_void,
+        "gui_ui_progress_bar" => gui_ui_progress_bar as *mut c_void,
+        "gui_ui_image" => gui_ui_image as *mut c_void,
+        "gui_ui_scroll_area" => gui_ui_scroll_area as *mut c_void,
+        "gui_ui_vertical" => gui_ui_vertical as *mut c_void,
+        "gui_ui_horizontal_wrapped" => gui_ui_horizontal_wrapped as *mut c_void,
+        "gui_ui_group" => gui_ui_group as *mut c_void,
+        "gui_ui_add_space" => gui_ui_add_space as *mut c_void,
+        "gui_ui_with_layout" => gui_ui_with_layout as *mut c_void,
+        "gui_ui_collapsing_header" => gui_ui_collapsing_header as *mut c_void,
+        "gui_ui_tabs" => gui_ui_tabs as *mut c_void,
+        "gui_ui_color_edit" => gui_ui_color_edit as *mut c_void,
         "gui_ui_text_edit_singleline" => gui_ui_text_edit_singleline as *mut c_void,
         "gui_ui_horizontal" => gui_ui_horizontal as *mut c_void,
         "gui_ui_grid" => gui_ui_grid as *mut c_void,

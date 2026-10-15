@@ -5,10 +5,9 @@ use crossbeam_channel::unbounded;
 use fnv::FnvHashMap;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
-use size::Size;
+use size::{Base, Size};
 use thread_priority::{ThreadBuilderExt, ThreadPriority};
 
-use crate::core::game::Region;
 use super::{gui::{NotificationGuard, SimpleYesNoDialog, TranslationRepoUpdateWindow}, hachimi::LocalizedData, http::{self, ureq_config, AsyncRequest}, utils, Error, Gui, Hachimi};
 use once_cell::sync::Lazy;
 
@@ -19,9 +18,11 @@ pub struct RepoInfo {
     pub short_desc: Option<String>,
     #[serde(default)]
     pub language: Option<String>,
-    #[serde(default)]
-    pub region: Region
+    #[serde(default = "default_region")]
+    pub region: String
 }
+
+fn default_region() -> String { "Japan".to_owned() }
 
 static SYS_LOCALE: Lazy<String> = Lazy::new(|| {
     sys_locale::get_locale().as_deref().unwrap_or("en").to_lowercase()
@@ -198,7 +199,6 @@ struct UpdateInfo {
     cached_files: FnvHashMap<String, String>, // from repo cache
     size: usize,
     // New fields for better user communication, idk why it complains about these never being read
-    #[allow(dead_code)]
     update_size: usize,      // Size of changed files only
     #[allow(dead_code)]
     total_size: usize,       // Total size of all files (for ZIP downloads)
@@ -207,17 +207,27 @@ struct UpdateInfo {
     index_etag: Option<String>,
 }
 
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+pub enum UpdatePhase {
+    #[default]
+    Checking,
+    Downloading,
+    Extracting
+}
+
 #[derive(Default, Clone)]
 pub struct UpdateProgress {
     pub current: usize,
-    pub total: usize
+    pub total: usize,
+    pub phase: UpdatePhase
 }
 
 impl UpdateProgress {
-    pub fn new(current: usize, total: usize) -> UpdateProgress {
+    pub fn new(current: usize, total: usize, phase: UpdatePhase) -> UpdateProgress {
         UpdateProgress {
             current,
-            total
+            total,
+            phase
         }
     }
 }
@@ -276,7 +286,8 @@ fn store_progress(
     progress: &ArcSwap<Option<UpdateProgress>>,
     last_progress_ms: &AtomicU64,
     current: usize,
-    total: usize
+    total: usize,
+    phase: UpdatePhase
 ) {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -286,7 +297,7 @@ fn store_progress(
     let last = last_progress_ms.load(atomic::Ordering::Relaxed);
     if current == total || now.saturating_sub(last) >= 16 {
         last_progress_ms.store(now, atomic::Ordering::Relaxed);
-        progress.store(Arc::new(Some(UpdateProgress::new(current, total))));
+        progress.store(Arc::new(Some(UpdateProgress::new(current, total, phase))));
     }
 }
 
@@ -560,7 +571,7 @@ impl Updater {
         if is_new_repo {
             // skip all filesystem checks, the directory will be wiped anyway
             for (i, file) in index.files.iter().enumerate() {
-                store_progress(&self.progress, &self.last_progress_ms, i, total_files);
+                store_progress(&self.progress, &self.last_progress_ms, i, total_files, UpdatePhase::Checking);
 
                 if file.path.contains("..") || Path::new(&file.path).has_root() {
                     warn!("File path '{}' sanitized", file.path);
@@ -575,7 +586,7 @@ impl Updater {
             }
         } else {
             for (i, file) in index.files.iter().enumerate() {
-                store_progress(&self.progress, &self.last_progress_ms, i, total_files);
+                store_progress(&self.progress, &self.last_progress_ms, i, total_files, UpdatePhase::Checking);
 
                 if file.path.contains("..") || Path::new(&file.path).has_root() {
                     warn!("File path '{}' sanitized", file.path);
@@ -679,24 +690,24 @@ impl Updater {
                     if size_ratio >= ZIP_SIZE_WARNING_RATIO {
                         // Warn user about larger ZIP download
                         debug!(
-                            "ZIP download warning: changed={} MB, total={} MB, ratio={:.2}x",
-                            update_size / (1024 * 1024),
-                            total_size / (1024 * 1024),
+                            "ZIP download warning: changed={}, total={}, ratio={:.2}x",
+                            Size::from_bytes(update_size).format().with_base(Base::Base10),
+                            Size::from_bytes(total_size).format().with_base(Base::Base10),
                             size_ratio
                         );
 
                         t!(
                             "tl_update_dialog.content_zip_warning",
-                            changed_size = Size::from_bytes(update_size),
-                            download_size = Size::from_bytes(total_size)
+                            changed_size = Size::from_bytes(update_size).format().with_base(Base::Base10),
+                            download_size = Size::from_bytes(total_size).format().with_base(Base::Base10)
                         )
                     } else {
                         // ZIP is being used but size difference is not significant
-                        t!("tl_update_dialog.content", size = Size::from_bytes(actual_download_size))
+                        t!("tl_update_dialog.content", size = Size::from_bytes(actual_download_size).format().with_base(Base::Base10))
                     }
                 } else {
                     // Incremental update or no warning needed
-                    t!("tl_update_dialog.content", size = Size::from_bytes(actual_download_size))
+                    t!("tl_update_dialog.content", size = Size::from_bytes(actual_download_size).format().with_base(Base::Base10))
                 };
 
                 let updater = Hachimi::instance().tl_updater.clone();
@@ -764,6 +775,7 @@ impl Updater {
                 if let Err(e) = self.clone().run_internal() {
                     error!("{}", e);
                     self.progress.store(Arc::new(None));
+                    Hachimi::instance().load_localized_data();
                     if let Some(mutex) = Gui::instance() {
                         mutex.lock().unwrap().show_notification(&t!("notification.update_failed", reason = e.to_string()));
                     }
@@ -798,7 +810,7 @@ impl Updater {
         self.new_update.store(Arc::new(None));
         self.last_progress_ms.store(0, atomic::Ordering::Relaxed);
 
-        self.progress.store(Arc::new(Some(UpdateProgress::new(0, update_info.size))));
+        self.progress.store(Arc::new(Some(UpdateProgress::new(0, update_info.size, UpdatePhase::Downloading))));
         if let Some(mutex) = Gui::instance() {
             mutex.lock().unwrap().update_progress_visible = true;
         }
@@ -807,7 +819,10 @@ impl Updater {
         let hachimi = Hachimi::instance();
         hachimi.localized_data.store(Arc::new(LocalizedData::default()));
 
-        let localized_data_dir = hachimi.get_active_tl_dir().expect("Active TL repo directory not set.");
+        let localized_data_dir = match hachimi.get_active_tl_dir() {
+            Some(v) => v,
+            None => return Err(Error::RuntimeError("Active TL repo directory not set.".to_owned()))
+        };
         let disk_check_path = localized_data_dir.parent().unwrap_or(Path::new("."));
         check_available_disk_space(disk_check_path, update_info.size as u64)?;
 
@@ -848,7 +863,10 @@ impl Updater {
             index_etag: update_info.index_etag.clone(),
             files: cached_files.lock().unwrap().clone()
         };
-        let repo_id = hachimi.config.load().selected_tl_repo_id.expect("TL repo ID not set after update");
+        let repo_id = match hachimi.config.load().selected_tl_repo_id {
+            Some(v) => v,
+            None => return Err(Error::RuntimeError("TL repo ID not set after update".to_owned()))
+        };
         let cache_path = Self::get_repo_cache_path(repo_id);
         utils::write_json_file(&repo_cache, &cache_path)?;
 
@@ -913,20 +931,36 @@ impl Updater {
                             if let Some(parent) = Path::new(&file_path).parent() {
                                 Self::create_dir(parent, false)?;
                             }
-                            let mut file = fs::File::create(&file_path)?;
-                            let res = job.agent.get(&url).call()?;
+                            let mut part_path = file_path.clone().into_os_string();
+                            part_path.push(".part");
+                            let part_path = PathBuf::from(part_path);
 
-                            http::download_file_buffered(res, &mut file, &mut job.buffer, |bytes| {
-                                job.hasher.update(bytes);
-                                let prev_size = current_bytes_clone.fetch_add(bytes.len(), atomic::Ordering::Relaxed);
-                                store_progress(&updater.progress, &updater.last_progress_ms, prev_size + bytes.len(), total_size);
-                            })?;
+                            let download = (|| -> Result<(), Error> {
+                                let mut file = fs::File::create(&part_path)?;
+                                let res = job.agent.get(&url).call()?;
+
+                                http::download_file_buffered(res, &mut file, &mut job.buffer, |bytes| {
+                                    job.hasher.update(bytes);
+                                    let prev_size = current_bytes_clone.fetch_add(bytes.len(), atomic::Ordering::Relaxed);
+                                    store_progress(&updater.progress, &updater.last_progress_ms, prev_size + bytes.len(), total_size, UpdatePhase::Downloading);
+                                })
+                            })();
 
                             let hash = job.hasher.finalize().to_hex().to_string();
+                            job.hasher.reset();
+
+                            if let Err(e) = download {
+                                let _ = fs::remove_file(&part_path);
+                                return Err(e);
+                            }
                             if hash != repo_file.hash {
+                                let _ = fs::remove_file(&part_path);
                                 return Err(Error::FileHashMismatch(file_path.to_str().unwrap_or("").to_string()));
                             }
-                            job.hasher.reset();
+                            if let Err(e) = fs::rename(&part_path, &file_path) {
+                                let _ = fs::remove_file(&part_path);
+                                return Err(e.into());
+                            }
                             Ok(hash)
                         })();
 
@@ -1007,7 +1041,7 @@ impl Updater {
             let progress_bar = Arc::new(move |bytes_read: usize| {
                 let prev_size = downloaded_clone.fetch_add(bytes_read, atomic::Ordering::Relaxed);
                 let current = prev_size + bytes_read;
-                store_progress(&self_clone.progress, &self_clone.last_progress_ms, current, progress_total);
+                store_progress(&self_clone.progress, &self_clone.last_progress_ms, current, progress_total, UpdatePhase::Downloading);
             });
 
             http::download_file_parallel(
@@ -1037,7 +1071,7 @@ impl Updater {
 
             let zip_len = zip::ZipArchive::new(Cursor::new(&mmap[..]))?.len();
 
-            let total_size = update_info.size;
+            let total_size = update_info.update_size;
             let current_bytes = Arc::new(AtomicUsize::new(0));
             let non_fatal_error_count = Arc::new(AtomicUsize::new(0));
             let fatal_error = Arc::new(Mutex::new(None::<Error>));
@@ -1098,7 +1132,11 @@ impl Updater {
                                 }
                             }
 
-                            let mut out_file = match fs::File::create(&path) {
+                            let mut part_path = path.clone().into_os_string();
+                            part_path.push(".part");
+                            let part_path = PathBuf::from(part_path);
+
+                            let mut out_file = match fs::File::create(&part_path) {
                                 Ok(file) => file,
                                 Err(_) => {
                                     non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::Relaxed);
@@ -1106,37 +1144,51 @@ impl Updater {
                                 }
                             };
 
+                            let mut entry_ok = true;
                             loop {
                                 match zip_entry.read(&mut buffer) {
                                     Ok(0) => break,
                                     Ok(read_bytes) => {
                                         let data_slice = &buffer[..read_bytes];
                                         if out_file.write_all(data_slice).is_err() {
+                                            let _ = fs::remove_file(&part_path);
                                             *fatal_error_clone.lock().unwrap() = Some(Error::OutOfDiskSpace);
                                             stop_signal_clone.store(true, atomic::Ordering::Relaxed);
                                             return;
                                         }
                                         hasher.update(data_slice);
                                         let prev_size = current_bytes_clone.fetch_add(read_bytes, atomic::Ordering::Relaxed);
-                                        store_progress(&updater.progress, &updater.last_progress_ms, prev_size + read_bytes, total_size);
+                                        store_progress(&updater.progress, &updater.last_progress_ms, prev_size + read_bytes, total_size, UpdatePhase::Extracting);
                                     }
                                     Err(_) => {
                                         non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::Relaxed);
+                                        entry_ok = false;
                                         break;
                                     }
                                 }
                             }
 
                             let hash = hasher.finalize().to_hex().to_string();
+                            hasher.reset();
+
+                            if !entry_ok {
+                                let _ = fs::remove_file(&part_path);
+                                continue;
+                            }
                             if hash != repo_file.hash {
                                 let path_str = path.to_str().unwrap_or("").to_string();
+                                let _ = fs::remove_file(&part_path);
                                 *fatal_error_clone.lock().unwrap() = Some(Error::FileHashMismatch(path_str));
                                 stop_signal_clone.store(true, atomic::Ordering::Relaxed);
                                 return;
                             }
+                            if fs::rename(&part_path, &path).is_err() {
+                                let _ = fs::remove_file(&part_path);
+                                non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::Relaxed);
+                                continue;
+                            }
 
                             cached_files_clone.lock().unwrap().insert(repo_file.path.clone(), hash);
-                            hasher.reset();
                         }
                     }).unwrap();
                 handles.push(handle);

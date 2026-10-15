@@ -125,17 +125,10 @@ extern "C" fn on_click_skill_button(_ptr: usize, skill_id: i32) {
     DialogManager::single_button_message(&skill_name, &skill_desc.replace("\\n", "\n"), typ);
 }
 
-type UpdateItemOtherFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool);
-extern "C" fn UpdateItemOther(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool) {
+type UpdateItemGlobalTwFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32);
+extern "C" fn UpdateItemGlobalTw(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32) {
     UpdateItemCommon(this, skill_info, || {
-        get_orig_fn!(UpdateItemOther, UpdateItemOtherFn)(this, skill_info, is_plate_effect_enable);
-    });
-}
-
-type UpdateItemTwFn = extern "C" fn(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32);
-extern "C" fn UpdateItemTw(this: *mut Il2CppObject, skill_info: *mut Il2CppObject, is_plate_effect_enable: bool, resource_hash: i32) {
-    UpdateItemCommon(this, skill_info, || {
-        get_orig_fn!(UpdateItemTw, UpdateItemTwFn)(this, skill_info, is_plate_effect_enable, resource_hash);
+        get_orig_fn!(UpdateItemGlobalTw, UpdateItemGlobalTwFn)(this, skill_info, is_plate_effect_enable, resource_hash);
     });
 }
 
@@ -143,17 +136,15 @@ pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, PartsSingleModeSkillListItem);
     find_nested_class_or_return!(PartsSingleModeSkillListItem, Info);
 
-    if Hachimi::instance().game.region == Region::Japan {
-        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 5);
-        new_hook!(UpdateItem_addr, UpdateItemJp);
-    }
-    else if Hachimi::instance().game.region == Region::Taiwan {
-        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 3);
-        new_hook!(UpdateItem_addr, UpdateItemTw);
-    }
-    else {
-        let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 2);
-        new_hook!(UpdateItem_addr, UpdateItemOther);
+    match Hachimi::instance().game.region {
+        Region::Japan => {
+            let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 5);
+            new_hook!(UpdateItem_addr, UpdateItemJp);
+        }
+        _ => { // tw/global
+            let UpdateItem_addr = get_method_addr(PartsSingleModeSkillListItem, c"UpdateItem", 3);
+            new_hook!(UpdateItem_addr, UpdateItemGlobalTw);
+        }
     }
 
     unsafe {

@@ -25,6 +25,7 @@ pub mod RectTransform;
 pub mod Transform;
 pub mod RectOffset;
 pub mod Camera;
+pub mod Shader;
 #[cfg(target_os = "windows")]
 pub mod QualitySettings;
 pub mod Screen;
@@ -62,6 +63,7 @@ pub fn init() {
     SceneManager::init(image);
     Scene::init(image);
     Camera::init(image);
+    Shader::init(image);
     Screen::init(image);
 
     #[cfg(target_os = "android")]

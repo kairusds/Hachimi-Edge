@@ -131,7 +131,7 @@ jobs:
       - name: Build Installer
         if: matrix.target == 'x86_64-pc-windows-msvc'
         run: |
-          git clone --depth 1 --revision 0387eb987aa9bc446415844e321125dff16e210f https://github.com/teiosteppa/Installer
+          git clone --depth 1 --revision dfbfaa034f1efe7de3ff4b86559c645a241f1be2 https://github.com/teiosteppa/Installer
           cp build/hachimi.dll Installer/
           mv Cellar/build/cellar.dll Installer/
           mv FunnyHoney/FunnyHoney.exe Installer/

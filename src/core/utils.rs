@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fs::File, io::Write, path::Path, time::SystemTime};
+use std::{borrow::Cow, fs::File, io::Write, path::Path, sync::atomic::{AtomicUsize, Ordering}, time::SystemTime};
 
 use serde::Serialize;
 use textwrap::{core::Word, wrap_algorithms, WordSeparator::UnicodeBreakProperties};
@@ -7,10 +7,8 @@ use unicode_width::UnicodeWidthChar;
 use crate::{
     core::Gui,
     il2cpp::{
-        api::*,
-        ext::{Il2CppStringExt, StringExt},
+        ext::{Il2CppObjectExt, Il2CppStringExt, StringExt},
         hook::umamusume::{Localize, TextId},
-        symbols::{get_assembly_image, get_class},
         types::{Il2CppObject, Il2CppString}
     }
 };
@@ -704,27 +702,46 @@ pub fn get_proc_address(handle: usize, name: &std::ffi::CStr) -> usize {
     }
 }
 
-pub fn umamusume_enum_options(class_name: &std::ffi::CStr) -> Vec<String> {
-    let mut options = Vec::new();
-    let Ok(image) = get_assembly_image(c"umamusume.dll") else { return options };
-    let Ok(klass) = get_class(image, c"Gallop", class_name) else { return options };
+static RACE_SEEK_STAGE: AtomicUsize = AtomicUsize::new(0);
 
-    if !il2cpp_class_is_enum(klass) { return options; }
+pub fn race_seek_stage(stage: usize) {
+    RACE_SEEK_STAGE.store(stage, Ordering::Release);
+}
 
-    let mut iter: *mut std::ffi::c_void = std::ptr::null_mut();
-    loop {
-        let field = il2cpp_class_get_fields(klass, &mut iter);
-        if field.is_null() { break; }
-        let attrs = il2cpp_field_get_flags(field);
-        if (attrs & 0x0040) != 0 {
-            let name_ptr = il2cpp_field_get_name(field);
-            if !name_ptr.is_null() {
-                let name = unsafe { std::ffi::CStr::from_ptr(name_ptr) };
-                if let Ok(s) = name.to_str() {
-                    options.push(s.to_string());
-                }
-            }
-        }
+#[cfg(target_os = "windows")]
+pub fn race_seek_seh<F: FnMut()>(mut f: F) -> bool {
+    if let Err(e) = microseh::try_seh(|| f()) {
+        let stage = RACE_SEEK_STAGE.load(Ordering::Acquire);
+        error!(
+            "[race slider] seek faulted at stage {}: {} at {:#x} (rip {:#x}), state reset, race left paused",
+            stage,
+            e.code(),
+            e.address() as usize,
+            e.registers().rip()
+        );
+        false
+    } else {
+        true
     }
-    options
+}
+
+#[cfg(target_os = "android")]
+pub fn race_seek_seh<F: FnOnce()>(f: F) -> bool {
+    f();
+    true
+}
+
+pub fn clear_il2cpp_list(list: *mut Il2CppObject) {
+    use crate::il2cpp::symbols::get_method_addr_cached;
+
+    if list.is_null() { return; }
+
+    let list_class = unsafe { (*list).klass() };
+    if list_class.is_null() { return; }
+
+    let clear_addr = get_method_addr_cached(list_class, c"Clear", 0);
+    if clear_addr == 0 { return; }
+
+    let clear: extern "C" fn(*mut Il2CppObject) = unsafe { std::mem::transmute(clear_addr) };
+    clear(list);
 }

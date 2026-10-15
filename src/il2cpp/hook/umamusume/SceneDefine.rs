@@ -228,3 +228,45 @@ pub enum ViewId {
 }
 
 impl_enum_eq!(ViewId);
+
+#[repr(i32)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[allow(dead_code)]
+pub enum SceneId {
+    None = 0,
+    Title = 1,
+    Home = 2,
+    Race = 3,
+    Live = 4,
+    Story = 5,
+    Gacha = 6,
+    Episode = 7,
+    SingleMode = 8,
+    OutGame = 9,
+    LiveTheater = 10,
+    Circle = 11,
+    DailyRace = 12,
+    LegendRace = 13,
+    TeamStadium = 14,
+    CraneGame = 15,
+    Champions = 16,
+    ChampionsLobby = 17,
+    Tutorial = 18,
+    StoryEvent = 19,
+    ChallengeMatch = 20,
+    RoomMatch = 21,
+    PracticeRace = 22,
+    TrainingChallenge = 23,
+    TeamBuilding = 24,
+    CampaignRaffle = 25,
+    StoryMovie = 26,
+    CollectEventMap = 27,
+    CollectRaid = 28,
+    MapEvent = 29,
+    FactorResearch = 30,
+    Heroes = 31,
+    UltimateRace = 32,
+    Jobs = 33,
+    Max = 34
+}
+impl_enum_eq!(SceneId);

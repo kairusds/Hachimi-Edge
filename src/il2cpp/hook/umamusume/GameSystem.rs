@@ -1,4 +1,12 @@
-use crate::{core::{Hachimi, game::Region}, il2cpp::{symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr}, types::*}};
+use std::sync::Arc;
+use crate::{
+    core::{Hachimi, gui::{GameOpts, GAME_OPTS_CACHE}, game::Region},
+    il2cpp::{
+        sql::{get_champions_resources, get_champions_live_max_year},
+        symbols::{IEnumerator, MoveNextFn, SingletonLike, get_method_addr},
+        types::*, utils::umamusume_enum_options
+    }
+};
 #[cfg(target_os = "windows")]
 use crate::windows::free_camera::{self, CameraScene};
 #[cfg(target_os = "windows")]
@@ -6,8 +14,9 @@ use crate::core::live_utils;
 #[cfg(target_os = "windows")]
 use super::Director;
 // use std::sync::atomic::{AtomicBool, Ordering};
-use super::TextId;
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
+use super::GraphicSettings::{self, MsaaQuality};
 
 static mut CLASS: *mut Il2CppClass = 0 as _;
 pub fn class() -> *mut Il2CppClass {
@@ -24,7 +33,6 @@ pub fn instance() -> *mut Il2CppObject {
 static mut SOFTWARERESET_ADDR: usize = 0;
 impl_addr_wrapper_fn!(SoftwareReset, SOFTWARERESET_ADDR, (), this: *mut Il2CppObject);
 
-#[cfg(target_os = "windows")]
 type GameSystemUpdateFn = extern "C" fn(this: *mut Il2CppObject);
 #[cfg(target_os = "windows")]
 fn apply_free_camera_live_pause_request() {
@@ -34,16 +42,22 @@ fn apply_free_camera_live_pause_request() {
     live_utils::toggle_live_pause();
 }
 
-#[cfg(target_os = "windows")]
 extern "C" fn GameSystem_Update(this: *mut Il2CppObject) {
-    apply_free_camera_live_pause_request();
+    crate::core::gui::race_slider_drain();
+    Hachimi::instance().drain_skill_data_desc_rebuild();
 
-    // Live and race normally tick from their camera LateUpdate hooks. Keep the
-    // global update path only as a fallback while LiveTimelineControl is paused.
-    if Director::is_live_paused() && free_camera::scene() == CameraScene::Live {
-        free_camera::tick();
+    #[cfg(target_os = "windows")]
+    {
         apply_free_camera_live_pause_request();
+
+        // Live and race normally tick from their camera LateUpdate hooks. Keep the
+        // global update path only as a fallback while LiveTimelineControl is paused.
+        if Director::is_live_paused() && free_camera::scene() == CameraScene::Live {
+            free_camera::tick();
+            apply_free_camera_live_pause_request();
+        }
     }
+
     get_orig_fn!(GameSystem_Update, GameSystemUpdateFn)(this);
 }
 
@@ -55,24 +69,45 @@ extern "C" fn GameSystem_LateUpdate(this: *mut Il2CppObject) {
     Director::apply_paused_free_camera();
 }
 
+fn init_game_opts() {
+    let opts = GameOpts {
+        champions_resources: Arc::new(get_champions_resources()),
+        champions_live_max_year: get_champions_live_max_year(),
+        font_color_options: Arc::new(umamusume_enum_options(c"FontColorType")),
+        outline_size_options: Arc::new(umamusume_enum_options(c"OutlineSizeType")),
+        outline_color_options: Arc::new(umamusume_enum_options(c"OutlineColorType")),
+    };
+    match GAME_OPTS_CACHE.lock() {
+        Ok(mut slot) => *slot = Some(opts),
+        Err(poisoned) => {
+            warn!("GAME_OPTS_CACHE mutex poisoned, recovering");
+            *poisoned.into_inner() = Some(opts);
+        }
+    }
+}
+
 // good hook for initializing values i guess
 pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
     // GAME_INITIALIZED.store(true, Ordering::Relaxed);
-    Hachimi::instance().init_skill_info();
-
-    // For homescreen_bgseason options
-    for id in 108..=112 {
-        TextId::cache_name_id(&format!("Common0{}", id));
-    }
+    let hachimi = Hachimi::instance();
+    hachimi.init_skill_info();
+    hachimi.init_skill_data_desc();
+    init_game_opts();
 
     #[cfg(target_os = "android")]
     crate::android::utils::set_audio_capture_policy_all();
     #[cfg(target_os = "windows")]
     super::UIManager::apply_ui_scale();
 
+    if Hachimi::instance().config.load().msaa != MsaaQuality::Disabled {
+        let graphic_settings = GraphicSettings::instance();
+        if !graphic_settings.is_null() {
+            GraphicSettings::set__isMSAA(graphic_settings, true);
+        }
+    }
+
     // Invoke plugin callbacks
-    let hachimi = Hachimi::instance();
     let callbacks = hachimi.plugin_init_callbacks.lock().unwrap();
     for (callback, userdata) in callbacks.iter() {
         let callback_ptr = *callback;
@@ -130,10 +165,10 @@ pub fn init(umamusume: *const Il2CppImage) {
         SOFTWARERESET_ADDR = get_method_addr(GameSystem, c"SoftwareReset", 0);
     }
 
+    let GameSystem_Update_addr = get_method_addr(GameSystem, c"Update", 0);
+    new_hook!(GameSystem_Update_addr, GameSystem_Update);
     #[cfg(target_os = "windows")]
     {
-        let GameSystem_Update_addr = get_method_addr(GameSystem, c"Update", 0);
-        new_hook!(GameSystem_Update_addr, GameSystem_Update);
         let GameSystem_LateUpdate_addr = get_method_addr(GameSystem, c"LateUpdate", 0);
         new_hook!(GameSystem_LateUpdate_addr, GameSystem_LateUpdate);
     }

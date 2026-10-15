@@ -1,11 +1,8 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{
-    core::{Hachimi, game::Region},
-    il2cpp::{
-        symbols::get_method_addr,
-        types::*
-    }
+use crate::il2cpp::{
+    symbols::get_method_addr,
+    types::*
 };
 
 static RACE_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -29,10 +26,6 @@ extern "C" fn RaceHorseManagerBase_Release(this: *mut Il2CppObject) {
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if Hachimi::instance().game.region != Region::Japan {
-        return;
-    }
-
     get_class_or_return!(umamusume, Gallop, RaceHorseManagerBase);
 
     unsafe {

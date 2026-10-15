@@ -1,14 +1,16 @@
 use crate::{
-    core::{captions, live_utils},
+    core::captions,
     il2cpp::{
         symbols::{get_method_addr, get_method_overload_addr},
         types::*
     }
 };
 
+use super::CriAtomExPlayback::CriAtomExPlayback_t;
+
 // public CriAtomExPlayback Start() { }
 static mut START_ADDR: usize = 0;
-impl_addr_wrapper_fn!(Start, START_ADDR, live_utils::CriAtomExPlayback, this: *mut Il2CppObject);
+impl_addr_wrapper_fn!(Start, START_ADDR, CriAtomExPlayback_t, this: *mut Il2CppObject);
 
 // public Void Stop(Boolean ignoresReleaseTime) { }
 static mut STOP_ADDR: usize = 0;
@@ -24,7 +26,7 @@ impl_addr_wrapper_fn!(SetStartTime, SETSTARTTIME_ADDR, (), this: *mut Il2CppObje
 
 // public Void Update(CriAtomExPlayback playback) { }
 static mut UPDATE_ADDR: usize = 0;
-impl_addr_wrapper_fn!(Update, UPDATE_ADDR, (), this: *mut Il2CppObject, playback: live_utils::CriAtomExPlayback);
+impl_addr_wrapper_fn!(Update, UPDATE_ADDR, (), this: *mut Il2CppObject, playback: CriAtomExPlayback_t);
 
 // public Void Pause(Boolean sw) { }
 static mut PAUSE_ADDR: usize = 0;

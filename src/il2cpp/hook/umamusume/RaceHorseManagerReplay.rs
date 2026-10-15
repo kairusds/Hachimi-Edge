@@ -1,11 +1,8 @@
-use crate::{
-    core::{Hachimi, game::Region},
-    il2cpp::{
-        api::il2cpp_class_is_assignable_from,
-        ext::Il2CppObjectExt,
-        symbols::get_field_from_name,
-        types::*
-    }
+use crate::il2cpp::{
+    api::il2cpp_class_is_assignable_from,
+    ext::Il2CppObjectExt,
+    symbols::get_field_from_name,
+    types::*
 };
 
 def_field_object_accessors!(get__reader, set__reader, READER_FIELD, Il2CppObject);
@@ -25,10 +22,6 @@ pub fn is_replay_manager(obj: *mut Il2CppObject) -> bool {
 }
 
 pub fn init(umamusume: *const Il2CppImage) {
-    if Hachimi::instance().game.region != Region::Japan {
-        return;
-    }
-
     get_class_or_return!(umamusume, Gallop, RaceHorseManagerReplay);
 
     unsafe {
