@@ -122,7 +122,7 @@ impl Default for Vec3Config {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct FreeCameraKeybinds {
     pub move_forward: u16,

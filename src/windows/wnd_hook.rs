@@ -547,6 +547,10 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                     && Hachimi::instance().config.load().race_playback_key_enable {
                     Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
                 }
+
+                if gui::handle_shortcut_key(current_key as i32) {
+                    return LRESULT(0);
+                }
             }
 
             if !Gui::is_gui_input_active_atomic() {

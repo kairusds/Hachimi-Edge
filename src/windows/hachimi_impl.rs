@@ -115,10 +115,10 @@ pub struct Config {
 
 impl Config {
     fn default_vsync_count() -> i32 { -1 }
-    fn default_menu_open_key() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_RIGHT.0 }
-    fn default_hide_ingame_ui_hotkey_bind() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_INSERT.0 }
-    fn default_race_stat_hud_toggle_key() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_H.0 }
-    fn default_race_playback_key() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_P.0 }
+    pub fn default_menu_open_key() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_RIGHT.0 }
+    pub fn default_hide_ingame_ui_hotkey_bind() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_INSERT.0 }
+    pub fn default_race_stat_hud_toggle_key() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_H.0 }
+    pub fn default_race_playback_key() -> u16 { windows::Win32::UI::Input::KeyboardAndMouse::VK_P.0 }
     fn default_true() -> bool { true }
     fn default_gui_landscape_ratio() -> f32 { 1.0 }
     fn default_freeform_ui_scale_auto_ratio() -> f32 { 0.55 }

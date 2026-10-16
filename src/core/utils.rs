@@ -745,3 +745,14 @@ pub fn clear_il2cpp_list(list: *mut Il2CppObject) {
     let clear: extern "C" fn(*mut Il2CppObject) = unsafe { std::mem::transmute(clear_addr) };
     clear(list);
 }
+
+pub fn set_clipboard_text(text: &str) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        crate::android::utils::set_clipboard_text(text)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        crate::windows::utils::set_clipboard_text(text)
+    }
+}

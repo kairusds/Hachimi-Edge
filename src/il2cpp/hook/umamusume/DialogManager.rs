@@ -35,6 +35,30 @@ pub fn single_button_message(title: &str, message: &str, typ: FormType) {
     // PushSystemDialog(dialog_data, true);
 }
 
+pub fn three_button_message(
+    title: &str, message: &str, typ: FormType,
+    on_right: *mut Il2CppDelegate, right_text: &str,
+    on_center: *mut Il2CppDelegate, center_text: &str
+) {
+    let dialog_data = Data::new();
+    let close_text_id = TextId::from_name("Common0007");
+    Data::SetSimpleThreeButtonMessage(
+        dialog_data,
+        title.to_il2cpp_string(),
+        message.to_il2cpp_string(),
+        on_right,
+        close_text_id,
+        on_center,
+        close_text_id,
+        null_mut(),
+        close_text_id,
+        typ
+    );
+    Data::set_CenterButtonText(dialog_data, center_text.to_il2cpp_string());
+    Data::set_RightButtonText(dialog_data, right_text.to_il2cpp_string());
+    PushDialog(dialog_data);
+}
+
 pub fn init(umamusume: *const Il2CppImage) {
     get_class_or_return!(umamusume, Gallop, DialogManager);
 

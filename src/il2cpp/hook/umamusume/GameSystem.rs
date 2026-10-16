@@ -92,6 +92,7 @@ fn init_game_opts() {
 // good hook for initializing values i guess
 pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
+    Hachimi::instance().init_live_data();
     // GAME_INITIALIZED.store(true, Ordering::Relaxed);
     let hachimi = Hachimi::instance();
     hachimi.init_skill_info();
