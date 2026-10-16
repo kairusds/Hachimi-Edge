@@ -81,6 +81,9 @@ menu:
   discord_rpc: "Discord RPC"
   edit_excludes: "\uf040 Редактировать исключения"
   change_translation_repo: "\uf0c1 Сменить репозиторий переводов"
+  shortcuts_heading: "\uf02e Ярлыки"
+  no_shortcuts_saved: "Нет сохранённых ярлыков."
+  edit_shortcuts: "\uf040 Редактировать ярлыки"
 
 notification:
   saved_localize_dump: "Сохранено в localize_dump.json"
@@ -271,6 +274,8 @@ config_editor:
   aniso_level: "Анизотропная фильтрация"
   live_vocals_swap: "Замена концерт-голосов"
   live_vocals_swap_character_n: "Персонаж %{index}"
+  live_vocals_swap_concert: "Концерт"
+  live_vocals_swap_all_songs: "Все песни"
   skill_info_dialog: "Кастомное окно свойств навыков"
   homescreen_bgseason: "Время года на домашнем экране"
   shadow_resolution: "Разрешение теней"
@@ -302,6 +307,13 @@ set_keybind:
   title: "Назначить кнопку"
   press_any_key: "Нажмите любую кнопку…"
   bound_key: "Назначена кнопка: %{key}"
+
+skill_dialog:
+  copy_name: "Скопировать название"
+  copy_desc: "Скопировать описание"
+
+shortcuts:
+  title: "Редактировать ярлыки"
 
 race_stat_hud:
   open_race_mechanics_confirm: "Открыть документ по механикам забега в браузере? (на английском языке)"
