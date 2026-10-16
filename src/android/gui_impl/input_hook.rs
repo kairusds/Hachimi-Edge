@@ -182,7 +182,7 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
                         Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
                     }
 
-                    if pressed && gui::handle_shortcut_key(key_code) {
+                    if pressed && repeat_count == 0 && gui::handle_shortcut_key(key_code) {
                         return JNI_TRUE;
                     }
                 }

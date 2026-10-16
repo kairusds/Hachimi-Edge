@@ -1525,6 +1525,19 @@ pub fn slerp_quaternion(a: Quaternion_t, b: Quaternion_t, t: f32) -> Quaternion_
         .to_quaternion()
 }
 
+pub fn on_window_input_lost() {
+    let mut state = match STATE.lock() {
+        Ok(state) => state,
+        Err(poisoned) => {
+            warn!("[free_camera] STATE mutex poisoned, recovering");
+            poisoned.into_inner()
+        },
+    };
+    state.key_state = KeyState::default();
+    state.right_mouse_down = false;
+    state.last_mouse_pos = None;
+}
+
 pub fn on_windows_key(vk: u16, pressed: bool, repeat: bool) {
     if !is_game_input_capture_active() {
         return;
