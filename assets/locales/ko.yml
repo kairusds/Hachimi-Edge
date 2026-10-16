@@ -74,6 +74,9 @@ menu:
   discord_rpc: "Discord RPC"
   edit_excludes: "\uf040 예외 설정"
   change_translation_repo: "\uf0c1 번역 배포 변경"
+  shortcuts_heading: "\uf02e 단축키"
+  no_shortcuts_saved: "단축키가 설정되어 있지 않습니다."
+  edit_shortcuts: "\uf040 단축키 수정"
 
 notification:
   saved_localize_dump: "localize_dump.json 에 저장됨"
@@ -243,6 +246,8 @@ config_editor:
   aniso_level: "역 필터링"
   live_vocals_swap: "라이브 보컬 Swap"
   live_vocals_swap_character_n: "Character %{index}"
+  live_vocals_swap_concert: "공연"
+  live_vocals_swap_all_songs: "노래 목록"
   skill_info_dialog: "커스텀 스킬 설명"
   homescreen_bgseason: "육성 화면 계절"
   shadow_resolution: "Shadow Resolution"
@@ -844,6 +849,13 @@ set_keybind:
   title: "단축키 설정"
   press_any_key: "아무 키나 누르세요."
   bound_key: "감지된 단축키: %{key}"
+
+skill_dialog:
+  copy_name: "이름 복사"
+  copy_desc: "설명 복사"
+
+shortcuts:
+  title: "단축키 수정"
 
 free_camera:
   settings_title: "Free Camera Settings"

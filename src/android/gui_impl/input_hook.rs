@@ -181,6 +181,10 @@ extern "C" fn nativeInjectEvent(mut env: JNIEnv, obj: JObject, input_event: JObj
                         && Hachimi::instance().config.load().race_playback_key_enable {
                         Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
                     }
+
+                    if pressed && repeat_count == 0 && gui::handle_shortcut_key(key_code) {
+                        return JNI_TRUE;
+                    }
                 }
 
                 if pressed && key_code == keymap::KEYCODE_BACK {

@@ -72,6 +72,58 @@ impl CharacterData {
     }
 }
 
+#[derive(Default)]
+pub struct LiveData {
+    pub live_ids: Vec<i32>,
+    live_names: FnvHashMap<i32, String>
+}
+
+impl LiveData {
+    pub fn load_from_db() -> Self {
+        let mut live_ids = Vec::new();
+        let mut live_names = FnvHashMap::default();
+
+        let db_path = get_masterdb_path();
+        let conn = Connection::new();
+
+        if Connection::Open(conn, db_path.to_il2cpp_string(), ptr::null_mut(), ptr::null_mut(), 0) {
+            let sql = "SELECT L.music_id, T.text FROM live_data AS L JOIN text_data AS T ON L.music_id = T.\"index\" WHERE T.id = 16 AND L.has_live = 1";
+            let query = Connection::Query(conn, sql.to_il2cpp_string());
+
+            if !query.is_null() {
+                while Query::Step(query) {
+                    let id = Query::GetInt(query, 0);
+                    let name_ptr = Query::GetText(query, 1);
+
+                    if let Some(name) = unsafe { name_ptr.as_ref() }.map(|s| s.as_utf16str().to_string()) {
+                        live_names.insert(id, name);
+                    }
+                    live_ids.push(id);
+                }
+                Query::Dispose(query);
+            }
+            Connection::CloseDB(conn);
+        }
+
+        live_ids.sort_unstable();
+        LiveData { live_ids, live_names }
+    }
+
+    pub fn get_name(&self, id: i32) -> String {
+        if let Some(category_16) = Hachimi::instance().localized_data.load().text_data_dict.get(&16) {
+            if let Some(name) = category_16.get(&id) {
+                return name.clone();
+            }
+        }
+
+        if let Some(name) = self.live_names.get(&id) {
+            return name.clone();
+        }
+
+        format!("#{}", id)
+    }
+}
+
 // untranslated skill info
 #[derive(Default)]
 pub struct SkillInfo {

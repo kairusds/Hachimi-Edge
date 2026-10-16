@@ -68,7 +68,7 @@ use crate::windows::free_camera::{self, FreeCameraMode};
 
 use super::{
     game::Region,
-    hachimi::{self, Language, REPO_PATH, WEBSITE_URL, RACE_MECHANICS_URL},
+    hachimi::{self, Language, ShortcutOption, REPO_PATH, WEBSITE_URL, RACE_MECHANICS_URL},
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
@@ -257,6 +257,93 @@ const RACE_STAT_HUD_CLONE_STAGGER: f32 = 24.0;
 
 pub fn toggle_race_stat_hud() {
     TOGGLE_RACE_STAT_HUD_REQUESTED.store(true, atomic::Ordering::Release);
+}
+
+impl ShortcutOption {
+    pub fn label(self) -> Cow<'static, str> {
+        match self {
+            ShortcutOption::ThemeEditor => t!("theme_editor.title"),
+            ShortcutOption::FreeCamera => t!("free_camera.settings_title"),
+            ShortcutOption::LiveVocalsSwap => t!("config_editor.live_vocals_swap")
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    pub fn is_available(self) -> bool {
+        self != ShortcutOption::FreeCamera
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn is_available(self) -> bool {
+        true
+    }
+}
+
+pub fn update_shortcut(shortcuts: &mut Vec<hachimi::ShortcutEntry>, option: ShortcutOption, key: i32) {
+    match shortcuts.iter_mut().find(|s| s.option == option) {
+        Some(entry) => entry.key = key,
+        None => shortcuts.push(hachimi::ShortcutEntry { option, key })
+    }
+}
+
+fn toggle_shortcut_window(option: ShortcutOption) {
+    thread::spawn(move || {
+        let mut gui = match Gui::instance().map(|m| m.lock()) {
+            Some(Ok(gui)) => gui,
+            Some(Err(poisoned)) => {
+                warn!("[gui] Gui mutex poisoned, recovering");
+                poisoned.into_inner()
+            },
+            None => return,
+        };
+
+        if close_shortcut_window(&mut gui, option) {
+            return;
+        }
+
+        match option {
+            ShortcutOption::ThemeEditor => {
+                gui.show_window(Box::new(ThemeEditorWindow::new()));
+            },
+            #[cfg(target_os = "windows")]
+            ShortcutOption::FreeCamera => {
+                gui.show_window(Box::new(FreeCameraSettingsWindow::new()));
+            },
+            #[cfg(target_os = "android")]
+            ShortcutOption::FreeCamera => {},
+            ShortcutOption::LiveVocalsSwap => {
+                gui.show_window(Box::new(LiveVocalsSwapWindow::new()));
+            },
+        }
+    });
+}
+
+fn close_shortcut_window(gui: &mut Gui, option: ShortcutOption) -> bool {
+    let mut closed = false;
+    gui.windows.retain_mut(|w| {
+        if w.shortcut_window_option() == Some(option) {
+            closed = true;
+            false
+        } else {
+            true
+        }
+    });
+    closed
+}
+
+pub fn handle_shortcut_key(key: i32) -> bool {
+    if key == 0 { return false; }
+
+    let option = {
+        let config = Hachimi::instance().config.load();
+        match config.shortcuts.iter().find(|s| s.key == key) {
+            Some(entry) if entry.option.is_available() => entry.option,
+            _ => return false
+        }
+    };
+
+    toggle_shortcut_window(option);
+    true
 }
 
 pub fn toggle_race_stat_hud_clone(index: usize) {
@@ -3806,6 +3893,42 @@ impl Gui {
                         }
                         ui.separator();
 
+                        ui.heading(t!("menu.shortcuts_heading"));
+                        {
+                            let shortcuts: Vec<(ShortcutOption, i32)> = hachimi.config.load().shortcuts.iter()
+                                .map(|s| (s.option, s.key))
+                                .collect();
+                            let mut any = false;
+                            for option in ShortcutOption::ALL {
+                                if !option.is_available() { continue; }
+                                let Some(&(_, key)) = shortcuts.iter().find(|(o, _)| *o == option) else { continue };
+                                any = true;
+                                let button_text = if key != 0 {
+                                    let key_label = {
+                                        #[cfg(target_os = "android")]
+                                        { crate::android::gui_impl::keymap::keycode_display_label(key) }
+                                        #[cfg(target_os = "windows")]
+                                        { crate::windows::utils::vk_to_display_label(key as u16) }
+                                    };
+                                    format!("{} ({})", option.label(), key_label)
+                                } else {
+                                    option.label().into_owned()
+                                };
+                                if ui.add(egui::Button::new(button_text)).clicked() {
+                                    toggle_shortcut_window(option);
+                                }
+                            }
+                            if !any {
+                                ui.vertical(|ui| {
+                                    ui.label(t!("menu.no_shortcuts_saved"));
+                                });
+                            }
+                        }
+                        if ui.add(egui::Button::new(t!("menu.edit_shortcuts"))).clicked() {
+                            show_window = Some(Box::new(ShortcutsEditWindow::new()));
+                        }                        
+                        ui.separator();
+
                         let plugin_items = get_plugin_menu_items();
                         if !plugin_items.is_empty() {
                             ui.heading("Plugins");
@@ -4057,7 +4180,17 @@ impl Gui {
             .map(|(_, s)| *s)
             .unwrap_or("Unknown");
 
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(fixed_width, row_height), egui::Sense::hover());
+        let icon_size = 12.0 * scale;
+        let wrap_width = (fixed_width - padding.x * 2.0 - icon_size - 4.0 * scale).max(16.0 * scale);
+        let galley = ui.painter().layout(
+            selected_text.to_owned(),
+            egui::TextStyle::Button.resolve(ui.style()),
+            egui::Color32::PLACEHOLDER,
+            wrap_width
+        );
+
+        let height = row_height.max(galley.size().y + padding.y * 2.0);
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(fixed_width, height), egui::Sense::hover());
         let button_res = ui.interact(rect, button_id, egui::Sense::click());
 
         if ui.is_rect_visible(rect) {
@@ -4076,18 +4209,11 @@ impl Gui {
                 egui::epaint::StrokeKind::Inside
             );
 
-            let icon_size = 12.0 * scale;
             let icon_rect = egui::Rect::from_center_size(
                 egui::pos2(rect.right() - padding.x - icon_size / 2.0, rect.center().y),
                 egui::vec2(icon_size, icon_size)
             );
             Self::down_triangle_icon(ui.painter(), icon_rect, visuals);
-
-            let galley = ui.painter().layout_no_wrap(
-                selected_text.to_owned(),
-                egui::TextStyle::Button.resolve(ui.style()),
-                visuals.text_color()
-            );
 
             let text_pos = egui::pos2(
                 rect.left() + padding.x,
@@ -4485,6 +4611,7 @@ impl Notification {
 pub trait Window {
     fn run(&mut self, ctx: &egui::Context) -> bool;
     fn plugin_window_id(&self) -> Option<i32> { None }
+    fn shortcut_window_option(&self) -> Option<ShortcutOption> { None }
 }
 
 // Shared window creation function
@@ -5404,6 +5531,14 @@ impl ConfigEditor {
                     ui.label(crate::windows::utils::vk_to_display_label(config.windows.menu_open_key));
                 });
                 ui.end_row();
+                ui.label("");
+                if ui.button(t!("reset")).clicked() {
+                    #[cfg(target_os = "windows")]
+                    { config.windows.menu_open_key = crate::windows::hachimi_impl::Config::default_menu_open_key(); }
+                    #[cfg(target_os = "android")]
+                    { config.android.menu_open_key = crate::android::hachimi_impl::Config::default_menu_open_key(); }
+                }
+                ui.end_row();
             }
 
             if should_show_option(search, &t!("config_editor.debug_mode")) {
@@ -6028,6 +6163,14 @@ impl ConfigEditor {
                     ui.label(crate::windows::utils::vk_to_display_label(config.windows.hide_ingame_ui_hotkey_bind));
                 });
                 ui.end_row();
+                ui.label("");
+                if ui.button(t!("reset")).clicked() {
+                    #[cfg(target_os = "windows")]
+                    { config.windows.hide_ingame_ui_hotkey_bind = crate::windows::hachimi_impl::Config::default_hide_ingame_ui_hotkey_bind(); }
+                    #[cfg(target_os = "android")]
+                    { config.android.hide_ingame_ui_hotkey_bind = crate::android::hachimi_impl::Config::default_hide_ingame_ui_hotkey_bind(); }
+                }
+                ui.end_row();
             }
 
             if should_show_option(search, &t!("config_editor.race_stat_hud")) && matches!(Hachimi::instance().game.region, Region::Japan | Region::Global) {
@@ -6072,6 +6215,14 @@ impl ConfigEditor {
                     #[cfg(target_os = "windows")]
                     ui.label(crate::windows::utils::vk_to_display_label(config.windows.race_stat_hud_toggle_key));
                 });
+                ui.end_row();
+                ui.label("");
+                if ui.button(t!("reset")).clicked() {
+                    #[cfg(target_os = "windows")]
+                    { config.windows.race_stat_hud_toggle_key = crate::windows::hachimi_impl::Config::default_race_stat_hud_toggle_key(); }
+                    #[cfg(target_os = "android")]
+                    { config.android.race_stat_hud_toggle_key = crate::android::hachimi_impl::Config::default_race_stat_hud_toggle_key(); }
+                }
                 ui.end_row();
             }
 
@@ -6210,6 +6361,14 @@ impl ConfigEditor {
                     #[cfg(target_os = "windows")]
                     ui.label(crate::windows::utils::vk_to_display_label(config.windows.race_playback_key));
                 });
+                ui.end_row();
+                ui.label("");
+                if ui.button(t!("reset")).clicked() {
+                    #[cfg(target_os = "windows")]
+                    { config.windows.race_playback_key = crate::windows::hachimi_impl::Config::default_race_playback_key(); }
+                    #[cfg(target_os = "android")]
+                    { config.android.race_playback_key = crate::android::hachimi_impl::Config::default_race_playback_key(); }
+                }
                 ui.end_row();
             }
 
@@ -6769,10 +6928,6 @@ impl Window for ConfigEditor {
             self.last_ptr_config = global_ptr;
         }
         let mut config = std::mem::take(&mut self.config);
-        #[cfg(target_os = "windows")]
-        {
-            config.windows.menu_open_key = global_handle.windows.menu_open_key;
-        }
         self.poll_hachifonts();
         let mut reset_clicked = false;
         let mut save_clicked = false;
@@ -7273,10 +7428,15 @@ impl Window for FirstTimeSetupWindow {
     }
 }
 
+// LVSW = LiveVocalsSwapWindow
+static LVSW_LAST_CONCERT_ID: AtomicI32 = AtomicI32::new(0);
+
 struct LiveVocalsSwapWindow {
     id: egui::Id,
     config: hachimi::Config,
     chara_choices: Vec<(i32, String)>,
+    concert_choices: Vec<(i32, String)>,
+    selected_concert: i32,
     search_term: String
 }
 
@@ -7292,23 +7452,44 @@ impl LiveVocalsSwapWindow {
         }
         chara_choices.sort_by_key(|choice| choice.0);
 
+        let mut concert_choices: Vec<(i32, String)> = Vec::new();
+        concert_choices.push((0, t!("config_editor.live_vocals_swap_all_songs").into_owned()));
+        let live_data = hachimi.live_data.load();
+        for &id in &live_data.live_ids {
+            concert_choices.push((id, live_data.get_name(id)));
+        }
+
+        let stored_concert = LVSW_LAST_CONCERT_ID.load(atomic::Ordering::Relaxed);
+        let selected_concert = if concert_choices.iter().any(|&(id, _)| id == stored_concert) { stored_concert } else { 0 };
+
         LiveVocalsSwapWindow {
             id: random_id(),
             config: (**hachimi.config.load()).clone(),
             chara_choices,
+            concert_choices,
+            selected_concert,
             search_term: String::new()
         }
     }
 }
 
 impl Window for LiveVocalsSwapWindow {
+    fn shortcut_window_option(&self) -> Option<ShortcutOption> {
+        Some(ShortcutOption::LiveVocalsSwap)
+    }
+
     fn run(&mut self, ctx: &egui::Context) -> bool {
         let scale = get_scale(ctx);
         let mut open = true;
         let mut open2 = true;
         let mut save_clicked = false;
+        let concert_before = self.selected_concert;
 
         let combo_items: Vec<(i32, &str)> = self.chara_choices
+            .iter()
+            .map(|&(id, ref name)| (id, name.as_str()))
+            .collect();
+        let concert_items: Vec<(i32, &str)> = self.concert_choices
             .iter()
             .map(|&(id, ref name)| (id, name.as_str()))
             .collect();
@@ -7326,9 +7507,18 @@ impl Window for LiveVocalsSwapWindow {
                         .num_columns(2)
                         .spacing([40.0 * scale, 4.0 * scale])
                         .show(ui, |ui| {
+                            ui.label(t!("config_editor.live_vocals_swap_concert"));
+                            Gui::run_combo_menu(ui, self.id.with("concert"), &mut self.selected_concert, &concert_items, &mut self.search_term);
+                            ui.end_row();
+
+                            let active: &mut [i32; 6] = if self.selected_concert == 0 {
+                                &mut self.config.live_vocals_swap
+                            } else {
+                                self.config.live_vocals_swap_presets.entry(self.selected_concert).or_insert([0; 6])
+                            };
                             for i in 0..6 {
                                 ui.label(t!("config_editor.live_vocals_swap_character_n", index = i + 1));
-                                Gui::run_combo_menu(ui, egui::Id::new("vocals_swap").with(i), &mut self.config.live_vocals_swap[i], &combo_items, &mut self.search_term);
+                                Gui::run_combo_menu(ui, egui::Id::new("vocals_swap").with(i), &mut active[i], &combo_items, &mut self.search_term);
                                 ui.end_row();
                             }
                         });
@@ -7350,8 +7540,171 @@ impl Window for LiveVocalsSwapWindow {
             );
         });
 
+        if self.selected_concert != concert_before {
+            LVSW_LAST_CONCERT_ID.store(self.selected_concert, atomic::Ordering::Relaxed);
+        }
+
         if save_clicked {
+            self.config.live_vocals_swap_presets.retain(|_, v| v.iter().any(|&c| c != 0));
             save_and_reload_config(self.config.clone());
+        }
+
+        open &= open2;
+        open
+    }
+}
+
+struct ShortcutsEditWindow {
+    id: egui::Id,
+    config: hachimi::Config,
+    pending_binds: Arc<Mutex<Vec<(ShortcutOption, i32)>>>
+}
+
+impl ShortcutsEditWindow {
+    fn new() -> ShortcutsEditWindow {
+        ShortcutsEditWindow {
+            id: random_id(),
+            config: (**Hachimi::instance().config.load()).clone(),
+            pending_binds: Arc::new(Mutex::new(Vec::new()))
+        }
+    }
+
+    fn key_label(key: i32) -> String {
+        #[cfg(target_os = "android")]
+        { crate::android::gui_impl::keymap::keycode_display_label(key) }
+        #[cfg(target_os = "windows")]
+        { crate::windows::utils::vk_to_display_label(key as u16) }
+    }
+
+    fn bind_shortcut(option: ShortcutOption, pending_binds: Arc<Mutex<Vec<(ShortcutOption, i32)>>>) {
+        thread::spawn(move || {
+            let Some(gui_mutex) = Gui::instance() else { return };
+            let mut gui = gui_mutex.lock().unwrap();
+            gui.show_window(Box::new(SetKeybindWindow::new(move |result| {
+                let Some(raw) = result else { return };
+
+                #[cfg(target_os = "windows")]
+                let key = raw as i32;
+                #[cfg(target_os = "android")]
+                let key = raw;
+
+                let hachimi = Hachimi::instance();
+                let mut new_config = hachimi.config.load().as_ref().clone();
+                update_shortcut(&mut new_config.shortcuts, option, key);
+                save_and_reload_config(new_config);
+
+                if let Ok(mut binds) = pending_binds.lock() {
+                    binds.push((option, key));
+                }
+            })));
+        });
+    }
+}
+
+impl Window for ShortcutsEditWindow {
+    fn run(&mut self, ctx: &egui::Context) -> bool {
+        let scale = get_scale(ctx);
+        let mut open = true;
+        let mut open2 = true;
+        let mut save_clicked = false;
+
+        {
+            let mut binds = self.pending_binds.lock().unwrap();
+            for (option, key) in binds.drain(..) {
+                update_shortcut(&mut self.config.shortcuts, option, key);
+            }
+        }
+
+        let viewport = ctx.viewport_rect();
+        let frame = egui::Frame::window(&ctx.style()).total_margin().sum();
+        let budget_w = ((viewport.width() - 24.0 * scale).max(96.0 * scale) - frame.x).max(96.0 * scale);
+        let budget_h = ((viewport.height() - 24.0 * scale).max(96.0 * scale) - frame.y).max(96.0 * scale);
+        let title = fit_window_title(ctx, t!("shortcuts.title").into(), budget_w, scale);
+
+        let window = egui::Window::new(title)
+            .id(self.id.with(get_scale_salt(ctx).to_bits()))
+            .pivot(egui::Align2::CENTER_CENTER)
+            .fixed_pos(viewport.max / 2.0)
+            .min_width(96.0 * scale)
+            .default_width(320.0 * scale)
+            .max_width((340.0 * scale).min(budget_w))
+            .max_height((430.0 * scale).min(budget_h))
+            .collapsible(false)
+            .resizable(false)
+            .constrain(false);
+
+        window
+        .open(&mut open)
+        .show(ctx, |ui| {
+            egui::TopBottomPanel::bottom(self.id.with("shortcuts_footer"))
+                .frame(egui::Frame::NONE)
+                .show_inside(ui, |ui| {
+                    ui.separator();
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                        if ui.button(t!("cancel")).clicked() {
+                            open2 = false;
+                        }
+                        if ui.button(t!("save")).clicked() {
+                            save_clicked = true;
+                            open2 = false;
+                        }
+                    });
+                });
+
+            egui::ScrollArea::vertical()
+                .id_salt(self.id.with("shortcuts_scroll"))
+                .show(ui, |ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                    egui::Frame::NONE
+                        .inner_margin(egui::Margin::symmetric(8, 0))
+                        .show(ui, |ui| {
+                            for option in ShortcutOption::ALL {
+                                if !option.is_available() { continue; }
+
+                                let mut enabled = self.config.shortcuts.iter().any(|s| s.option == option);
+                                ui.horizontal(|ui| {
+                                    if ui.checkbox(&mut enabled, "").changed() {
+                                        if enabled {
+                                            let key = Hachimi::instance().config.load().shortcuts.iter()
+                                                .find(|s| s.option == option)
+                                                .map(|s| s.key)
+                                                .unwrap_or(0);
+                                            update_shortcut(&mut self.config.shortcuts, option, key);
+                                        } else {
+                                            self.config.shortcuts.retain(|s| s.option != option);
+                                        }
+                                    }
+                                    ui.label(option.label());
+                                });
+
+                                ui.horizontal_wrapped(|ui| {
+                                    let key = self.config.shortcuts.iter()
+                                        .find(|s| s.option == option)
+                                        .map(|s| s.key)
+                                        .unwrap_or(0);
+                                    if key != 0 {
+                                        ui.label(Self::key_label(key));
+                                    } else {
+                                        ui.label(t!("disabled"));
+                                    }
+                                    if ui.button(t!("bind_key")).clicked() {
+                                        Self::bind_shortcut(option, self.pending_binds.clone());
+                                    }
+                                    if ui.button(t!("reset")).clicked() {
+                                        if let Some(entry) = self.config.shortcuts.iter_mut().find(|s| s.option == option) {
+                                            entry.key = 0;
+                                        }
+                                    }
+                                });
+
+                                ui.separator();
+                            }
+                        });
+                });
+        });
+
+        if save_clicked {
+            save_and_reload_config(std::mem::take(&mut self.config));
         }
 
         open &= open2;
@@ -7363,6 +7716,7 @@ impl Window for LiveVocalsSwapWindow {
 struct FreeCameraSettingsWindow {
     id: egui::Id,
     config: hachimi::Config,
+    last_synced_keybinds: free_camera::FreeCameraKeybinds,
 }
 
 #[cfg(target_os = "windows")]
@@ -7371,6 +7725,7 @@ impl FreeCameraSettingsWindow {
         FreeCameraSettingsWindow {
             id: random_id(),
             config: (**Hachimi::instance().config.load()).clone(),
+            last_synced_keybinds: Hachimi::instance().config.load().windows.free_camera.keybinds.clone(),
         }
     }
 
@@ -7378,7 +7733,9 @@ impl FreeCameraSettingsWindow {
         ui: &mut egui::Ui,
         label: Cow<'static, str>,
         key: u16,
+        keybinds: &mut free_camera::FreeCameraKeybinds,
         setter: fn(&mut free_camera::FreeCameraKeybinds, u16),
+        default_key: u16,
     ) {
         ui.label(label);
         ui.horizontal(|ui| {
@@ -7387,6 +7744,12 @@ impl FreeCameraSettingsWindow {
                 Self::open_keybind_window(setter);
             }
         });
+        ui.end_row();
+
+        ui.label("");
+        if ui.button(t!("reset")).clicked() {
+            setter(keybinds, default_key);
+        }
         ui.end_row();
     }
 
@@ -7408,6 +7771,10 @@ impl FreeCameraSettingsWindow {
 
 #[cfg(target_os = "windows")]
 impl Window for FreeCameraSettingsWindow {
+    fn shortcut_window_option(&self) -> Option<ShortcutOption> {
+        Some(ShortcutOption::FreeCamera)
+    }
+
     fn run(&mut self, ctx: &egui::Context) -> bool {
         let scale = get_scale(ctx);
         let mut open = true;
@@ -7415,8 +7782,11 @@ impl Window for FreeCameraSettingsWindow {
         let mut save_clicked = false;
         let mut reset_clicked = false;
 
-        self.config.windows.free_camera.keybinds =
-            Hachimi::instance().config.load().windows.free_camera.keybinds.clone();
+        let global_keybinds = Hachimi::instance().config.load().windows.free_camera.keybinds.clone();
+        if global_keybinds != self.last_synced_keybinds {
+            self.config.windows.free_camera.keybinds = global_keybinds.clone();
+            self.last_synced_keybinds = global_keybinds;
+        }
 
         let mode_free = t!("free_camera.mode_free");
         let mode_first_person = t!("free_camera.mode_first_person");
@@ -7587,11 +7957,14 @@ impl Window for FreeCameraSettingsWindow {
                                     ($field:ident, $key:literal) => {{
                                         let setter: fn(&mut free_camera::FreeCameraKeybinds, u16) =
                                             |keybinds, raw| keybinds.$field = raw;
+                                        let default_key = free_camera::FreeCameraKeybinds::default().$field;
                                         Self::keybind_row(
                                             ui,
                                             t!($key),
                                             cfg.keybinds.$field,
+                                            &mut cfg.keybinds,
                                             setter,
+                                            default_key,
                                         );
                                     }};
                                 }
@@ -7722,6 +8095,10 @@ pub fn theme_color_row(ui: &mut egui::Ui, label: &str, color: &mut egui::Color32
 }
 
 impl Window for ThemeEditorWindow {
+    fn shortcut_window_option(&self) -> Option<ShortcutOption> {
+        Some(ShortcutOption::ThemeEditor)
+    }
+
     fn run(&mut self, ctx: &egui::Context) -> bool {
         let scale = get_scale(ctx);
         let mut open = true;

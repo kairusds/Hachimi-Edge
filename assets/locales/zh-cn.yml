@@ -80,6 +80,9 @@ menu:
   discord_rpc: "Discord RPC"
   edit_excludes: "\uf040 编辑排除项"
   change_translation_repo: "\uf0c1 更换翻译仓库"
+  shortcuts_heading: "\uf02e 快捷方式"
+  no_shortcuts_saved: "没有已保存的快捷方式。"
+  edit_shortcuts: "\uf040 编辑快捷方式"
 
 notification:
   free_camera_unavailable_live: "自由视角在本 Live 中存在已知问题，在此 Live 中将不会启用自由视角。"
@@ -251,6 +254,8 @@ config_editor:
   aniso_level: "各向异性过滤"
   live_vocals_swap: "Live 剧场音轨替换"
   live_vocals_swap_character_n: "角色 %{index}"
+  live_vocals_swap_concert: "演唱会"
+  live_vocals_swap_all_songs: "所有歌曲"
   skill_info_dialog: "自定义技能信息弹窗"
   homescreen_bgseason: "主界面背景季节"
   shadow_resolution: "阴影分辨率"
@@ -304,6 +309,13 @@ set_keybind:
   title: "设置按键绑定"
   press_any_key: "按下任意按键…"
   bound_key: "已绑定按键：%{key}"
+
+skill_dialog:
+  copy_name: "复制名称"
+  copy_desc: "复制描述"
+
+shortcuts:
+  title: "编辑快捷方式"
 
 race_stat_hud:
   open_race_mechanics_confirm: "是否打开浏览器查看比赛机制文档？（仅英文）"

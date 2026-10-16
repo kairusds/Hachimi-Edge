@@ -57,7 +57,9 @@ menu:
   toggle_game_ui: "\uf06e I-toggle ang game UI"
   edit_excludes: "\uf040 I-edit ang Excludes"
   change_translation_repo: "\uf0c1 Baguhin ang Translation Repo"
-
+  shortcuts_heading: "\uf02e Mga Shortcut"
+  no_shortcuts_saved: "Walang naka-save na shortcut."
+  edit_shortcuts: "\uf040 I-edit ang Mga Shortcut"
 
 notification:
   saved_localize_dump: "Na-save sa localize_dump.json"
@@ -178,6 +180,8 @@ config_editor:
   menu_open_key: "Hotkey ng pagbukas ng menu"
   menu_open_key_set: "Itakda"
   live_vocals_swap: "Pagpalit ng Vocals sa Live Theater"
+  live_vocals_swap_concert: "Konsiyerto"
+  live_vocals_swap_all_songs: "Lahat ng kanta"
   skill_info_dialog: "Custom na dialog ng skill info"
   homescreen_bgseason: "Panahon ng Homescreen Background"
   shadow_resolution: "Resolution ng Shadows"
@@ -363,6 +367,13 @@ set_keybind:
   title: "I-set ang Keybind"
   press_any_key: "Pindutin ang key..."
   bound_key: "Naka-bind na key: %{key}"
+
+skill_dialog:
+  copy_name: "Kopyahin ang pangalan"
+  copy_desc: "Kopyahin ang description"
+
+shortcuts:
+  title: "I-edit ang Mga Shortcut"
 
 tl_update_dialog:
   title: "May bagong update"
