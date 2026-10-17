@@ -516,6 +516,8 @@ update_prompt_dialog:
     Доступна новая версия Hachimi Edge (%{version})!
 
     Хотите открыть UmaPatcher Edge, чтобы начать обновление?
+  show_changelog: "Показать изменения"
+  changelog_title: "Изменения"
 
 updating_dialog:
   title: "Обновление"
