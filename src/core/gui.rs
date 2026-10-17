@@ -9725,3 +9725,81 @@ impl Window for PersistentMessageWindow {
         self.show.load(atomic::Ordering::Relaxed)
     }
 }
+
+pub struct HachimiUpdateWindow {
+    title: String,
+    content: String,
+    changelog: Option<String>,
+    callback: Option<Box<dyn FnOnce(bool) + Send + Sync>>,
+    id: egui::Id
+}
+
+impl HachimiUpdateWindow {
+    pub fn new(title: &str, content: &str, changelog_content: &str, callback: impl FnOnce(bool) + Send + Sync + 'static) -> HachimiUpdateWindow {
+        HachimiUpdateWindow {
+            title: title.to_owned(),
+            content: content.to_owned(),
+            changelog: Some(changelog_content.to_owned()),
+            callback: Some(Box::new(callback)),
+            id: random_id()
+        }
+    }
+}
+
+impl Window for HachimiUpdateWindow {
+    fn run(&mut self, ctx: &egui::Context) -> bool {
+        let mut open = true;
+        let mut open2 = true;
+        let mut result = false;
+
+        new_window(ctx, self.id, &self.title)
+        .open(&mut open)
+        .show(ctx, |ui| {
+            egui::TopBottomPanel::bottom(self.id.with("bottom_panel"))
+            .show_inside(ui, |ui| {
+                ui.horizontal(|ui| {
+                    if let Some(changelog) = &self.changelog {
+                        if ui.button(t!("update_prompt_dialog.show_changelog")).clicked() {
+                            let content = changelog.clone();
+                            thread::spawn(move || {
+                                Gui::instance().unwrap()
+                                .lock().unwrap()
+                                .show_window(Box::new(SimpleMarkdownDialog::new_with_height(
+                                    &t!("update_prompt_dialog.changelog_title"),
+                                    &content,
+                                    400.0,
+                                    500.0
+                                )));
+                            });
+                        }
+                    }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                        if ui.button(t!("no")).clicked() {
+                            open2 = false;
+                        }
+                        if ui.button(t!("yes")).clicked() {
+                            result = true;
+                            open2 = false;
+                        }
+                    });
+                });
+            });
+
+            egui::CentralPanel::default()
+            .frame(egui::Frame::NONE)
+            .show_inside(ui, |ui| {
+                centered_and_wrapped_text(ui, &self.content);
+            });
+        });
+
+        if open && open2 {
+            true
+        } else {
+            if let Some(cb) = self.callback.take() {
+                cb(result);
+            }
+            false
+        }
+    }
+}

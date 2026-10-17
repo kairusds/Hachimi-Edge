@@ -530,6 +530,8 @@ update_prompt_dialog:
     A new Hachimi Edge update is available (%{version})!
 
     Do you want to open UmaPatcher Edge to start the updater?
+  show_changelog: "Show Changelog"
+  changelog_title: "Changelog"
 
 updating_dialog:
   title: "Updating"
