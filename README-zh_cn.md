@@ -2,7 +2,7 @@
 
 # Hachimi Edge
 
-[English](README.md) | 简体中文 | [繁體中文](README-zh_tw.md)
+[English](README.md) | 简体中文 | [繁體中文](README-zh_tw.md) | [Filipino](README-fil.md)
 
 [![Discord 服务器](https://dcbadge.limes.pink/api/server/https://discord.gg/YjBgmuqqYr)](https://discord.gg/YjBgmuqqYr)
 
