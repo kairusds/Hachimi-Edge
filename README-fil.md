@@ -31,7 +31,6 @@ Labis na nilalabag ng mod na ito ang ToS ng laro. Magbahagi lang ng mga link o i
 
 - **Madaling i-set up:** Plug and play lang. Ginagawa sa laro mismo ang pag-set up, walang kinakailangang external app.
 - **Pag-auto update ng translations:** Ang kasamang translation updater ay nagbibigay-daan sa iyo na laruin pa rin ang laro habang naga-update pa ang mga translations, at nire-reload ang laro kapag tapos na. Hindi na kailangang mag-restart!
-- **Built-in GUI:** Comes with a config editor so you can modify settings without even exiting the game!
 - **Built-in GUI:** May kasamang config editor para baguhin mo ang mga setting kahit na hindi ka umalis sa laro!
 - **Graphics settings:** Maaari mong i-adjust ang graphics settings ng laro upang lubos na magamit ang specs ng iyong device, tulad ng pag-unlock ng FPS at resolution scaling
 - **Cross-platform:** Dinisenyo para maging portable, na may support sa Windows at Android.
