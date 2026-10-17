@@ -81,6 +81,9 @@ menu:
   discord_rpc: "Discord RPC"
   edit_excludes: "\uf040 Edit Excludes"
   change_translation_repo: "\uf0c1 Change Translation Repo"
+  shortcuts_heading: "\uf02e Shortcuts"
+  no_shortcuts_saved: "No shortcuts saved."
+  edit_shortcuts: "\uf040 Edit Shortcuts"
 
 notification:
   saved_localize_dump: "Saved to localize_dump.json"
@@ -285,6 +288,8 @@ config_editor:
   aniso_level: "Anisotropic Filtering"
   live_vocals_swap: "Live Vocals Swap"
   live_vocals_swap_character_n: "Character %{index}"
+  live_vocals_swap_concert: "Concert"
+  live_vocals_swap_all_songs: "All songs"
   skill_info_dialog: "Custom skill info dialog"
   homescreen_bgseason: "Homescreen Background Season"
   shadow_resolution: "Shadow Resolution"
@@ -316,6 +321,13 @@ set_keybind:
   title: "Set Keybind"
   press_any_key: "Press any key…"
   bound_key: "Bound key: %{key}"
+
+skill_dialog:
+  copy_name: "Copy name"
+  copy_desc: "Copy desc"
+
+shortcuts:
+  title: "Edit Shortcuts"
 
 race_stat_hud:
   open_race_mechanics_confirm: "Do you want to open the web browser to view the Race Mechanics Document? (English only)"

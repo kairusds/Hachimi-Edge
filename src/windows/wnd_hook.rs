@@ -473,6 +473,7 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 StandaloneWindowResize::set_is_window_dragging(false);
                 StandaloneWindowResize::set_is_window_size_changing(false);
                 queue_current_client_resize(hwnd);
+                free_camera::on_window_input_lost();
                 return res;
             } else if umsg == WM_SIZE {
                 let res = unsafe { orig_fn(hwnd, umsg, wparam, lparam) };
@@ -546,6 +547,10 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                 if current_key == Hachimi::instance().config.load().windows.race_playback_key
                     && Hachimi::instance().config.load().race_playback_key_enable {
                     Thread::main_thread().schedule(RaceManagerReplayBase::toggle_playback);
+                }
+
+                if !repeat && gui::handle_shortcut_key(current_key as i32) {
+                    return LRESULT(0);
                 }
             }
 
@@ -624,6 +629,8 @@ extern "system" fn wnd_proc(hwnd: HWND, umsg: c_uint, wparam: WPARAM, lparam: LP
                         }
                     }
                 });
+            } else {
+                free_camera::on_window_input_lost();
             }
             return res;
         },
