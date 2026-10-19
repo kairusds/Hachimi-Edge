@@ -68,7 +68,7 @@ use crate::windows::free_camera::{self, FreeCameraMode};
 
 use super::{
     game::Region,
-    hachimi::{self, Language, ShortcutOption, REPO_PATH, WEBSITE_URL, RACE_MECHANICS_URL},
+    hachimi::{self, Language, ShortcutOption, CHANGELOG_REPO_PATH, REPO_PATH, GITHUB_RAW_URL, WEBSITE_URL, RACE_MECHANICS_URL},
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
@@ -9354,6 +9354,7 @@ pub struct TranslationRepoUpdateWindow {
     callback: Option<Box<dyn FnOnce(bool) + Send + Sync>>,
     id: egui::Id,
     changelog_fetch_result: Arc<Mutex<Option<Result<String, String>>>>,
+    changelog_fetch_failed: bool,
     changelog_cached: Option<Result<String, String>>,
 }
 
@@ -9391,6 +9392,7 @@ impl TranslationRepoUpdateWindow {
             callback: Some(Box::new(callback)),
             id: random_id(),
             changelog_fetch_result: fetch_result,
+            changelog_fetch_failed: false,
             changelog_cached: None,
         }
     }
@@ -9432,7 +9434,7 @@ impl Window for TranslationRepoUpdateWindow {
                 ui.horizontal(|ui| {
                     // changelog button: loading > show changelog > error
                     if self.changelog_cached.is_none() {
-                        ui.label(egui::RichText::new(t!("loading_label")).italics());
+                        ui.add_enabled(false, egui::Button::new(t!("loading_label")));
                     } else if let Some(Ok(_)) = &self.changelog_cached {
                         if ui.button(t!("tl_update_dialog.show_changelog")).clicked() {
                             let content = self.changelog_cached.as_ref().unwrap().as_ref().unwrap().clone();
@@ -9461,7 +9463,11 @@ impl Window for TranslationRepoUpdateWindow {
                             }
                         }
                     } else if let Some(Err(msg)) = &self.changelog_cached {
-                        ui.label(egui::RichText::new(msg).color(ui.visuals().error_fg_color));
+                        if !self.changelog_fetch_failed {
+                            request_notification(NotificationRequest::Custom(msg.to_owned()));
+                            self.changelog_fetch_failed = true;
+                        }
+                        ui.add_enabled(false, egui::Button::new(t!("tl_update_dialog.changelog_unavailable")));
                     }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
@@ -9729,19 +9735,48 @@ impl Window for PersistentMessageWindow {
 pub struct HachimiUpdateWindow {
     title: String,
     content: String,
-    changelog: Option<String>,
+    changelog_fetch_result: Arc<Mutex<Option<Result<String, String>>>>,
+    changelog_fetch_failed: bool,
+    changelog_cached: Option<Result<String, String>>,
     callback: Option<Box<dyn FnOnce(bool) + Send + Sync>>,
     id: egui::Id
 }
 
 impl HachimiUpdateWindow {
-    pub fn new(title: &str, content: &str, changelog_content: &str, callback: impl FnOnce(bool) + Send + Sync + 'static) -> HachimiUpdateWindow {
+    pub fn new(title: &str, content: &str, release_tag: &str, callback: impl FnOnce(bool) + Send + Sync + 'static) -> HachimiUpdateWindow {
+        let fetch_result = Arc::new(Mutex::new(None));
+        let fetch_result_clone = fetch_result.clone();
+        let release_tag_clone = release_tag.to_owned();
+
+        std::thread::spawn(move || {
+            let language = Hachimi::instance().config.load().language;
+            let result = Self::fetch_changelog(&release_tag_clone, language)
+                .or_else(|_| Self::fetch_changelog(&release_tag_clone, Language::English));
+            *fetch_result_clone.lock().unwrap() = Some(result);
+        });
+
         HachimiUpdateWindow {
             title: title.to_owned(),
             content: content.to_owned(),
-            changelog: Some(changelog_content.to_owned()),
+            changelog_fetch_result: fetch_result,
+            changelog_fetch_failed: false,
+            changelog_cached: None,
             callback: Some(Box::new(callback)),
             id: random_id()
+        }
+    }
+
+    fn fetch_changelog(tag: &str, language: Language) -> Result<String, String> {
+        let url = format!("{GITHUB_RAW_URL}/{CHANGELOG_REPO_PATH}/{tag}/{}.md", language.locale_str());
+        let agent = ureq::Agent::new_with_config(ureq_config());
+        match agent.get(&url).call() {
+            Ok(res) => {
+                match res.into_body().read_to_string() {
+                    Ok(text) => Ok(text),
+                    Err(e) => Err(format!("{}: {}", t!("update_prompt_dialog.changelog_fetch_failed"), e))
+                }
+            }
+            Err(e) => Err(format!("{}: {}", t!("update_prompt_dialog.changelog_fetch_failed"), e))
         }
     }
 }
@@ -9752,26 +9787,46 @@ impl Window for HachimiUpdateWindow {
         let mut open2 = true;
         let mut result = false;
 
+        if self.changelog_cached.is_none() {
+            if let Ok(mut lock) = self.changelog_fetch_result.try_lock() {
+                if let Some(fetch_result) = lock.take() {
+                    let result = match fetch_result {
+                        Ok(content) => Ok(content),
+                        Err(e) => Err(e)
+                    };
+                    self.changelog_cached = Some(result);
+                }
+            }
+        }
+
         new_window(ctx, self.id, &self.title)
         .open(&mut open)
         .show(ctx, |ui| {
             egui::TopBottomPanel::bottom(self.id.with("bottom_panel"))
             .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
-                    if let Some(changelog) = &self.changelog {
+                    if self.changelog_cached.is_none() {
+                        ui.add_enabled(false, egui::Button::new(t!("loading_label")));
+                    } else if let Some(Ok(content)) = &self.changelog_cached {
                         if ui.button(t!("update_prompt_dialog.show_changelog")).clicked() {
-                            let content = changelog.clone();
+                            let content_clone = content.to_owned();
                             thread::spawn(move || {
                                 Gui::instance().unwrap()
                                 .lock().unwrap()
                                 .show_window(Box::new(SimpleMarkdownDialog::new_with_height(
                                     &t!("update_prompt_dialog.changelog_title"),
-                                    &content,
+                                    &content_clone,
                                     400.0,
                                     500.0
                                 )));
                             });
                         }
+                    } else if let Some(Err(e)) = &self.changelog_cached {
+                        if !self.changelog_fetch_failed {
+                            request_notification(NotificationRequest::Custom(e.to_owned()));
+                            self.changelog_fetch_failed = true;
+                        }
+                        ui.add_enabled(false, egui::Button::new(t!("update_prompt_dialog.changelog_unavailable")));
                     }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {

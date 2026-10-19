@@ -504,6 +504,7 @@ tl_update_dialog:
   content_zip_warning: "Доступно новое обновление переводов (%{changed_size}). Вместо него будет скачан полный архив (%{download_size})."
   show_changelog: "Показать изменения"
   changelog_title: "Изменения"
+  changelog_unavailable: "Изменения недоступны"
   changelog_fetch_failed: "Не удалось загрузить изменения"
   changelog_invalid: "Данные изменений не являются текстовыми"
 
@@ -518,6 +519,8 @@ update_prompt_dialog:
     Хотите открыть UmaPatcher Edge, чтобы начать обновление?
   show_changelog: "Показать изменения"
   changelog_title: "Изменения"
+  changelog_unavailable: "Изменения недоступны"
+  changelog_fetch_failed: "Не удалось загрузить изменения"
 
 updating_dialog:
   title: "Обновление"

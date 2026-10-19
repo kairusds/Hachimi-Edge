@@ -68,7 +68,7 @@ impl Updater {
                         mutex.lock().unwrap().show_window(Box::new(HachimiUpdateWindow::new(
                             &t!("update_prompt_dialog.title"),
                             &t!("update_prompt_dialog.content", version = latest.tag_name),
-                            &latest.body,
+                            &latest.tag_name,
                             |ok| {
                                 if !ok { return; }
                                 Hachimi::instance().updater.clone().run();
@@ -84,7 +84,7 @@ impl Updater {
                     mutex.lock().unwrap().show_window(Box::new(HachimiUpdateWindow::new(
                         &t!("update_prompt_dialog.title"),
                         &t!("update_prompt_dialog.android_content", version = latest.tag_name),
-                        &latest.body,
+                        &latest.tag_name,
                         |ok| {
                             if !ok { return; }
                             Hachimi::instance().updater.clone().run();
@@ -223,8 +223,7 @@ impl Version {
 #[derive(Deserialize)]
 pub struct Release {
     // STUB
-    tag_name: String,
-    pub body: String,
+    pub tag_name: String,
     #[cfg(target_os = "windows")]
     assets: Vec<ReleaseAsset>
 }
