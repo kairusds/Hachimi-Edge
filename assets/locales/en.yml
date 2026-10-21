@@ -518,6 +518,7 @@ tl_update_dialog:
   content_zip_warning: "A new translation update is available (%{changed_size}). This update will download the full archive (%{download_size}) instead."
   show_changelog: "Show Changelog"
   changelog_title: "Changelog"
+  changelog_unavailable: "Changelog unavailable"
   changelog_fetch_failed: "Failed to fetch changelog"
   changelog_invalid: "Changelog content is not valid plaintext"
 
@@ -530,6 +531,10 @@ update_prompt_dialog:
     A new Hachimi Edge update is available (%{version})!
 
     Do you want to open UmaPatcher Edge to start the updater?
+  show_changelog: "Show Changelog"
+  changelog_title: "Changelog"
+  changelog_unavailable: "Changelog unavailable"
+  changelog_fetch_failed: "Failed to fetch changelog"
 
 updating_dialog:
   title: "Updating"

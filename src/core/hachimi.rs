@@ -10,6 +10,7 @@ use crate::{core::{gui, plugin_api::Plugin, updater}, gui_impl, hachimi_impl, il
 use super::{game::{Game, Region}, ipc, plurals, template, template_filters, tl_repo, utils, Error, Interceptor};
 
 pub const REPO_PATH: &str = "kairusds/Hachimi-Edge";
+pub const CHANGELOG_REPO_ENDPOINT: &str = "https://codeberg.org/Hachimi-Edge/changelog/raw/branch/main";
 pub const GITHUB_API: &str = "https://api.github.com/repos";
 pub const CODEBERG_API: &str = "https://codeberg.org/api/v1/repos";
 pub const WEBSITE_URL: &str = "https://hachimi.noccu.art";

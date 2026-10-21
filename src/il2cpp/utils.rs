@@ -280,13 +280,13 @@ fn read_font_pack_data(data: &[u8]) -> Result<(Vec<u8>, String), String> {
         .map_err(|e| format!("invalid zip file: {e}"))?;
 
     let font_path_entry = archive.file_names()
-        .find(|name| name.eq_ignore_ascii_case(FONT_PATH_ENTRY))
+        .find_map(|name| name.ok().filter(|name| name.eq_ignore_ascii_case(FONT_PATH_ENTRY)))
         .ok_or_else(|| format!("missing {FONT_PATH_ENTRY}"))?
-        .to_owned();
+        .into_owned();
     let bundle_entry = archive.file_names()
-        .find(|name| name.eq_ignore_ascii_case(INCLUDE_ENTRY))
+        .find_map(|name| name.ok().filter(|name| name.eq_ignore_ascii_case(INCLUDE_ENTRY)))
         .ok_or_else(|| format!("missing {INCLUDE_ENTRY}"))?
-        .to_owned();
+        .into_owned();
 
     let mut content = Vec::new();
     {

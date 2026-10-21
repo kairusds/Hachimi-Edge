@@ -1,8 +1,8 @@
 <img align="left" width="80" height="80" src="assets/icon.png">
 
 # Hachimi Edge
-
-English | [简体中文](README-zh_cn.md) | [繁體中文](README-zh_tw.md) | [Filipino](README-fil.md)
+ 
+English | [简体中文](README-zh_cn.md) | [繁體中文](README-zh_tw.md) | [Filipino](README-fil.md) | [한국어](README-ko.md)
 
 [![Discord server](https://dcbadge.limes.pink/api/server/https://discord.gg/YjBgmuqqYr)](https://discord.gg/YjBgmuqqYr)
 
