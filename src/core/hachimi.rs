@@ -11,7 +11,7 @@ use super::{game::{Game, Region}, ipc, plurals, template, template_filters, tl_r
 
 pub const REPO_PATH: &str = "kairusds/Hachimi-Edge";
 pub const CHANGELOG_REPO_PATH: &str = "Hachimi-Edge/changelog/main";
-pub const GITHUB_RAW_URL: &str = "https://raw.githubusercontent.com";
+pub const GITHUB_RAW_ENDPOINT: &str = "https://raw.githubusercontent.com";
 pub const GITHUB_API: &str = "https://api.github.com/repos";
 pub const CODEBERG_API: &str = "https://codeberg.org/api/v1/repos";
 pub const WEBSITE_URL: &str = "https://hachimi.noccu.art";

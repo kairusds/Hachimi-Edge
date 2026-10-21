@@ -68,7 +68,7 @@ use crate::windows::free_camera::{self, FreeCameraMode};
 
 use super::{
     game::Region,
-    hachimi::{self, Language, ShortcutOption, CHANGELOG_REPO_PATH, REPO_PATH, GITHUB_RAW_URL, WEBSITE_URL, RACE_MECHANICS_URL},
+    hachimi::{self, Language, ShortcutOption, CHANGELOG_REPO_PATH, REPO_PATH, GITHUB_RAW_ENDPOINT, WEBSITE_URL, RACE_MECHANICS_URL},
     http::{ureq_config, AsyncRequest},
     live_utils,
     tl_repo::{self, RepoInfo, LocalRepoInfo},
@@ -9767,7 +9767,7 @@ impl HachimiUpdateWindow {
     }
 
     fn fetch_changelog(tag: &str, language: Language) -> Result<String, String> {
-        let url = format!("{GITHUB_RAW_URL}/{CHANGELOG_REPO_PATH}/{tag}/{}.md", language.locale_str());
+        let url = format!("{GITHUB_RAW_ENDPOINT}/{CHANGELOG_REPO_PATH}/{tag}/{}.md", language.locale_str());
         let agent = ureq::Agent::new_with_config(ureq_config());
         match agent.get(&url).call() {
             Ok(res) => {
