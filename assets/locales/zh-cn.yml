@@ -519,6 +519,10 @@ update_prompt_dialog:
     检测到 Hachimi Edge 的新版本 (%{version})。
     
     是否要打开 UmaPatcher Edge 以开始更新？
+  show_changelog: "查看更新日志"
+  changelog_title: "更新日志"
+  changelog_fetch_failed: "获取更新日志失败"
+  changelog_invalid: "更新日志内容不是有效的纯文本格式"
 
 updating_dialog:
   title: "更新中"
