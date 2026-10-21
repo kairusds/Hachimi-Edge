@@ -289,6 +289,10 @@ update_prompt_dialog:
 
     Ketuk "Ya" untuk membuka UmaPatcher Edge dan patch ulang game kamu.
     (Tidak perlu mengunduh ulang data game atau APK, kamu hanya perlu patch lagi seperti biasanya karena UmaPatcher Edge selalu mengunduh versi Hachimi Edge terbaru.)
+  show_changelog: "Tampilkan log"
+  changelog_title: "Log perubahan"
+  changelog_fetch_failed: "Gagal mengambil data changelog"
+  changelog_invalid: "Isi changelog bukan teks polos yang valid"
 
 updating_dialog:
   title: "Memperbarui"
