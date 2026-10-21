@@ -308,3 +308,47 @@ pub fn get_available_disk_space() -> Option<u64> {
         }
     }
 }
+pub fn set_clipboard_text(text: &str) -> bool {
+    let vm = java_vm().expect("JavaVM not initialized");
+    let mut env = vm.attach_current_thread().expect("Failed to attach thread");
+
+    let result = (|| -> jni::errors::Result<()> {
+        let activity = get_activity(unsafe { env.unsafe_clone() })
+            .ok_or(jni::errors::Error::JavaException)?;
+
+        let context_class = env.find_class("android/content/Context")?;
+        let clip_service_name = env.get_static_field(context_class, "CLIPBOARD_SERVICE", "Ljava/lang/String;")?.l()?;
+
+        let clipboard = env.call_method(
+            &activity,
+            "getSystemService",
+            "(Ljava/lang/String;)Ljava/lang/Object;",
+            &[JValue::from(&clip_service_name)]
+        )?.l()?;
+
+        let jtext = env.new_string(text)?;
+        let clip_data_class = env.find_class("android/content/ClipData")?;
+        let clip = env.call_static_method(
+            clip_data_class,
+            "newPlainText",
+            "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Landroid/content/ClipData;",
+            &[JValue::from(&jtext), JValue::from(&jtext)]
+        )?.l()?;
+
+        env.call_method(&clipboard, "setPrimaryClip", "(Landroid/content/ClipData;)V", &[JValue::from(&clip)])?;
+
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => true,
+        Err(e) => {
+            if env.exception_check().unwrap_or(false) {
+                let _ = env.exception_describe();
+                let _ = env.exception_clear();
+            }
+            info!("JNI Clipboard Error: {:?}", e);
+            false
+        }
+    }
+}

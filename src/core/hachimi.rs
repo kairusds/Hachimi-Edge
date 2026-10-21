@@ -5,11 +5,12 @@ use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use textwrap::wrap_algorithms::Penalties;
 
-use crate::{core::{gui, plugin_api::Plugin, updater}, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}, sql::{CharacterData, SkillDataDesc, SkillInfo}}};
+use crate::{core::{gui, plugin_api::Plugin, updater}, gui_impl, hachimi_impl, il2cpp::{self, hook::umamusume::{CySpringController::SpringUpdateMode, GameSystem}, sql::{CharacterData, LiveData, SkillDataDesc, SkillInfo}}};
 
 use super::{game::{Game, Region}, ipc, plurals, template, template_filters, tl_repo, utils, Error, Interceptor};
 
 pub const REPO_PATH: &str = "kairusds/Hachimi-Edge";
+pub const CHANGELOG_REPO_ENDPOINT: &str = "https://codeberg.org/Hachimi-Edge/changelog/raw/branch/main";
 pub const GITHUB_API: &str = "https://api.github.com/repos";
 pub const CODEBERG_API: &str = "https://codeberg.org/api/v1/repos";
 pub const WEBSITE_URL: &str = "https://hachimi.noccu.art";
@@ -64,6 +65,7 @@ pub struct Hachimi {
 
     // Character data
     pub chara_data: ArcSwap<CharacterData>,
+    pub live_data: ArcSwap<LiveData>,
     // Untranslated skill info
     pub skill_info: ArcSwap<SkillInfo>,
     pub skill_data_desc: ArcSwap<SkillDataDesc>,
@@ -169,6 +171,7 @@ impl Hachimi {
 
             // Same with these
             chara_data: ArcSwap::default(),
+            live_data: ArcSwap::default(),
             skill_info: ArcSwap::default(),
             skill_data_desc: ArcSwap::default(),
 
@@ -201,7 +204,10 @@ impl Hachimi {
         if fs::metadata(&config_path).is_ok() {
             let json = fs::read_to_string(&config_path)?;
             match serde_json::from_str::<Config>(&json) {
-                Ok(config) => Ok(config),
+                Ok(mut config) => {
+                    config.shortcuts.retain(|s| s.option.is_available());
+                    Ok(config)
+                }
                 Err(e) => {
                     eprintln!("Failed to parse config: {}", e);
                     gui::request_notification(gui::NotificationRequest::ConfigLoadError);
@@ -313,6 +319,14 @@ impl Hachimi {
             let data = CharacterData::load_from_db();
             self.chara_data.store(Arc::new(data));
             info!("Character database loaded successfully.");
+        }
+    }
+
+    pub fn init_live_data(&self) {
+        if self.live_data.load().live_ids.is_empty() {
+            let data = LiveData::load_from_db();
+            self.live_data.store(Arc::new(data));
+            info!("Live database loaded successfully.");
         }
     }
 
@@ -729,6 +743,29 @@ impl RaceStatHudCloneConfig {
     }
 }
 
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum ShortcutOption {
+    #[default]
+    ThemeEditor,
+    FreeCamera,
+    LiveVocalsSwap
+}
+
+impl ShortcutOption {
+    pub const ALL: [ShortcutOption; 3] = [
+        ShortcutOption::ThemeEditor,
+        ShortcutOption::FreeCamera,
+        ShortcutOption::LiveVocalsSwap
+    ];
+}
+
+#[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Debug)]
+pub struct ShortcutEntry {
+    pub option: ShortcutOption,
+    #[serde(default)]
+    pub key: i32
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Config {
     #[serde(default)]
@@ -812,6 +849,10 @@ pub struct Config {
     pub live_theater_allow_same_chara: bool,
     #[serde(default = "Config::default_live_vocals_swap")]
     pub live_vocals_swap: [i32; 6],
+    #[serde(default)]
+    pub live_vocals_swap_presets: std::collections::BTreeMap<i32, [i32; 6]>,
+    #[serde(default)]
+    pub shortcuts: Vec<ShortcutEntry>,
     #[serde(default)]
     pub skill_info_dialog: bool,
     #[serde(default)]

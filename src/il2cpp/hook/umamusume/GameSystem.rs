@@ -17,6 +17,7 @@ use super::Director;
 // pub static GAME_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 use super::GraphicSettings::{self, MsaaQuality};
+use super::{HorseRaceInfo, RaceManagerReplayBase};
 
 static mut CLASS: *mut Il2CppClass = 0 as _;
 pub fn class() -> *mut Il2CppClass {
@@ -44,6 +45,8 @@ fn apply_free_camera_live_pause_request() {
 
 extern "C" fn GameSystem_Update(this: *mut Il2CppObject) {
     crate::core::gui::race_slider_drain();
+    HorseRaceInfo::refresh_race_state_cache();
+    RaceManagerReplayBase::refresh_playback_gated_cache();
     Hachimi::instance().drain_skill_data_desc_rebuild();
 
     #[cfg(target_os = "windows")]
@@ -89,6 +92,7 @@ fn init_game_opts() {
 // good hook for initializing values i guess
 pub fn on_game_initialized() {
     Hachimi::instance().init_character_data();
+    Hachimi::instance().init_live_data();
     // GAME_INITIALIZED.store(true, Ordering::Relaxed);
     let hachimi = Hachimi::instance();
     hachimi.init_skill_info();

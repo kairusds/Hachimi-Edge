@@ -3,7 +3,7 @@ use std::{sync::{Arc, Mutex}, time::Duration};
 use rust_i18n::t;
 use serde::Deserialize;
 
-use crate::core::{gui::{NotificationGuard, SimpleYesNoDialog}, hachimi::{REPO_PATH, CODEBERG_API, GITHUB_API}, http, Error, Gui, Hachimi};
+use crate::core::{gui::{HachimiUpdateWindow, NotificationGuard}, hachimi::{REPO_PATH, CODEBERG_API, GITHUB_API}, http, Error, Gui, Hachimi};
 
 const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -52,7 +52,7 @@ impl Updater {
             }
         };
 
-        if latest.is_different_version() {
+        if latest.is_newer_version() {
             #[cfg(target_os = "windows")]
             {
                 let installer_asset = latest.assets.iter().find(|asset| asset.name == "hachimi_installer.exe");
@@ -65,7 +65,7 @@ impl Updater {
                     self.new_update.store(Arc::new(Some(asset)));
     
                     if let Some(mutex) = Gui::instance() {
-                        mutex.lock().unwrap().show_window(Box::new(SimpleYesNoDialog::new(
+                        mutex.lock().unwrap().show_window(Box::new(HachimiUpdateWindow::new(
                             &t!("update_prompt_dialog.title"),
                             &t!("update_prompt_dialog.content", version = latest.tag_name),
                             |ok| {
@@ -80,7 +80,7 @@ impl Updater {
             #[cfg(target_os = "android")]
             {
                 if let Some(mutex) = Gui::instance() {
-                    mutex.lock().unwrap().show_window(Box::new(SimpleYesNoDialog::new(
+                    mutex.lock().unwrap().show_window(Box::new(HachimiUpdateWindow::new(
                         &t!("update_prompt_dialog.title"),
                         &t!("update_prompt_dialog.android_content", version = latest.tag_name),
                         |ok| {
@@ -195,17 +195,48 @@ impl Updater {
     }
 }
 
+struct Version(u32, u32, u32);
+
+impl Version {
+    pub fn try_parse(version: &str) -> Option<Version> {
+        let slice = version.strip_prefix('v').unwrap_or(version);
+
+        let mut parts = slice.split('.');
+        let major = parts.next()?.parse::<u32>().ok()?;
+        let minor = parts.next()?.parse::<u32>().ok()?;
+        let patch = parts.next()?.parse::<u32>().ok()?;
+
+        if parts.next().is_none() {
+            Some(Version(major, minor, patch))
+        } else {
+            None
+        }
+    }
+
+    pub fn to_int(&self) -> u32 {
+        (self.0 << 16) | (self.1 << 8) | self.2
+    }
+}
+
 #[derive(Deserialize)]
 pub struct Release {
     // STUB
-    tag_name: String,
+    pub tag_name: String,
     #[cfg(target_os = "windows")]
     assets: Vec<ReleaseAsset>
 }
 
 impl Release {
-    pub fn is_different_version(&self) -> bool {
-        self.tag_name != format!("v{}", env!("CARGO_PKG_VERSION"))
+    pub fn is_newer_version(&self) -> bool {
+        let local = Version::try_parse(env!("CARGO_PKG_VERSION"));
+        let remote = Version::try_parse(&self.tag_name);
+
+        // fall back to naive checking if one of them can't be parsed
+        if local.is_none() || remote.is_none() {
+            self.tag_name != format!("v{}", env!("CARGO_PKG_VERSION"))
+        } else {
+            remote.unwrap().to_int() > local.unwrap().to_int()
+        }
     }
 }
 

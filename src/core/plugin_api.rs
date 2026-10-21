@@ -863,7 +863,17 @@ unsafe extern "C" fn gui_ui_combo_menu(
         "Unknown"
     };
 
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(fixed_width, row_height), egui::Sense::hover());
+    let icon_size = 12.0 * scale;
+    let wrap_width = (fixed_width - padding.x * 2.0 - icon_size - 4.0 * scale).max(16.0 * scale);
+    let galley = ui.painter().layout(
+        selected_text.to_owned(),
+        egui::TextStyle::Button.resolve(ui.style()),
+        egui::Color32::PLACEHOLDER,
+        wrap_width
+    );
+
+    let height = row_height.max(galley.size().y + padding.y * 2.0);
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(fixed_width, height), egui::Sense::hover());
     let button_res = ui.interact(rect, button_id, egui::Sense::click());
 
     if ui.is_rect_visible(rect) {
@@ -882,18 +892,11 @@ unsafe extern "C" fn gui_ui_combo_menu(
             egui::epaint::StrokeKind::Inside
         );
 
-        let icon_size = 12.0 * scale;
         let icon_rect = egui::Rect::from_center_size(
             egui::pos2(rect.right() - padding.x - icon_size / 2.0, rect.center().y),
             egui::vec2(icon_size, icon_size)
         );
         gui::Gui::down_triangle_icon(ui.painter(), icon_rect, visuals);
-
-        let galley = ui.painter().layout_no_wrap(
-            selected_text.to_owned(),
-            egui::TextStyle::Button.resolve(ui.style()),
-            visuals.text_color()
-        );
 
         let text_pos = egui::pos2(
             rect.left() + padding.x,

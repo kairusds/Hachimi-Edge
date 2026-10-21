@@ -1,6 +1,6 @@
 [package]
 name = "hachimi"
-version = "0.32.0"
+version = "0.33.1"
 edition = "2021"
 
 [lib]
@@ -44,7 +44,7 @@ http = "1.4.0"
 size = "0.4"
 memmap2 = "0.9.9"
 thread-priority = "3.0.0"
-zip = { version = "0.6", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 unicode-width = "0.1"
 tiny_http = "0.12"
 rust-i18n = "3.1"

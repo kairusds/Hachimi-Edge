@@ -1119,7 +1119,15 @@ impl Updater {
                                 }
                             };
 
-                            let repo_file = match files_to_extract_clone.get(zip_entry.name()) {
+                            let entry_name = match zip_entry.name() {
+                                Ok(name) => name,
+                                Err(_) => {
+                                    non_fatal_error_count_clone.fetch_add(1, atomic::Ordering::Relaxed);
+                                    continue;
+                                }
+                            };
+
+                            let repo_file = match files_to_extract_clone.get(&*entry_name) {
                                 Some(file) => file.clone(),
                                 None => continue,
                             };
