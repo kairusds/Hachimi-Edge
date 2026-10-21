@@ -9743,15 +9743,14 @@ pub struct HachimiUpdateWindow {
 }
 
 impl HachimiUpdateWindow {
-    pub fn new(title: &str, content: &str, release_tag: &str, callback: impl FnOnce(bool) + Send + Sync + 'static) -> HachimiUpdateWindow {
+    pub fn new(title: &str, content: &str, callback: impl FnOnce(bool) + Send + Sync + 'static) -> HachimiUpdateWindow {
         let fetch_result = Arc::new(Mutex::new(None));
         let fetch_result_clone = fetch_result.clone();
-        let release_tag_clone = release_tag.to_owned();
 
         std::thread::spawn(move || {
             let language = Hachimi::instance().config.load().language;
-            let result = Self::fetch_changelog(&release_tag_clone, language)
-                .or_else(|_| Self::fetch_changelog(&release_tag_clone, Language::English));
+            let result = Self::fetch_changelog(language)
+                .or_else(|_| Self::fetch_changelog(Language::English));
             *fetch_result_clone.lock().unwrap() = Some(result);
         });
 
@@ -9766,8 +9765,8 @@ impl HachimiUpdateWindow {
         }
     }
 
-    fn fetch_changelog(tag: &str, language: Language) -> Result<String, String> {
-        let url = format!("{GITHUB_RAW_ENDPOINT}/{CHANGELOG_REPO_PATH}/{tag}/{}.md", language.locale_str());
+    fn fetch_changelog(language: Language) -> Result<String, String> {
+        let url = format!("{GITHUB_RAW_ENDPOINT}/{CHANGELOG_REPO_PATH}/{}.md", language.locale_str());
         let agent = ureq::Agent::new_with_config(ureq_config());
         match agent.get(&url).call() {
             Ok(res) => {
