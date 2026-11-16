@@ -194,7 +194,7 @@ config_editor:
   gui_scale: "그래픽 사용자 인터페이스 크기"
   old_config_editor: "옛 고급 설정 사용"
   gui_landscape_ratio: "Landscape overlay scale ratio"
-  ui_animation_scale: "UI 크기"
+  ui_animation_scale: "UI 속도"
   graphics_quality: "품질"
   vsync: "VSync"
   auto_full_screen: "자동 전체화면"
