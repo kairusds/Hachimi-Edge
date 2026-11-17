@@ -140,6 +140,11 @@ impl<'a> template::Context for TemplateContext<'a> {
                 };
                 self.settings.resizeTextForBestFit = state != 0.0;
 
+                if state == 2.0 {
+                    self.settings.horizontalOverflow = TextOverflow_Disallow;
+                    self.settings.verticalOverflow = TextOverflow_Disallow;
+                }
+
                 if self.settings.resizeTextForBestFit {
                     self.settings.generateOutOfBounds = false;
                     self.settings.resizeTextMaxSize = self.settings.fontSize;
