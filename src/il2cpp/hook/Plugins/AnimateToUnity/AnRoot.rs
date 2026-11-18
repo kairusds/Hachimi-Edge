@@ -58,7 +58,8 @@ struct AnMotionParameterData {
 struct AnObjectParameterBaseData {
     position_offset: Option<Vector3_t>,
     scale: Option<Vector3_t>,
-    anim_pos_offset_adj: Option<Vector2_t>
+    anim_pos_offset_adj: Option<Vector2_t>,
+    anim_scale_adj: Option<Vector2_t>
 }
 
 #[derive(Deserialize)]
@@ -222,6 +223,32 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
                         }
                         else {
                             warn!("Failed to get pos_offset_keyparams for plane param {} of motion param {}", *j, *i);
+                        }
+                    }
+                    if let Some(anim_scale) = &plane_param_data.base.anim_scale_adj {
+                        // Count should be 3 if present, representing XYZ axes. We ignore Z.
+                        if let Some(scale_keyparam_list) = IList::new(AnObjectParameterBase::get__scaleKeyParamList(plane_param)) {
+                            if scale_keyparam_list.count() > 1 {
+                                let x_axis_key_param = scale_keyparam_list.get(0).unwrap();
+                                if let Some(x_axis_key_list) = IList::<Vector2_t>::new(AnKeyParameter::get__keyList(x_axis_key_param)) {
+                                    for k in 0..x_axis_key_list.count() {
+                                        let mut key_values = x_axis_key_list.get(k).unwrap();
+                                        key_values.y += anim_scale.x;
+                                        x_axis_key_list.set(k, key_values);
+                                    }
+                                }
+                                let y_axis_key_param = scale_keyparam_list.get(1).unwrap();
+                                if let Some(y_axis_key_list) = IList::<Vector2_t>::new(AnKeyParameter::get__keyList(y_axis_key_param)) {
+                                    for k in 0..y_axis_key_list.count() {
+                                        let mut key_values = y_axis_key_list.get(k).unwrap();
+                                        key_values.y += anim_scale.y;
+                                        y_axis_key_list.set(k, key_values);
+                                    }
+                                }
+                            }
+                        }
+                        else {
+                            warn!("Failed to get scale_keyparams for plane param {} of motion param {}", *j, *i);
                         }
                     }
                 }
