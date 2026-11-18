@@ -18,6 +18,8 @@ pub fn get__positionOffsetKeyParamList(this: *mut Il2CppObject) -> *mut Il2CppOb
     get_field_object_value(this, unsafe { _POSITIONOFFSET_KEYPARAM_LIST_FIELD })
 }
 
+def_field_object_accessors!(get get__scaleKeyParamList, _SCALE_KEYPARAM_LIST_FIELD, Il2CppObject);
+
 pub fn init(Plugins: *const Il2CppImage) {
     get_class_or_return!(Plugins, AnimateToUnity, AnObjectParameterBase);
 
@@ -25,5 +27,6 @@ pub fn init(Plugins: *const Il2CppImage) {
         _POSITIONOFFSET_FIELD = get_field_from_name(AnObjectParameterBase, c"_positionOffset");
         _SCALE_FIELD = get_field_from_name(AnObjectParameterBase, c"_scale");
         _POSITIONOFFSET_KEYPARAM_LIST_FIELD = get_field_from_name(AnObjectParameterBase, c"_positionOffsetKeyParamList");
+        _SCALE_KEYPARAM_LIST_FIELD = get_field_from_name(AnObjectParameterBase, c"_scaleKeyParamList");
     }
 }
