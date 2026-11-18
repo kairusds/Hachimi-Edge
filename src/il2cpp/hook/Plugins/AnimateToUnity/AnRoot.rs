@@ -49,7 +49,9 @@ struct AnMotionParameterData {
     #[serde(default)]
     text_param_list: FnvHashMap<i32, AnTextParameterData>,
     #[serde(default)]
-    plane_param_list: FnvHashMap<i32, AnPlaneParameterData>
+    plane_param_list: FnvHashMap<i32, AnPlaneParameterData>,
+    #[serde(default)]
+    obj_param_list: FnvHashMap<i32, AnObjectParameterBaseData>
 }
 
 #[derive(Deserialize)]
@@ -143,7 +145,7 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
 
         for (i, motion_param_data) in data.motion_parameter_list.iter() {
             // quick escape!!!11
-            if motion_param_data.text_param_list.is_empty() && motion_param_data.plane_param_list.is_empty() {
+            if motion_param_data.text_param_list.is_empty() && motion_param_data.plane_param_list.is_empty() && motion_param_data.obj_param_list.is_empty() {
                 continue;
             }
 
@@ -221,6 +223,28 @@ pub fn patch_asset(this: *mut Il2CppObject, data_opt: Option<&AnRootData>) {
                         else {
                             warn!("Failed to get pos_offset_keyparams for plane param {} of motion param {}", *j, *i);
                         }
+                    }
+                }
+            }
+
+            if !motion_param_data.obj_param_list.is_empty() {
+                let Some(obj_param_list) = IList::new(AnMotionParameter::get__objectParamList(motion_param)) else {
+                    warn!("Failed to get obj_param_list for motion param {}", *i);
+                     continue;
+                 };
+
+                for (j, obj_param_data) in motion_param_data.obj_param_list.iter() {
+                    let Some(obj_param) = obj_param_list.get(*j) else {
+                        warn!("obj param {} of motion param {} out of range (max {})", *j, *i, obj_param_list.count());
+                        continue;
+                    };
+
+                    if let Some(position_offset) = &obj_param_data.position_offset {
+                        AnObjectParameterBase::set__positionOffset(obj_param, position_offset);
+                    }
+
+                    if let Some(scale) = &obj_param_data.scale {
+                        AnObjectParameterBase::set__scale(obj_param, scale);
                     }
                 }
             }
